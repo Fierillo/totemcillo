@@ -12,9 +12,14 @@ const setup = (n: number) => {
 };
 
 describe('latestZapsScene', () => {
-  it('ready sólo si hay zaps', () => {
-    expect(latestZapsScene(setup(0).store, 1).ready!()).toBe(false);
-    expect(latestZapsScene(setup(1).store, 1).ready!()).toBe(true);
+  it('sin zaps muestra título y estado vacío ajustado', () => {
+    const root = document.createElement('div');
+    latestZapsScene(setup(0).store, 1).render(root);
+    expect(root.querySelector('h1')!.textContent).toContain('Últimos zaps');
+    const msg = root.querySelector<HTMLElement>('.empty-msg')!;
+    expect(msg.textContent).toBe('Todavía no hay zaps');
+    expect(msg.dataset.fit).toBe('text');
+    expect(root.querySelector('li')).toBeNull();
   });
   it('muestra los 10 más nuevos primero, con comentario y extracto escapado', () => {
     const { store, root } = setup(12);

@@ -15,9 +15,14 @@ const setup = () => {
 };
 
 describe('top10HistoricoScene', () => {
-  it('ready sólo si hay zaps', () => {
-    expect(top10HistoricoScene(new ZapStore(), 1).ready!()).toBe(false);
-    expect(top10HistoricoScene(setup().s, 1).ready!()).toBe(true);
+  it('sin zaps muestra título y estado vacío ajustado', () => {
+    const root = document.createElement('div');
+    top10HistoricoScene(new ZapStore(), 1).render(root);
+    expect(root.querySelector('h1')!.textContent).toBe('Top 10 histórico');
+    const msg = root.querySelector<HTMLElement>('.empty-msg')!;
+    expect(msg.textContent).toBe('Todavía no hay zaps en este período');
+    expect(msg.dataset.fit).toBe('text');
+    expect(root.querySelector('li')).toBeNull();
   });
   it('título visible y 10 filas: rank, sats, extracto escapado y autor; sin zaps huérfanos', () => {
     const { s, root } = setup();
@@ -74,7 +79,10 @@ describe('top10Ultimas3hScene', () => {
     top10Ultimas3hScene(store(), 1, 6, () => NOW * 1000).render(root);
     expect(root.querySelector('h1')!.textContent).toBe('Top 10 · últimas 6 horas');
     expect(root.querySelector('.amount')!.textContent).toBe(sats(902_000));
-    expect(top10Ultimas3hScene(store(), 1, 3, () => (NOW + 4 * 3600) * 1000).ready!()).toBe(false);
+    const later = document.createElement('div');
+    top10Ultimas3hScene(store(), 1, 3, () => (NOW + 4 * 3600) * 1000).render(later);
+    expect(later.querySelector('h1')!.textContent).toBe('Top 10 · últimas 3 horas');
+    expect(later.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps en este período');
   });
   it('config topRecentHours por defecto 3', async () => {
     expect(defaultConfig.topRecentHours).toBe(3);

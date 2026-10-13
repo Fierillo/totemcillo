@@ -87,6 +87,27 @@ function check(scene) {
   return P;
 }
 
+function checkEmpty([scene, expected]) {
+  const P = [];
+  const R = (el) => el.getBoundingClientRect();
+  const main = document.getElementById('scene');
+  if (main.className !== `scene scene-${scene}`) P.push(`escena actual "${main.className}"`);
+  const inside = (name, el) => { const A = R(el), B = R(main); if (A.left < B.left - 1 || A.top < B.top - 1 || A.right > B.right + 1 || A.bottom > B.bottom + 1) P.push(`${name} se sale de la escena`); };
+  const noOverflow = (name, el) => { if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) P.push(`${name} desborda`); };
+  const msg = main.querySelector('.empty-msg');
+  if (!msg) { P.push('falta el mensaje de estado vacío'); return P; }
+  if (msg.textContent !== expected) P.push(`mensaje "${msg.textContent}"`);
+  if (parseFloat(getComputedStyle(msg).fontSize) < 16) P.push('mensaje demasiado chico');
+  inside('mensaje', msg); noOverflow('mensaje', msg);
+  const h1 = main.querySelector('h1');
+  if (h1) {
+    inside('título', h1); noOverflow('título', h1);
+    const A = R(h1), B = R(msg);
+    if (A.left < B.right - 1 && B.left < A.right - 1 && A.top < B.bottom - 1 && B.top < A.bottom - 1) P.push('título se superpone con el mensaje');
+  }
+  return P;
+}
+
 const problems = [];
 const viewports = [[1280, 720], [1920, 1080], [1080, 1920]];
 try {
@@ -122,6 +143,26 @@ try {
       problems.push(`teclado: → dio "${afterRight}", ←← dio "${afterLefts}"`);
     if (!keyboardNav && (afterRight !== 'scene scene-post' || afterLefts !== 'scene scene-post'))
       problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
+    await page.close();
+  }
+  // Estados vacíos: store vacío, se recorren todas las escenas con →
+  const empties = [
+    ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
+    ['latestZaps', 'Todavía no hay zaps'],
+    ['top10Historico', 'Todavía no hay zaps en este período'],
+    ['top10Ultimas3h', 'Todavía no hay zaps en este período'],
+  ];
+  for (const [w, h] of viewports) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForTimeout(800);
+    for (const [scene, expected] of empties) {
+      await page.waitForTimeout(700);
+      problems.push(...(await page.evaluate(checkEmpty, [scene, expected])).map((p) => `${w}x${h} vacío ${scene}: ${p}`));
+      await page.screenshot({ path: `${out}/${w}x${h}-empty-${scene}.png` });
+      await page.keyboard.press('ArrowRight');
+    }
     await page.close();
   }
 } finally {

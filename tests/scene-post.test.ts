@@ -16,9 +16,16 @@ const setup = () => {
 };
 
 describe('postScene', () => {
-  it('ready sólo si hay posts', () => {
-    expect(postScene(new ZapStore(), 1).ready!()).toBe(false);
-    expect(postScene(setup().store, 1).ready!()).toBe(true);
+  it('sin posts muestra un estado vacío ajustado y pasa al post cuando llega', () => {
+    const store = new ZapStore();
+    const root = document.createElement('div');
+    postScene(store, 1).render(root);
+    const msg = root.querySelector<HTMLElement>('.empty-msg')!;
+    expect(msg.textContent).toBe('Todavía no hay posts con #lacrypta / #labitconf');
+    expect(msg.dataset.fit).toBe('text');
+    store.addPost({ id: 'n', pubkey: 'n'.repeat(64), content: 'llegó', created_at: 1 });
+    expect(root.querySelector('.empty-msg')).toBeNull();
+    expect(root.querySelector('.post-content')!.textContent).toBe('llegó');
   });
   it('muestra contenido escapado, autor, total y zaps', () => {
     const { store, root } = setup();
