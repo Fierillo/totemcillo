@@ -1,0 +1,28 @@
+:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; cursor: none;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(16px, 1.6vw, 40px); }
+#app { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+.topbar, .footer { display: flex; justify-content: space-between; padding: .6em 1.2em; }
+.brand { color: var(--accent); font-weight: 800; font-size: 1.6em; }
+.tags { color: var(--accent); font-size: 1.2em; }
+.footer { color: var(--muted); justify-content: center; }
+.footer b { color: var(--accent); }
+.scene { padding: 1em 1.5em; animation: fade .6s ease; overflow: hidden; }
+@keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+.muted { color: var(--muted); }
+.empty { height: 100%; display: grid; place-items: center; font-size: 2em; color: var(--muted); }
+.scene-post { display: grid; grid-template-columns: 3fr 2fr; gap: 1.5em; }
+.post, .zaps { background: var(--card); border-radius: 1em; padding: 1.2em; overflow: hidden; }
+.post { display: flex; flex-direction: column; border-left: .3em solid var(--accent); }
+.post-head { display: flex; justify-content: space-between; font-size: 1.1em; }
+.author { color: var(--accent); font-weight: 700; }
+.post-content { flex: 1; font-size: 2em; line-height: 1.25; margin: .5em 0; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
+.total { font-size: 3em; font-weight: 900; color: var(--accent); }
+.zaps h2, h1 { color: var(--accent); margin-bottom: .5em; }
+h1 { font-size: 2.6em; }
+.zaps ul, .zap-list { list-style: none; }
+.zaps li { font-size: 1.2em; padding: .35em 0; border-bottom: 1px solid #222; }
+.zap-list li { display: grid; grid-template-columns: 5em 1fr auto; gap: 1em; align-items: center; font-size: 1.4em; padding: .4em 0; border-bottom: 1px solid #222; }
+.amount { color: var(--accent); font-weight: 900; font-size: 1.3em; text-align: right; }
+.who small { display: block; color: var(--muted); font-size: .7em; }

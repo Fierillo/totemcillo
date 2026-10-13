@@ -1,0 +1,11 @@
+{
+  "relays": ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net"],
+  "hashtags": ["lacrypta", "labitconf"],
+  "sceneDurations": { "post": 15000, "latestZaps": 12000 },
+  "postsPerCycle": 3,
+  "talks": [
+    { "time": "11:00", "title": "Charla de ejemplo 1", "speaker": "Por definir" },
+    { "time": "12:00", "title": "Charla de ejemplo 2", "speaker": "Por definir" }
+  ],
+  "announcement": "¡Pasá por el stand de La Crypta! ⚡"
+}
