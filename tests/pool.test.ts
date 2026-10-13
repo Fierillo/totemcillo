@@ -23,8 +23,14 @@ afterEach(() => vi.useRealTimers());
 
 describe('filtros', () => {
   it('notas por hashtag en minúscula y zaps por ids', () => {
-    expect(notesFilter(['LaCrypta'])).toEqual({ kinds: [1], '#t': ['lacrypta'] });
+    expect(notesFilter(['lacrypta'])).toEqual({ kinds: [1], '#t': ['lacrypta', 'Lacrypta', 'LACRYPTA'] });
     expect(zapsFilter(['a'])).toEqual({ kinds: [9735], '#e': ['a'] });
+  });
+});
+
+describe('variantes de mayúsculas en #t', () => {
+  it('incluye minúscula, original, Capitalizada y MAYÚSCULA sin duplicados', () => {
+    expect(notesFilter(['LaCrypta', 'labitconf'])['#t']).toEqual(['lacrypta', 'LaCrypta', 'Lacrypta', 'LACRYPTA', 'labitconf', 'Labitconf', 'LABITCONF']);
   });
 });
 
@@ -32,7 +38,7 @@ describe('startNostr', () => {
   it('suscribe notas en los relays y las agrega al store', () => {
     const p = mockPool(), store = new ZapStore();
     startNostr(cfg, store, p);
-    expect(p.subscribeMany).toHaveBeenCalledWith(cfg.relays, { kinds: [1], '#t': ['lacrypta', 'labitconf'] }, expect.anything());
+    expect(p.subscribeMany).toHaveBeenCalledWith(cfg.relays, notesFilter(cfg.hashtags), expect.anything());
     p.subs[0].h.onevent(note('n1'));
     expect(store.posts.get('n1')?.content).toBe('nota n1');
   });
