@@ -54,3 +54,19 @@ describe('límites de memoria', () => {
     expect(s.posts.size).toBe(500);
   });
 });
+
+describe('contenido enorme', () => {
+  it('trunca contenido de posts y comentarios de zaps, también al cargar', () => {
+    const { MAX_CONTENT, MAX_COMMENT } = storeMod;
+    expect(MAX_CONTENT).toBeGreaterThan(0);
+    const s = new ZapStore();
+    s.addPost({ ...post, content: 'x'.repeat(100_000) });
+    s.addZap({ ...zap, comment: 'y'.repeat(100_000) });
+    expect(s.posts.get('a')!.content).toHaveLength(MAX_CONTENT + 1);
+    expect(s.posts.get('a')!.content.endsWith('…')).toBe(true);
+    expect(s.zaps.get('1')!.comment).toHaveLength(MAX_COMMENT + 1);
+    const l = new ZapStore(mem({ posts: [{ ...post, content: 'x'.repeat(100_000) }], zaps: [{ ...zap, comment: 'y'.repeat(100_000) }] }));
+    expect(l.posts.get('a')!.content).toHaveLength(MAX_CONTENT + 1);
+    expect(l.zaps.get('1')!.comment).toHaveLength(MAX_COMMENT + 1);
+  });
+});
