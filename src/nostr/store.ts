@@ -68,10 +68,11 @@ export class ZapStore {
     if (this.zaps.has(z.id)) this.changed();
   }
 
-  /** Quita posts fuera de la ventana; sus zaps se conservan (estadísticas históricas). */
+  /** Quita posts fuera de la ventana junto con sus zaps (ya no se muestran en ningún lado). */
   prune(): number {
     let removed = 0;
     for (const p of [...this.posts.values()]) if (!this.isFresh(p)) { this.posts.delete(p.id); removed++; }
+    if (removed) this.dropOrphanZaps();
     if (removed) this.changed();
     return removed;
   }
@@ -79,6 +80,10 @@ export class ZapStore {
   startPruning(intervalMs = 60_000): () => void {
     const t = setInterval(() => this.prune(), intervalMs);
     return () => clearInterval(t);
+  }
+
+  private dropOrphanZaps() {
+    for (const z of [...this.zaps.values()]) if (!this.posts.has(z.postId)) this.zaps.delete(z.id);
   }
 
   private isFresh(p: Post) {
@@ -112,6 +117,7 @@ export class ZapStore {
       arr(d?.posts).filter(isPost).filter((p) => this.isFresh(p)).forEach((p) => this.posts.set(p.id, this.clipPost(p)));
       arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, clipZap(z)));
       trimOldest(this.posts, this.maxPosts);
+      if (this.maxAgeSec !== undefined) this.dropOrphanZaps();
       trimOldest(this.zaps, this.maxZaps);
     } catch (e) {
       console.warn('Historial corrupto, lo ignoro', e);
