@@ -2,6 +2,6 @@ import type { ZapStore } from '../nostr/store';
 import type { Scene } from '../rotator';
 import { topScene } from './top';
 
-/** Top 10 de posts por sats de todos los tiempos (incluye zaps de posts ya podados). */
+/** Top 10 de posts por sats (sólo posts dentro de postMaxAgeHours). */
 export const top10HistoricoScene = (store: ZapStore, duration: number): Scene =>
   topScene({ name: 'top10Historico', title: 'Top 10 histórico', store, duration, since: () => 0 });

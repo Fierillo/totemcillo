@@ -137,7 +137,7 @@ export class ZapStore {
   }
 
   top(n: number, since = 0) {
-    return this.stats(since).filter((s) => s.msats > 0).slice(0, n);
+    return this.stats(since).filter((s) => s.msats > 0 && s.post).slice(0, n);
   }
 
   latestZaps(n: number): Zap[] {

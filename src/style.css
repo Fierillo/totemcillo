@@ -55,4 +55,3 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .rank { color: var(--accent); font-weight: 900; }
 .top-list .excerpt { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .top-list .author { display: block; color: var(--muted); font-size: .7em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.top-list .orphan .excerpt { color: var(--muted); font-style: italic; }
