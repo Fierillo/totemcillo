@@ -4,9 +4,15 @@
     "wss://nos.lol",
     "wss://relay.primal.net",
     "wss://relay.snort.social",
-    "wss://nostr.bitcoiner.social",
-    "wss://nostr.0x7e.xyz",
-    "wss://relay.lacrypta.ar"
+    "wss://relay.lacrypta.ar",
+    "wss://nostr.wine",
+    "wss://offchain.pub",
+    "wss://nostr.mom",
+    "wss://relay.nostr.net",
+    "wss://nostr-pub.wellorder.net",
+    "wss://yabu.me",
+    "wss://nostr21.com",
+    "wss://relay.nos.social"
   ],
   "hashtags": [
     "lacrypta",
