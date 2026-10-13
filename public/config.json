@@ -20,7 +20,9 @@
   ],
   "sceneDurations": {
     "post": 15000,
-    "latestZaps": 12000
+    "latestZaps": 12000,
+    "top10Historico": 12000,
+    "top10Ultimas3h": 12000
   },
   "postsPerCycle": 3,
   "talks": [
@@ -38,5 +40,6 @@
   "announcement": "¡Pasá por el stand de La Crypta! ⚡",
   "noteUriTemplate": "nostr:{nevent}",
   "postMaxChars": 210,
-  "postMaxAgeHours": 24
+  "postMaxAgeHours": 24,
+  "topRecentHours": 3
 }

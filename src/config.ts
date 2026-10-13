@@ -12,6 +12,8 @@ export interface Config {
   postMaxChars: number;
   /** Sólo se muestran posts de las últimas N horas. */
   postMaxAgeHours: number;
+  /** Ventana (horas) del Top 10 reciente. */
+  topRecentHours: number;
 }
 
 export const defaultConfig: Config = {
@@ -24,6 +26,7 @@ export const defaultConfig: Config = {
   noteUriTemplate: 'nostr:{nevent}',
   postMaxChars: 210,
   postMaxAgeHours: 24,
+  topRecentHours: 3,
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {
