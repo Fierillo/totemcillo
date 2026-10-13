@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@scure/base':
+        specifier: ^2.4.0
+        version: 2.4.0
       nostr-tools:
         specifier: ^2.25.2
         version: 2.25.2(typescript@7.0.2)
@@ -177,6 +180,9 @@ packages:
 
   '@scure/base@2.0.0':
     resolution: {integrity: sha512-3E1kpuZginKkek01ovG8krQ0Z44E3DHPjc5S2rjJw9lZn3KSQOs8S7wqikF/AH7iRanHypj85uGyxk0XAyC37w==}
+
+  '@scure/base@2.4.0':
+    resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
 
   '@scure/bip32@2.0.1':
     resolution: {integrity: sha512-4Md1NI5BzoVP+bhyJaY3K6yMesEFzNS1sE/cP+9nuvE7p/b0kx9XbpDHHFl8dHtufcbdHRUUQdRqLIPHN/s7yA==}
@@ -743,6 +749,8 @@ snapshots:
   '@rolldown/pluginutils@1.0.1': {}
 
   '@scure/base@2.0.0': {}
+
+  '@scure/base@2.4.0': {}
 
   '@scure/bip32@2.0.1':
     dependencies:
