@@ -4,6 +4,7 @@ import type { ZapStore } from '../nostr/store';
 import type { Post } from '../nostr/types';
 import { noteUri } from '../nostr/link';
 import { live } from './live';
+import { fitRegions } from '../fit';
 import { ago, esc, sats, shortKey } from '../util';
 
 export interface LinkOptions { relays: string[]; template: string }
@@ -32,17 +33,18 @@ export function postScene(store: ZapStore, duration: number, link: LinkOptions =
           `<li><b>${sats(z.msats)}</b> sats · ${shortKey(z.sender)}${z.comment ? ` — <i>${esc(z.comment)}</i>` : ''}</li>`).join('');
         root.innerHTML = `
           <section class="post">
-            <div class="post-head"><span class="author">${shortKey(cur.post!.pubkey)}</span><span class="muted">${ago(cur.post!.created_at)}</span></div>
+            <div class="post-head"><span class="author" data-fit="text" data-max="3.5" data-min="12">${shortKey(cur.post!.pubkey)}</span><span class="muted">${ago(cur.post!.created_at)}</span></div>
             <div class="post-body">
-              <p class="post-content">${esc(cur.post!.content)}</p>
+              <p class="post-content" data-fit="text" data-max="7" data-min="14">${esc(cur.post!.content)}</p>
               ${code}
             </div>
             <div class="total">⚡ ${sats(cur.msats)} sats</div>
           </section>
           <aside class="zaps">
             <h2>Zaps (${cur.zaps.length})</h2>
-            <ul>${zaps || '<li class="muted">Todavía sin zaps. ¡Sé el primero!</li>'}</ul>
+            <ul data-fit="list" data-max="3.2" data-min="12">${zaps || '<li class="muted">Todavía sin zaps. ¡Sé el primero!</li>'}</ul>
           </aside>`;
+        fitRegions(root);
       };
       return live(store, draw);
     },
