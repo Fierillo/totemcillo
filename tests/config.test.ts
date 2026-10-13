@@ -35,3 +35,11 @@ describe('postMaxChars', () => {
     expect((await loadConfig(f as any)).postMaxChars).toBe(140);
   });
 });
+
+describe('postMaxAgeHours', () => {
+  it('por defecto 24 y se puede sobreescribir', async () => {
+    expect(defaultConfig.postMaxAgeHours).toBe(24);
+    const f = async () => ({ ok: true, json: async () => ({ postMaxAgeHours: 6 }) });
+    expect((await loadConfig(f as any)).postMaxAgeHours).toBe(6);
+  });
+});
