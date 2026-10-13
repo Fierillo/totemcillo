@@ -54,4 +54,11 @@ export function fitList(ul: HTMLElement, { max, min }: FitRange, m: Measurer = d
   while (!m.fits(ul) && ul.children.length > 1) { ul.lastElementChild!.remove(); removed++; }
   return { size: Math.ceil(min), removed };
 }
-export const fitRegions = undefined as any;
+/** Ajusta todos los elementos [data-fit="text|list"] (data-max en vh, data-min en px). */
+export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight) {
+  root.querySelectorAll<HTMLElement>('[data-fit]').forEach((el) => {
+    const range = { max: (Number(el.dataset.max) * vh) / 100, min: Number(el.dataset.min ?? 12) };
+    if (el.dataset.fit === 'list') fitList(el, range, m);
+    else fitText(el, range, m);
+  });
+}
