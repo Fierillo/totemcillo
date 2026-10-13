@@ -45,3 +45,39 @@ describe('top10HistoricoScene', () => {
     expect(root.querySelector('.top-list li .excerpt')!.textContent).toBe('Post 0 <b>x</b>');
   });
 });
+
+import { top10Ultimas3hScene } from '../src/scenes/top10Ultimas3h';
+import { defaultConfig, loadConfig } from '../src/config';
+
+describe('top10Ultimas3hScene', () => {
+  const NOW = 1_000_000;
+  const store = () => {
+    const s = new ZapStore();
+    s.addPost({ id: 'a', pubkey: 'a'.repeat(64), content: 'A', created_at: 1 });
+    s.addPost({ id: 'b', pubkey: 'b'.repeat(64), content: 'B', created_at: 1 });
+    s.addZap({ id: 'viejo', postId: 'a', msats: 900_000, comment: '', created_at: NOW - 4 * 3600 });
+    s.addZap({ id: 'b1', postId: 'b', msats: 1000, comment: '', created_at: NOW - 60 });
+    s.addZap({ id: 'a1', postId: 'a', msats: 2000, comment: '', created_at: NOW - 100 });
+    return s;
+  };
+  it('cuenta sólo zaps de la ventana y tiene título visible', () => {
+    const root = document.createElement('div');
+    const scene = top10Ultimas3hScene(store(), 1, 3, () => NOW * 1000);
+    expect(scene.name).toBe('top10Ultimas3h');
+    scene.render(root);
+    expect(root.querySelector('h1')!.textContent).toBe('Top 10 · últimas 3 horas');
+    const rows = [...root.querySelectorAll('.top-list li')].map((li) => [li.querySelector('.excerpt')!.textContent, li.querySelector('.amount')!.textContent]);
+    expect(rows).toEqual([['A', sats(2000)], ['B', sats(1000)]]);
+  });
+  it('ventana configurable y no lista si no hay zaps recientes', () => {
+    const root = document.createElement('div');
+    top10Ultimas3hScene(store(), 1, 6, () => NOW * 1000).render(root);
+    expect(root.querySelector('h1')!.textContent).toBe('Top 10 · últimas 6 horas');
+    expect(root.querySelector('.amount')!.textContent).toBe(sats(902_000));
+    expect(top10Ultimas3hScene(store(), 1, 3, () => (NOW + 4 * 3600) * 1000).ready!()).toBe(false);
+  });
+  it('config topRecentHours por defecto 3', async () => {
+    expect(defaultConfig.topRecentHours).toBe(3);
+    expect((await loadConfig((async () => ({ ok: true, json: async () => ({ topRecentHours: 1 }) })) as any)).topRecentHours).toBe(1);
+  });
+});
