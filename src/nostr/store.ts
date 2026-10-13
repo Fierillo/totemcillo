@@ -1,4 +1,5 @@
 import type { Post, Zap } from './types';
+import { truncateText } from '../text';
 
 export interface PostStats { post?: Post; postId: string; msats: number; zaps: Zap[] }
 
@@ -12,13 +13,11 @@ export const isZap = (x: any): x is Zap =>
   !!x && str(x.id, 64) && str(x.postId, 64) && num(x.msats) && x.msats > 0 && typeof x.comment === 'string' &&
   num(x.created_at) && (x.sender === undefined || str(x.sender, 64));
 
-export const MAX_CONTENT = 2000;
 export const MAX_COMMENT = 280;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
-const clipPost = (p: Post): Post => ({ ...p, content: clip(p.content, MAX_CONTENT) });
 const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
 
-export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number }
+export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
   while (m.size > max) {
@@ -40,17 +39,19 @@ export class ZapStore {
   private key: string;
   private maxPosts: number;
   private maxZaps: number;
+  private postMaxChars: number;
 
   constructor(private storage?: KV, opts: StoreOptions = {}) {
     this.key = opts.key ?? 'totemcillo:v1';
     this.maxPosts = opts.maxPosts ?? 500;
     this.maxZaps = opts.maxZaps ?? 5000;
+    this.postMaxChars = opts.postMaxChars ?? 210;
     this.load();
   }
 
   addPost(p: Post) {
     if (this.posts.has(p.id)) return;
-    this.posts.set(p.id, clipPost(p));
+    this.posts.set(p.id, this.clipPost(p));
     trimOldest(this.posts, this.maxPosts);
     if (this.posts.has(p.id)) this.changed();
   }
@@ -60,6 +61,10 @@ export class ZapStore {
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (this.zaps.has(z.id)) this.changed();
+  }
+
+  private clipPost(p: Post): Post {
+    return { ...p, content: truncateText(p.content, this.postMaxChars) };
   }
 
   onChange(fn: () => void): () => void {
@@ -82,7 +87,7 @@ export class ZapStore {
       const raw = this.storage?.getItem(this.key);
       if (!raw) return;
       const d = JSON.parse(raw);
-      arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, clipPost(p)));
+      arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, this.clipPost(p)));
       arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, clipZap(z)));
       trimOldest(this.posts, this.maxPosts);
       trimOldest(this.zaps, this.maxZaps);
