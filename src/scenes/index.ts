@@ -3,11 +3,17 @@ import type { ZapStore } from '../nostr/store';
 import type { Scene } from '../rotator';
 import { postScene } from './post';
 import { latestZapsScene } from './latestZaps';
+import { top10HistoricoScene } from './top10Historico';
+import { top10Ultimas3hScene } from './top10Ultimas3h';
 
-/** Escenas activas. TODO: top10Historico, top10Ultimas3h, proximasCharlas, anuncio. */
+/** Escenas activas. TODO: proximasCharlas, anuncio. */
 export function buildScenes(cfg: Config, store: ZapStore): Scene[] {
   const d = cfg.sceneDurations;
   const scenes = Array.from({ length: cfg.postsPerCycle }, () => postScene(store, d.post ?? 15000, { relays: cfg.relays, template: cfg.noteUriTemplate }));
-  scenes.push(latestZapsScene(store, d.latestZaps ?? 12000));
+  scenes.push(
+    latestZapsScene(store, d.latestZaps ?? 12000),
+    top10HistoricoScene(store, d.top10Historico ?? 12000),
+    top10Ultimas3hScene(store, d.top10Ultimas3h ?? 12000, cfg.topRecentHours),
+  );
   return scenes;
 }

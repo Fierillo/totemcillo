@@ -70,7 +70,7 @@ function check(scene) {
     const h1 = need('h1.top-title'), ol = need('.top-list');
     const expected = scene === 'top10Historico' ? 'Top 10 histórico' : 'Top 10 · últimas 3 horas';
     if (h1 && h1.textContent !== expected) P.push(`título "${h1.textContent}" != "${expected}"`);
-    if (h1 && (parseFloat(getComputedStyle(h1).fontSize) < 24 || R(h1).height < 20)) P.push('título demasiado chico');
+    if (h1 && (parseFloat(getComputedStyle(h1).fontSize) < 24 || R(h1).height < 20)) P.push(`título demasiado chico (${getComputedStyle(h1).fontSize}, alto ${R(h1).height}, scroll ${h1.scrollWidth}x${h1.scrollHeight} client ${h1.clientWidth}x${h1.clientHeight})`);
     inside('título', h1, main); inside('ranking', ol, main); disjoint([['título', h1], ['ranking', ol]]);
     noOverflow('título', h1); noOverflow('ranking', ol); itemsInside('fila', ol);
     if (ol && !ol.children.length) P.push('ranking vacío');

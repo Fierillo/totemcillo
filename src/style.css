@@ -49,7 +49,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 
 /* Escenas Top 10 */
 .scene-top10Historico, .scene-top10Ultimas3h { display: grid; grid-template-rows: auto minmax(0, 1fr); }
-.top-title { min-width: 0; overflow: hidden; white-space: nowrap; line-height: 1.2; }
+.top-title { min-width: 0; overflow: hidden; white-space: nowrap; line-height: 1.45; }
 .top-list { list-style: none; min-height: 0; overflow: hidden; }
 .top-list li { display: grid; grid-template-columns: 2.6em 6em minmax(0, 1fr); gap: .8em; align-items: center; padding: .3em 0; border-bottom: 1px solid #222; }
 .rank { color: var(--accent); font-weight: 900; }
