@@ -27,3 +27,11 @@ describe('noteUriTemplate', () => {
     expect((await loadConfig(f as any)).noteUriTemplate).toBe('https://njump.me/{nevent}');
   });
 });
+
+describe('postMaxChars', () => {
+  it('por defecto 210 y se puede sobreescribir', async () => {
+    expect(defaultConfig.postMaxChars).toBe(210);
+    const f = async () => ({ ok: true, json: async () => ({ postMaxChars: 140 }) });
+    expect((await loadConfig(f as any)).postMaxChars).toBe(140);
+  });
+});
