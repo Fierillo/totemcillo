@@ -78,3 +78,47 @@ describe('navegación manual', () => {
     expect(root.textContent).toBe('c');
   });
 });
+
+describe('navegación por escenas distintas (bloques con el mismo nombre)', () => {
+  const sc = (name: string, label: string) => ({ name, duration: 1000, render: vi.fn((r: HTMLElement) => { r.textContent = label; }) }) as Scene;
+  const rotation = () => [sc('post', 'p1'), sc('post', 'p2'), sc('post', 'p3'), sc('latestZaps', 'z'), sc('top', 't')];
+  it('→ salta al siguiente nombre distinto desde cualquier post del bloque', () => {
+    const r = new Rotator(root, rotation());
+    r.start();
+    r.next();
+    expect(root.textContent).toBe('z');
+    const r2 = new Rotator(root, rotation());
+    r2.start();
+    vi.advanceTimersByTime(1000);
+    expect(root.textContent).toBe('p2');
+    r2.next();
+    expect(root.textContent).toBe('z');
+  });
+  it('← va al inicio del bloque anterior y da la vuelta', () => {
+    const r = new Rotator(root, rotation());
+    r.start();
+    r.next();
+    r.prev();
+    expect(root.textContent).toBe('p1');
+    vi.advanceTimersByTime(1000);
+    expect(root.textContent).toBe('p2');
+    r.prev();
+    expect(root.textContent).toBe('t');
+    r.next();
+    expect(root.textContent).toBe('p1');
+  });
+  it('la rotación automática sigue mostrando cada post del bloque', () => {
+    new Rotator(root, rotation()).start();
+    const seen = [root.textContent];
+    for (let i = 0; i < 5; i++) { vi.advanceTimersByTime(1000); seen.push(root.textContent); }
+    expect(seen).toEqual(['p1', 'p2', 'p3', 'z', 't', 'p1']);
+  });
+  it('si todas las escenas se llaman igual, → y ← avanzan de a una', () => {
+    const r = new Rotator(root, [sc('post', 'a'), sc('post', 'b')]);
+    r.start();
+    r.next();
+    expect(root.textContent).toBe('b');
+    r.prev();
+    expect(root.textContent).toBe('a');
+  });
+});

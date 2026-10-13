@@ -127,7 +127,7 @@ try {
   // Navegación con teclado (activable por config)
   for (const keyboardNav of [true, false]) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, postsPerCycle: 3, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
     await page.goto('http://localhost:4179/');
     await page.waitForSelector('.scene-post');
