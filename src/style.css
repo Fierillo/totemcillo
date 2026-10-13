@@ -36,7 +36,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .scene-latestZaps { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zap-list { list-style: none; min-height: 0; overflow: hidden; }
-.zap-list li { display: grid; grid-template-columns: 5em minmax(0, 1fr) auto; gap: 1em; align-items: center; padding: .35em 0; border-bottom: 1px solid #222; }
+.zap-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1em; align-items: center; padding: .35em 0; border-bottom: 1px solid #222; }
 .amount { color: var(--accent); font-weight: 900; font-size: 1.3em; text-align: right; white-space: nowrap; overflow: hidden; }
 .who { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .who small { display: block; color: var(--muted); font-size: .7em; overflow: hidden; text-overflow: ellipsis; }
@@ -51,7 +51,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .scene-top10Historico, .scene-top10Ultimas3h { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .top-title { min-width: 0; overflow: hidden; white-space: nowrap; line-height: 1.45; }
 .top-list { list-style: none; min-height: 0; overflow: hidden; }
-.top-list li { display: grid; grid-template-columns: 2.6em 6em minmax(0, 1fr); gap: .8em; align-items: center; padding: .3em 0; border-bottom: 1px solid #222; }
+.top-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: .8em; align-items: center; padding: .3em 0; border-bottom: 1px solid #222; }
 .rank { color: var(--accent); font-weight: 900; }
 .top-list .excerpt { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .top-list .author { display: block; color: var(--muted); font-size: .7em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
