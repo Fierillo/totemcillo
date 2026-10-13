@@ -1,0 +1,30 @@
+import type { Scene } from '../rotator';
+import type { ZapStore } from '../nostr/store';
+import { fitRegions } from '../fit';
+import { live } from './live';
+import { esc, sats, shortKey } from '../util';
+
+export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number }
+
+/** Escena genérica de ranking de posts por sats (desde `since`, unix s). */
+export function topScene(o: TopOptions): Scene {
+  return {
+    name: o.name,
+    duration: o.duration,
+    ready: () => o.store.top(10, o.since()).length > 0,
+    render(root) {
+      const draw = () => {
+        const rows = o.store.top(10, o.since()).map((s, i) => `
+          <li class="${s.post ? '' : 'orphan'}">
+            <span class="rank">#${i + 1}</span>
+            <span class="amount">${sats(s.msats)}</span>
+            <span class="who"><span class="excerpt">${s.post ? esc(s.post.content) : 'post no disponible'}</span><small class="author">${s.post ? shortKey(s.post.pubkey) : ''}</small></span>
+          </li>`).join('');
+        root.innerHTML = `<h1 class="top-title" data-fit="text" data-max="6" data-min="20">${esc(o.title)}</h1>
+          <ol class="top-list" data-fit="list" data-max="4" data-min="14">${rows}</ol>`;
+        fitRegions(root);
+      };
+      return live(o.store, draw);
+    },
+  };
+}

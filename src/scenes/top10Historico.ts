@@ -1,3 +1,7 @@
-// TODO: Top 10 histórico: store.top(10)
-// Implementar con TDD como Scene (ver post.ts) y sumar en scenes/index.ts.
-export {};
+import type { ZapStore } from '../nostr/store';
+import type { Scene } from '../rotator';
+import { topScene } from './top';
+
+/** Top 10 de posts por sats de todos los tiempos (incluye zaps de posts ya podados). */
+export const top10HistoricoScene = (store: ZapStore, duration: number): Scene =>
+  topScene({ name: 'top10Historico', title: 'Top 10 histórico', store, duration, since: () => 0 });
