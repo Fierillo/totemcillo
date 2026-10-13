@@ -26,10 +26,11 @@ describe('ZapStore agregación', () => {
     s.addPost({ id: 'a', pubkey: 'p', content: 'otro', created_at: 9 });
     expect(s.posts.get('a')!.content).toBe('A');
   });
-  it('top N ignora posts sin zaps y filtra por since', () => {
+  it('top N ignora posts sin zaps, zaps sin post y filtra por since', () => {
     const s = filled();
     expect(s.top(2).map((x) => x.postId)).toEqual(['b', 'a']);
-    expect(s.top(10, 25).map((x) => [x.postId, x.msats])).toEqual([['huerfano', 700], ['a', 500]]);
+    expect(s.top(10).map((x) => x.postId)).toEqual(['b', 'a']);
+    expect(s.top(10, 25).map((x) => [x.postId, x.msats])).toEqual([['a', 500]]);
   });
   it('últimos zaps y posts', () => {
     const s = filled();

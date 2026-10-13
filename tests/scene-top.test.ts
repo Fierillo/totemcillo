@@ -19,7 +19,7 @@ describe('top10HistoricoScene', () => {
     expect(top10HistoricoScene(new ZapStore(), 1).ready!()).toBe(false);
     expect(top10HistoricoScene(setup().s, 1).ready!()).toBe(true);
   });
-  it('título visible y 10 filas: rank, sats, extracto escapado o "post no disponible", autor', () => {
+  it('título visible y 10 filas: rank, sats, extracto escapado y autor; sin zaps huérfanos', () => {
     const { s, root } = setup();
     const scene = top10HistoricoScene(s, 5000);
     expect([scene.name, scene.duration]).toEqual(['top10Historico', 5000]);
@@ -30,11 +30,11 @@ describe('top10HistoricoScene', () => {
     const lis = root.querySelectorAll('.top-list li');
     expect(lis).toHaveLength(10);
     expect(lis[0].querySelector('.rank')!.textContent).toBe('#1');
-    expect(lis[0].querySelector('.amount')!.textContent).toBe(sats(50_000));
-    expect(lis[0].querySelector('.excerpt')!.textContent).toBe('post no disponible');
-    expect(lis[1].querySelector('.rank')!.textContent).toBe('#2');
-    expect(lis[1].querySelector('.excerpt')!.textContent).toBe('Post 11 <b>x</b>');
-    expect(lis[1].querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
+    expect(lis[0].querySelector('.amount')!.textContent).toBe(sats(12_000));
+    expect(lis[0].querySelector('.excerpt')!.textContent).toBe('Post 11 <b>x</b>');
+    expect(lis[0].querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
+    expect(lis[9].querySelector('.rank')!.textContent).toBe('#10');
+    expect(root.textContent).not.toContain('post no disponible');
     expect(root.querySelector('.top-list b')).toBeNull();
   });
   it('lista ajustada y se actualiza en vivo', () => {

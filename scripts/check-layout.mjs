@@ -74,7 +74,7 @@ function check(scene) {
     inside('título', h1, main); inside('ranking', ol, main); disjoint([['título', h1], ['ranking', ol]]);
     noOverflow('título', h1); noOverflow('ranking', ol); itemsInside('fila', ol);
     if (ol && !ol.children.length) P.push('ranking vacío');
-    if (scene === 'top10Historico' && !ol?.textContent.includes('post no disponible')) P.push('falta fila de post no disponible');
+    if (ol && /POST VIEJO|post no disponible|1\.000\.000\.000/.test(ol.textContent)) P.push('el ranking incluye un post vencido o un zap huérfano');
   } else {
     const h1 = need('h1'), ul = need('.zap-list');
     inside('título', h1, main); inside('lista', ul, main); disjoint([['título', h1], ['lista', ul]]);

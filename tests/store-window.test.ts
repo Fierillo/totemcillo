@@ -41,7 +41,7 @@ describe('poda de posts vencidos', () => {
     expect(s.prune()).toBe(1);
     expect([...s.posts.keys()]).toEqual(['a']);
     expect(s.zaps.has('z')).toBe(true);
-    expect(s.top(10).map((x) => [x.postId, x.msats, x.post])).toEqual([['b', 5000, undefined]]);
+    expect(s.top(10).map((x) => x.postId)).toEqual([]);
     expect(fn).toHaveBeenCalledTimes(1);
     expect(s.prune()).toBe(0);
     expect(fn).toHaveBeenCalledTimes(1);
