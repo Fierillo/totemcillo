@@ -10,6 +10,8 @@ export interface Config {
   noteUriTemplate: string;
   /** Máximo de caracteres percibidos por post (se trunca con '…'). */
   postMaxChars: number;
+  /** Sólo se muestran posts de las últimas N horas. */
+  postMaxAgeHours: number;
 }
 
 export const defaultConfig: Config = {
@@ -21,6 +23,7 @@ export const defaultConfig: Config = {
   announcement: '',
   noteUriTemplate: 'nostr:{nevent}',
   postMaxChars: 210,
+  postMaxAgeHours: 24,
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {
