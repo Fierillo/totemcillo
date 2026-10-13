@@ -105,3 +105,16 @@ describe('profileLoader', () => {
     expect(await profileLoader(mockPool([]), ['wss://r'])(k.pk)).toBeNull();
   });
 });
+
+describe('firmas de notas', () => {
+  it('descarta notas con firma inválida o de otro kind', () => {
+    const p = mockPool(), store = new ZapStore();
+    startNostr(cfg, store, p, 1500, resolverFor(null));
+    const n = note('original');
+    p.subs[0].h.onevent({ ...n, content: 'falsificado' });
+    p.subs[0].h.onevent(note('reacción', 7));
+    expect(store.posts.size).toBe(0);
+    p.subs[0].h.onevent(n);
+    expect(store.posts.size).toBe(1);
+  });
+});
