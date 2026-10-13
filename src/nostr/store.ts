@@ -68,6 +68,19 @@ export class ZapStore {
     if (this.zaps.has(z.id)) this.changed();
   }
 
+  /** Quita posts fuera de la ventana; sus zaps se conservan (estadísticas históricas). */
+  prune(): number {
+    let removed = 0;
+    for (const p of [...this.posts.values()]) if (!this.isFresh(p)) { this.posts.delete(p.id); removed++; }
+    if (removed) this.changed();
+    return removed;
+  }
+
+  startPruning(intervalMs = 60_000): () => void {
+    const t = setInterval(() => this.prune(), intervalMs);
+    return () => clearInterval(t);
+  }
+
   private isFresh(p: Post) {
     return this.maxAgeSec === undefined || p.created_at >= this.now() - this.maxAgeSec;
   }
