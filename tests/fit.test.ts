@@ -32,3 +32,22 @@ describe('fitText', () => {
     expect(e.textContent).toBe('uno dos tres cuatro cinco seis');
   });
 });
+
+describe('fitList', () => {
+  const list = (n: number) => { const ul = document.createElement('ul'); for (let i = 0; i < n; i++) ul.append(document.createElement('li')); return ul; };
+  /** entra si tamaño × cantidad de items <= capacidad */
+  const listMeasurer = (cap: number): Measurer => ({ setSize: domMeasurer.setSize, fits: (el) => size(el) * el.children.length <= cap });
+  it('achica la fuente de la lista hasta que entren todos', () => {
+    const ul = list(10);
+    expect(fitList(ul, { max: 40, min: 10 }, listMeasurer(200))).toEqual({ size: 20, removed: 0 });
+    expect(ul.children).toHaveLength(10);
+  });
+  it('en el mínimo saca items del final hasta que entre (deja al menos uno)', () => {
+    const ul = list(10);
+    expect(fitList(ul, { max: 40, min: 10 }, listMeasurer(55))).toEqual({ size: 10, removed: 5 });
+    expect(ul.children).toHaveLength(5);
+    const one = list(3);
+    fitList(one, { max: 40, min: 10 }, listMeasurer(1));
+    expect(one.children).toHaveLength(1);
+  });
+});
