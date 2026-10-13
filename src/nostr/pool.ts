@@ -13,7 +13,11 @@ export interface PoolLike {
 
 /** Los relays comparan #t exacto; NIP-24 pide minúscula pero hay clientes que respetan el caso. */
 export const tagVariants = (t: string) => [t.toLowerCase(), t, t[0].toUpperCase() + t.slice(1).toLowerCase(), t.toUpperCase()];
-export const notesFilter = (hashtags: string[]) => ({ kinds: [1], '#t': [...new Set(hashtags.flatMap(tagVariants))] });
+export const notesFilter = (hashtags: string[], since?: number) => ({
+  kinds: [1],
+  '#t': [...new Set(hashtags.flatMap(tagVariants))],
+  ...(since !== undefined ? { since } : {}),
+});
 export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
 
 /** Carga el kind 0 firmado más reciente de un pubkey. */
@@ -51,7 +55,8 @@ export function startNostr(
   };
 
   store.posts.forEach((p) => watch(p.id));
-  subs.unshift(pool.subscribeMany(cfg.relays, notesFilter(cfg.hashtags), {
+  const since = cfg.postMaxAgeHours ? Math.floor(Date.now() / 1000) - cfg.postMaxAgeHours * 3600 : undefined;
+  subs.unshift(pool.subscribeMany(cfg.relays, notesFilter(cfg.hashtags, since), {
     onevent: (ev) => {
       if (ev.kind !== 1 || !isSigned(ev)) return;
       store.addPost({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });
