@@ -1,11 +1,13 @@
 import { SimplePool } from 'nostr-tools/pool';
 import type { Config } from '../config';
+import { LnurlResolver } from './lnurl';
 import type { ZapStore } from './store';
 import type { NostrEvent } from './types';
-import { parseZapReceipt } from './zap';
+import { isSigned, validateZapReceipt, type Resolver } from './verify';
 
 export interface PoolLike {
   subscribeMany(relays: string[], filter: any, params: { onevent: (ev: NostrEvent) => void }): { close(): void };
+  querySync(relays: string[], filter: any, params?: { maxWait?: number }): Promise<NostrEvent[]>;
   close(relays: string[]): void;
 }
 
@@ -14,8 +16,20 @@ export const tagVariants = (t: string) => [t.toLowerCase(), t, t[0].toUpperCase(
 export const notesFilter = (hashtags: string[]) => ({ kinds: [1], '#t': [...new Set(hashtags.flatMap(tagVariants))] });
 export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
 
-/** Suscribe a notas con los hashtags y, en batches, a zap receipts que las referencian. */
-export function startNostr(cfg: Config, store: ZapStore, pool: PoolLike = new SimplePool() as unknown as PoolLike, batchMs = 1500) {
+/** Carga el kind 0 firmado más reciente de un pubkey. */
+export const profileLoader = (pool: PoolLike, relays: string[]) => async (pubkey: string): Promise<NostrEvent | null> => {
+  const evs = await pool.querySync(relays, { kinds: [0], authors: [pubkey] }, { maxWait: 4000 });
+  return evs.filter((e) => e.kind === 0 && e.pubkey === pubkey && isSigned(e)).sort((a, b) => b.created_at - a.created_at)[0] ?? null;
+};
+
+/** Suscribe a notas con los hashtags y, en batches, a zap receipts (validados NIP-57) que las referencian. */
+export function startNostr(
+  cfg: Config,
+  store: ZapStore,
+  pool: PoolLike = new SimplePool() as unknown as PoolLike,
+  batchMs = 1500,
+  resolver: Resolver = new LnurlResolver(profileLoader(pool, cfg.relays)),
+) {
   const subs: { close(): void }[] = [];
   const watched = new Set<string>();
   let pending: string[] = [];
@@ -26,7 +40,7 @@ export function startNostr(cfg: Config, store: ZapStore, pool: PoolLike = new Si
     const ids = pending;
     pending = [];
     subs.push(pool.subscribeMany(cfg.relays, zapsFilter(ids), {
-      onevent: (ev) => { const z = parseZapReceipt(ev); if (z) store.addZap(z); },
+      onevent: (ev) => { validateZapReceipt(ev, resolver).then((z) => { if (z) store.addZap(z); }); },
     }));
   };
   const watch = (id: string) => {
