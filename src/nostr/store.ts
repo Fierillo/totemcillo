@@ -17,7 +17,7 @@ export const MAX_COMMENT = 280;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
 const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
 
-export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number }
+export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; maxAgeSec?: number; now?: () => number }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
   while (m.size > max) {
@@ -40,17 +40,22 @@ export class ZapStore {
   private maxPosts: number;
   private maxZaps: number;
   private postMaxChars: number;
+  private maxAgeSec?: number;
+  /** Reloj inyectable, en segundos unix. */
+  private now: () => number;
 
   constructor(private storage?: KV, opts: StoreOptions = {}) {
     this.key = opts.key ?? 'totemcillo:v1';
     this.maxPosts = opts.maxPosts ?? 500;
     this.maxZaps = opts.maxZaps ?? 5000;
     this.postMaxChars = opts.postMaxChars ?? 210;
+    this.maxAgeSec = opts.maxAgeSec;
+    this.now = opts.now ?? (() => Math.floor(Date.now() / 1000));
     this.load();
   }
 
   addPost(p: Post) {
-    if (this.posts.has(p.id)) return;
+    if (this.posts.has(p.id) || !this.isFresh(p)) return;
     this.posts.set(p.id, this.clipPost(p));
     trimOldest(this.posts, this.maxPosts);
     if (this.posts.has(p.id)) this.changed();
@@ -61,6 +66,10 @@ export class ZapStore {
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (this.zaps.has(z.id)) this.changed();
+  }
+
+  private isFresh(p: Post) {
+    return this.maxAgeSec === undefined || p.created_at >= this.now() - this.maxAgeSec;
   }
 
   private clipPost(p: Post): Post {
@@ -87,7 +96,7 @@ export class ZapStore {
       const raw = this.storage?.getItem(this.key);
       if (!raw) return;
       const d = JSON.parse(raw);
-      arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, this.clipPost(p)));
+      arr(d?.posts).filter(isPost).filter((p) => this.isFresh(p)).forEach((p) => this.posts.set(p.id, this.clipPost(p)));
       arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, clipZap(z)));
       trimOldest(this.posts, this.maxPosts);
       trimOldest(this.zaps, this.maxZaps);
