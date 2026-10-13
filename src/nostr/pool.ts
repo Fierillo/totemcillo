@@ -9,7 +9,9 @@ export interface PoolLike {
   close(relays: string[]): void;
 }
 
-export const notesFilter = (hashtags: string[]) => ({ kinds: [1], '#t': hashtags.map((t) => t.toLowerCase()) });
+/** Los relays comparan #t exacto; NIP-24 pide minúscula pero hay clientes que respetan el caso. */
+export const tagVariants = (t: string) => [t.toLowerCase(), t, t[0].toUpperCase() + t.slice(1).toLowerCase(), t.toUpperCase()];
+export const notesFilter = (hashtags: string[]) => ({ kinds: [1], '#t': [...new Set(hashtags.flatMap(tagVariants))] });
 export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
 
 /** Suscribe a notas con los hashtags y, en batches, a zap receipts que las referencian. */
