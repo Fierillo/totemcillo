@@ -81,6 +81,9 @@ function check(scene) {
     noOverflow('lista de últimos zaps', ul); itemsInside('último zap', ul);
     if (ul && !ul.children.length) P.push('lista vacía');
   }
+  document.querySelectorAll('.amount, .rank, .total').forEach((el, i) => {
+    if (el.scrollWidth > el.clientWidth + 1) P.push(`monto/rank recortado #${i}: "${el.textContent.trim()}"`);
+  });
   return P;
 }
 
