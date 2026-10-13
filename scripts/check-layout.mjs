@@ -24,7 +24,7 @@ const zaps = Array.from({ length: 40 }, (_, i) => ({
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
 zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, comment: 'zap a post viejo', created_at: now - 25 * 3600 });
-const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 60000 }, postsPerCycle: 1, talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
+const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000 }, postsPerCycle: 1, talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
 
 function check(scene) {
   const P = [];
@@ -66,6 +66,15 @@ function check(scene) {
     if (content?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
     noOverflow('texto del post', content); noOverflow('autor', author); noOverflow('lista de zaps', ul); noOverflow('total', total);
     inside('lista de zaps', ul, zaps); itemsInside('zap', ul);
+  } else if (scene.startsWith('top')) {
+    const h1 = need('h1.top-title'), ol = need('.top-list');
+    const expected = scene === 'top10Historico' ? 'Top 10 histórico' : 'Top 10 · últimas 3 horas';
+    if (h1 && h1.textContent !== expected) P.push(`título "${h1.textContent}" != "${expected}"`);
+    if (h1 && (parseFloat(getComputedStyle(h1).fontSize) < 24 || R(h1).height < 20)) P.push('título demasiado chico');
+    inside('título', h1, main); inside('ranking', ol, main); disjoint([['título', h1], ['ranking', ol]]);
+    noOverflow('título', h1); noOverflow('ranking', ol); itemsInside('fila', ol);
+    if (ol && !ol.children.length) P.push('ranking vacío');
+    if (scene === 'top10Historico' && !ol?.textContent.includes('post no disponible')) P.push('falta fila de post no disponible');
   } else {
     const h1 = need('h1'), ul = need('.zap-list');
     inside('título', h1, main); inside('lista', ul, main); disjoint([['título', h1], ['lista', ul]]);
@@ -83,7 +92,7 @@ try {
     await page.route('**/config.json', (r) => r.fulfill({ json: cfg }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
     await page.goto('http://localhost:4179/');
-    for (const scene of ['post', 'latestZaps']) {
+    for (const scene of ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h']) {
       await page.waitForSelector(`.scene-${scene}`, { timeout: 15000 });
       await page.waitForTimeout(1200);
       problems.push(...(await page.evaluate(check, scene)).map((p) => `${w}x${h} ${scene}: ${p}`));
