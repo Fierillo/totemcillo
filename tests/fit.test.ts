@@ -51,3 +51,15 @@ describe('fitList', () => {
     expect(one.children).toHaveLength(1);
   });
 });
+
+describe('fitRegions', () => {
+  it('ajusta los [data-fit] con max en vh y min en px', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<p data-fit="text" data-max="5" data-min="10">' + 'x'.repeat(40) + '</p><ul data-fit="list" data-max="4" data-min="8"><li></li><li></li></ul><span>libre</span>';
+    const m: Measurer = { setSize: domMeasurer.setSize, fits: (el) => size(el) * (el.tagName === 'UL' ? el.children.length * 10 : el.textContent!.length) <= 1000 };
+    fitRegions(root, m, 1000);
+    expect(root.querySelector('p')!.style.fontSize).toBe('25px');
+    expect(root.querySelector('ul')!.style.fontSize).toBe('40px');
+    expect(root.querySelector('span')!.style.fontSize).toBe('');
+  });
+});
