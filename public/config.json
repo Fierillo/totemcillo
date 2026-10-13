@@ -41,5 +41,6 @@
   "noteUriTemplate": "nostr:{nevent}",
   "postMaxChars": 210,
   "postMaxAgeHours": 24,
-  "topRecentHours": 3
+  "topRecentHours": 3,
+  "keyboardNav": true
 }
