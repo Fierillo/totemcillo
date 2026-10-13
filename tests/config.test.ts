@@ -43,3 +43,11 @@ describe('postMaxAgeHours', () => {
     expect((await loadConfig(f as any)).postMaxAgeHours).toBe(6);
   });
 });
+
+describe('keyboardNav', () => {
+  it('por defecto true y se puede desactivar', async () => {
+    expect(defaultConfig.keyboardNav).toBe(true);
+    const f = async () => ({ ok: true, json: async () => ({ keyboardNav: false }) });
+    expect((await loadConfig(f as any)).keyboardNav).toBe(false);
+  });
+});

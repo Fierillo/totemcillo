@@ -103,6 +103,27 @@ try {
     }
     await page.close();
   }
+  // Navegación con teclado (activable por config)
+  for (const keyboardNav of [true, false]) {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForSelector('.scene-post');
+    const scene = () => page.evaluate(() => document.getElementById('scene').className);
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(300);
+    const afterRight = await scene();
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(300);
+    const afterLefts = await scene();
+    if (keyboardNav && (afterRight !== 'scene scene-latestZaps' || afterLefts !== 'scene scene-top10Ultimas3h'))
+      problems.push(`teclado: → dio "${afterRight}", ←← dio "${afterLefts}"`);
+    if (!keyboardNav && (afterRight !== 'scene scene-post' || afterLefts !== 'scene scene-post'))
+      problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
+    await page.close();
+  }
 } finally {
   await browser.close();
   server.httpServer.close();
