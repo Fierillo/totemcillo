@@ -14,6 +14,9 @@ importers:
       nostr-tools:
         specifier: ^2.25.2
         version: 2.25.2(typescript@7.0.2)
+      uqr:
+        specifier: ^0.1.3
+        version: 0.1.3
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.0.4
@@ -560,6 +563,9 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
+  uqr@0.1.3:
+    resolution: {integrity: sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==}
+
   vite@8.3.4:
     resolution: {integrity: sha512-IftLE8phJhdNRIGNEV4JCCvfNScoZQVfcXaN8TQropWGJtOHcu+iAB9pHcuGvmEb/kddw0LBe/jS8ztdC6xdiQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1066,6 +1072,8 @@ snapshots:
       '@typescript/typescript-win32-x64': 7.0.2
 
   undici-types@8.9.0: {}
+
+  uqr@0.1.3: {}
 
   vite@8.3.4(@types/node@26.6.5):
     dependencies:
