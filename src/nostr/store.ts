@@ -12,6 +12,16 @@ export const isZap = (x: any): x is Zap =>
   !!x && str(x.id, 64) && str(x.postId, 64) && num(x.msats) && x.msats > 0 && typeof x.comment === 'string' &&
   num(x.created_at) && (x.sender === undefined || str(x.sender, 64));
 
+export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number }
+
+function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
+  while (m.size > max) {
+    let old: T | undefined;
+    for (const v of m.values()) if (!old || v.created_at < old.created_at) old = v;
+    m.delete(old!.id);
+  }
+}
+
 export interface KV { getItem(k: string): string | null; setItem(k: string, v: string): void }
 
 /** Store en memoria que agrega sats por post y persiste (localStorage) con debounce. */
@@ -21,20 +31,29 @@ export class ZapStore {
   private listeners = new Set<() => void>();
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private storage?: KV, private key = 'totemcillo:v1') {
+  private key: string;
+  private maxPosts: number;
+  private maxZaps: number;
+
+  constructor(private storage?: KV, opts: StoreOptions = {}) {
+    this.key = opts.key ?? 'totemcillo:v1';
+    this.maxPosts = opts.maxPosts ?? 500;
+    this.maxZaps = opts.maxZaps ?? 5000;
     this.load();
   }
 
   addPost(p: Post) {
     if (this.posts.has(p.id)) return;
     this.posts.set(p.id, p);
-    this.changed();
+    trimOldest(this.posts, this.maxPosts);
+    if (this.posts.has(p.id)) this.changed();
   }
 
   addZap(z: Zap) {
     if (this.zaps.has(z.id)) return;
     this.zaps.set(z.id, z);
-    this.changed();
+    trimOldest(this.zaps, this.maxZaps);
+    if (this.zaps.has(z.id)) this.changed();
   }
 
   onChange(fn: () => void): () => void {
@@ -59,6 +78,8 @@ export class ZapStore {
       const d = JSON.parse(raw);
       arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, p));
       arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, z));
+      trimOldest(this.posts, this.maxPosts);
+      trimOldest(this.zaps, this.maxZaps);
     } catch (e) {
       console.warn('Historial corrupto, lo ignoro', e);
     }
