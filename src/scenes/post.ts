@@ -22,6 +22,7 @@ export function postScene(store: ZapStore, duration: number, link: LinkOptions =
   return {
     name: 'post',
     duration,
+    // @ts-expect-error ready se elimina en el próximo ciclo
     ready: () => store.posts.size > 0,
     render(root) {
       const list = store.stats().filter((s) => s.post);

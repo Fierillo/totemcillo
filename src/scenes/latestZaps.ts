@@ -9,6 +9,7 @@ export function latestZapsScene(store: ZapStore, duration: number): Scene {
   return {
     name: 'latestZaps',
     duration,
+    // @ts-expect-error ready se elimina en el próximo ciclo
     ready: () => store.zaps.size > 0,
     render(root) {
       const draw = () => {

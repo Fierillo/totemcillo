@@ -11,6 +11,7 @@ export function topScene(o: TopOptions): Scene {
   return {
     name: o.name,
     duration: o.duration,
+    // @ts-expect-error ready se elimina en el próximo ciclo
     ready: () => o.store.top(10, o.since()).length > 0,
     render(root) {
       const draw = () => {
