@@ -53,6 +53,7 @@ export function startNostr(
   store.posts.forEach((p) => watch(p.id));
   subs.unshift(pool.subscribeMany(cfg.relays, notesFilter(cfg.hashtags), {
     onevent: (ev) => {
+      if (ev.kind !== 1 || !isSigned(ev)) return;
       store.addPost({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });
       watch(ev.id);
     },
