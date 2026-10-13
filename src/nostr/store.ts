@@ -2,6 +2,16 @@ import type { Post, Zap } from './types';
 
 export interface PostStats { post?: Post; postId: string; msats: number; zaps: Zap[] }
 
+const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+const str = (x: unknown, max: number) => typeof x === 'string' && x.length > 0 && x.length <= max;
+const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
+
+export const isPost = (x: any): x is Post =>
+  !!x && str(x.id, 64) && str(x.pubkey, 64) && typeof x.content === 'string' && num(x.created_at);
+export const isZap = (x: any): x is Zap =>
+  !!x && str(x.id, 64) && str(x.postId, 64) && num(x.msats) && x.msats > 0 && typeof x.comment === 'string' &&
+  num(x.created_at) && (x.sender === undefined || str(x.sender, 64));
+
 export interface KV { getItem(k: string): string | null; setItem(k: string, v: string): void }
 
 /** Store en memoria que agrega sats por post y persiste (localStorage) con debounce. */
@@ -46,9 +56,9 @@ export class ZapStore {
     try {
       const raw = this.storage?.getItem(this.key);
       if (!raw) return;
-      const d = JSON.parse(raw) as { posts?: Post[]; zaps?: Zap[] };
-      d.posts?.forEach((p) => this.posts.set(p.id, p));
-      d.zaps?.forEach((z) => this.zaps.set(z.id, z));
+      const d = JSON.parse(raw);
+      arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, p));
+      arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, z));
     } catch (e) {
       console.warn('Historial corrupto, lo ignoro', e);
     }
