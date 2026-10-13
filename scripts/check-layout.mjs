@@ -15,11 +15,15 @@ let long = '';
 for (let i = 0; long.length < 1880; i++) long += lorem[i % lorem.length] + (i % 17 === 16 ? '\n' : ' ');
 long += ' https://ejemplo.com/' + 'x'.repeat(100);
 long = long.slice(0, 2000);
-const posts = [{ id: hex(1), pubkey: 'ab'.repeat(32), content: long, created_at: now - 60 }];
+const posts = [
+  { id: hex(1), pubkey: 'ab'.repeat(32), content: long, created_at: now - 60 },
+  { id: hex(2), pubkey: 'ab'.repeat(32), content: 'POST VIEJO fuera de la ventana de 24 h', created_at: now - 25 * 3600 },
+];
 const zaps = Array.from({ length: 40 }, (_, i) => ({
   id: hex(100 + i), postId: hex(1), sender: 'cd'.repeat(32), msats: (i + 1) * 21_000_000,
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
+zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, comment: 'zap a post viejo', created_at: now - 25 * 3600 });
 const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 60000 }, postsPerCycle: 1, talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
 
 function check(scene) {
@@ -59,6 +63,7 @@ function check(scene) {
     inside('texto', content, body); inside('QR', qr, body); disjoint([['texto', content], ['QR', qr]]);
     const chars = content ? [...new Intl.Segmenter().segment(content.textContent)].length : 0;
     if (chars > 210) P.push(`texto del post con ${chars} caracteres (> 210)`);
+    if (content?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
     noOverflow('texto del post', content); noOverflow('autor', author); noOverflow('lista de zaps', ul); noOverflow('total', total);
     inside('lista de zaps', ul, zaps); itemsInside('zap', ul);
   } else {

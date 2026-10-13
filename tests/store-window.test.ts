@@ -23,3 +23,41 @@ describe('ventana de posts', () => {
     expect(s.posts.has('antiguo')).toBe(true);
   });
 });
+
+describe('poda de posts vencidos', () => {
+  const setup = () => {
+    const clock = { now: NOW };
+    const s = new ZapStore(undefined, { maxAgeSec: 3600, now: () => clock.now });
+    s.addPost(post('a', NOW - 100));
+    s.addPost(post('b', NOW - 3000));
+    s.addZap({ id: 'z', postId: 'b', msats: 5000, comment: '', created_at: NOW - 2000 });
+    return { s, clock };
+  };
+  it('prune quita posts vencidos, conserva sus zaps para estadísticas y notifica', () => {
+    const { s, clock } = setup();
+    const fn = vi.fn();
+    s.onChange(fn);
+    clock.now = NOW + 1000;
+    expect(s.prune()).toBe(1);
+    expect([...s.posts.keys()]).toEqual(['a']);
+    expect(s.zaps.has('z')).toBe(true);
+    expect(s.top(10).map((x) => [x.postId, x.msats, x.post])).toEqual([['b', 5000, undefined]]);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(s.prune()).toBe(0);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+  it('startPruning poda cada intervalo y se puede frenar', () => {
+    vi.useFakeTimers();
+    const { s, clock } = setup();
+    const stop = s.startPruning(60_000);
+    clock.now = NOW + 1000;
+    vi.advanceTimersByTime(59_999);
+    expect(s.posts.has('b')).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(s.posts.has('b')).toBe(false);
+    stop();
+    clock.now = NOW + 10_000;
+    vi.advanceTimersByTime(120_000);
+    expect(s.posts.has('a')).toBe(true);
+  });
+});
