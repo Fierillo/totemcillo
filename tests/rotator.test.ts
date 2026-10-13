@@ -2,9 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Rotator, type Scene } from '../src/rotator';
 
-const mk = (name: string, ready = true, duration = 1000) => {
+const mk = (name: string, duration = 1000, extra: object = {}) => {
   const cleanup = vi.fn();
-  const s: Scene = { name, duration, ready: () => ready, render: vi.fn((r: HTMLElement) => { r.textContent = name; return cleanup; }) };
+  const s = { name, duration, render: vi.fn((r: HTMLElement) => { r.textContent = name; return cleanup; }), ...extra } as Scene;
   return { s, cleanup };
 };
 let root: HTMLElement;
@@ -13,7 +13,7 @@ afterEach(() => vi.useRealTimers());
 
 describe('Rotator', () => {
   it('rota en orden respetando duraciones y limpiando la escena anterior', () => {
-    const a = mk('a'), b = mk('b', true, 2000);
+    const a = mk('a'), b = mk('b', 2000);
     new Rotator(root, [a.s, b.s]).start();
     expect(root.textContent).toBe('a');
     expect(root.className).toBe('scene scene-a');
@@ -25,35 +25,26 @@ describe('Rotator', () => {
     vi.advanceTimersByTime(2000);
     expect(root.textContent).toBe('a');
   });
-  it('saltea escenas sin datos', () => {
-    const a = mk('a'), b = mk('b', false), c = mk('c');
+  it('no saltea escenas aunque no tengan datos (sin mensaje global de espera)', () => {
+    const a = mk('a'), b = mk('b', 1000, { ready: () => false }), c = mk('c');
     new Rotator(root, [a.s, b.s, c.s]).start();
     vi.advanceTimersByTime(1000);
-    expect(root.textContent).toBe('c');
+    expect(root.textContent).toBe('b');
     vi.advanceTimersByTime(1000);
-    expect(root.textContent).toBe('a');
-    expect(b.s.render).not.toHaveBeenCalled();
+    expect(root.textContent).toBe('c');
+    expect(root.querySelector('.empty')).toBeNull();
   });
-  it('muestra espera si ninguna está lista y reintenta cada 3s', () => {
-    let ready = false;
-    const s: Scene = { name: 'x', duration: 1000, ready: () => ready, render: vi.fn((r: HTMLElement) => { r.textContent = 'x'; }) };
-    new Rotator(root, [s]).start();
-    expect(root.querySelector('.empty')?.textContent).toContain('Esperando');
-    ready = true;
-    vi.advanceTimersByTime(2999);
-    expect(s.render).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1);
-    expect(root.textContent).toBe('x');
-  });
-  it('escena sin ready() siempre se muestra; stop limpia y frena', () => {
-    const cleanup = vi.fn();
-    const s: Scene = { name: 'y', duration: 1000, render: vi.fn(() => cleanup) };
-    const r = new Rotator(root, [s]);
+  it('stop limpia y frena', () => {
+    const a = mk('a');
+    const r = new Rotator(root, [a.s]);
     r.start();
     r.stop();
-    expect(cleanup).toHaveBeenCalledOnce();
+    expect(a.cleanup).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(5000);
-    expect(s.render).toHaveBeenCalledOnce();
+    expect(a.s.render).toHaveBeenCalledOnce();
+  });
+  it('sin escenas no hace nada', () => {
+    expect(() => new Rotator(root, []).start()).not.toThrow();
   });
 });
 
@@ -71,27 +62,19 @@ describe('navegación manual', () => {
     vi.advanceTimersByTime(400);
     expect(root.textContent).toBe('c');
   });
-  it('prev() retrocede saltando escenas sin datos, da la vuelta y reinicia el timer', () => {
-    const a = mk('a'), b = mk('b', false), c = mk('c');
+  it('prev() retrocede por todas las escenas (incluso sin datos), da la vuelta y reinicia el timer', () => {
+    const a = mk('a'), b = mk('b', 1000, { ready: () => false }), c = mk('c');
     const r = new Rotator(root, [a.s, b.s, c.s]);
     r.start();
     r.prev();
     expect(root.textContent).toBe('c');
-    expect(a.cleanup).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(500);
     r.prev();
-    expect(root.textContent).toBe('a');
+    expect(root.textContent).toBe('b');
     expect(c.cleanup).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(999);
-    expect(root.textContent).toBe('a');
+    expect(root.textContent).toBe('b');
     vi.advanceTimersByTime(1);
     expect(root.textContent).toBe('c');
-    expect(b.s.render).not.toHaveBeenCalled();
-  });
-  it('prev() sin escenas listas muestra la espera', () => {
-    const r = new Rotator(root, [mk('x', false).s]);
-    r.start();
-    r.prev();
-    expect(root.querySelector('.empty')).not.toBeNull();
   });
 });
