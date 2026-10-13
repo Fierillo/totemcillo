@@ -6,6 +6,8 @@ export interface Config {
   postsPerCycle: number;
   talks: Talk[];
   announcement: string;
+  /** URI del QR de cada post; {nevent} se reemplaza. Ej: 'https://njump.me/{nevent}'. */
+  noteUriTemplate: string;
 }
 
 export const defaultConfig: Config = {
@@ -15,6 +17,7 @@ export const defaultConfig: Config = {
   postsPerCycle: 3,
   talks: [],
   announcement: '',
+  noteUriTemplate: 'nostr:{nevent}',
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {

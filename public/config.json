@@ -35,5 +35,6 @@
       "speaker": "Por definir"
     }
   ],
-  "announcement": "¡Pasá por el stand de La Crypta! ⚡"
+  "announcement": "¡Pasá por el stand de La Crypta! ⚡",
+  "noteUriTemplate": "nostr:{nevent}"
 }
