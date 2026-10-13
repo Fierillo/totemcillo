@@ -19,3 +19,11 @@ describe('loadConfig', () => {
     expect(defaultConfig.relays).toHaveLength(3);
   });
 });
+
+describe('noteUriTemplate', () => {
+  it('por defecto nostr:{nevent} y se puede sobreescribir', async () => {
+    expect(defaultConfig.noteUriTemplate).toBe('nostr:{nevent}');
+    const f = async () => ({ ok: true, json: async () => ({ noteUriTemplate: 'https://njump.me/{nevent}' }) });
+    expect((await loadConfig(f as any)).noteUriTemplate).toBe('https://njump.me/{nevent}');
+  });
+});
