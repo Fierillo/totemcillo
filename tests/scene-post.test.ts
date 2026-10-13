@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
 import { postScene } from '../src/scenes/post';
 import { sats } from '../src/util';
+import { noteUri } from '../src/nostr/link';
+import { buildScenes } from '../src/scenes';
+import { defaultConfig } from '../src/config';
 
 const setup = () => {
   const store = new ZapStore();
@@ -62,5 +65,33 @@ describe('XSS', () => {
     postScene(store, 1).render(root);
     expect(root.querySelector('img, svg')).toBeNull();
     expect(root.querySelector('.author')!.textContent).toContain('<img');
+  });
+});
+
+describe('QR', () => {
+  const hexPost = { id: 'd'.repeat(64), pubkey: 'e'.repeat(64), content: 'con QR', created_at: 1 };
+  it('muestra un QR SVG con la URI de la nota y el texto "Escaneá y zapeá"', () => {
+    const store = new ZapStore();
+    store.addPost(hexPost);
+    const root = document.createElement('div');
+    postScene(store, 1, { relays: ['wss://a.com', 'wss://b.com', 'wss://c.com'], template: 'nostr:{nevent}' }).render(root);
+    const fig = root.querySelector('figure.qr')!;
+    expect(fig).not.toBeNull();
+    expect(fig.querySelector('svg')).not.toBeNull();
+    expect(fig.querySelector('figcaption')!.textContent).toBe('Escaneá y zapeá');
+    expect(fig.getAttribute('data-uri')).toBe(noteUri(hexPost, ['wss://a.com', 'wss://b.com'], 'nostr:{nevent}'));
+  });
+  it('usa relays y template de la config vía buildScenes', () => {
+    const store = new ZapStore();
+    store.addPost(hexPost);
+    const root = document.createElement('div');
+    const cfg = { ...defaultConfig, postsPerCycle: 1, noteUriTemplate: 'https://njump.me/{nevent}' };
+    buildScenes(cfg, store)[0].render(root);
+    expect(root.querySelector('figure.qr')!.getAttribute('data-uri')).toMatch(/^https:\/\/njump\.me\/nevent1/);
+  });
+  it('sin id válido no muestra QR', () => {
+    const { store, root } = setup();
+    postScene(store, 1).render(root);
+    expect(root.querySelector('figure.qr')).toBeNull();
   });
 });
