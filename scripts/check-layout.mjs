@@ -3,7 +3,7 @@ import { preview } from 'vite';
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
-const out = process.env.SHOTS ?? '/tmp/totemcillo-shots';
+const out = process.env.SHOTS ?? 'shots';
 mkdirSync(out, { recursive: true });
 const server = await preview({ preview: { port: 4179, strictPort: true }, logLevel: 'silent' });
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', args: ['--no-sandbox'] });
