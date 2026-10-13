@@ -42,5 +42,16 @@ export function fitText(el: HTMLElement, { max, min }: FitRange, m: Measurer = d
   return { size: Math.ceil(min), truncated: true };
 }
 
-export const fitList = undefined as any;
+/** Achica la fuente de una lista; si en el mínimo no entra, saca items del final (deja al menos uno). */
+export function fitList(ul: HTMLElement, { max, min }: FitRange, m: Measurer = domMeasurer) {
+  const size = largest(min, max, (s) => { m.setSize(ul, s); return m.fits(ul); });
+  if (size !== null) {
+    m.setSize(ul, size);
+    return { size, removed: 0 };
+  }
+  m.setSize(ul, Math.ceil(min));
+  let removed = 0;
+  while (!m.fits(ul) && ul.children.length > 1) { ul.lastElementChild!.remove(); removed++; }
+  return { size: Math.ceil(min), removed };
+}
 export const fitRegions = undefined as any;
