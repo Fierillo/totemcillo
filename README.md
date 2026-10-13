@@ -3,17 +3,17 @@
 Pantalla tótem para el stand de **La Crypta** en **LABITCONF** (estilo pubpay.me).
 Escucha notas Nostr (kind 1) con `#lacrypta` y `#labitconf`, y los zap receipts (kind 9735) que las referencian, y rota escenas automáticamente.
 
-Stack: Vite + TypeScript (vanilla) + nostr-tools. Sitio estático, sin backend.
+Stack: pnpm + Vite + TypeScript (vanilla) + nostr-tools. Sitio estático, sin backend.
 
 ## Correrlo local
 
 ```bash
-npm install
-npm run dev      # abrí http://localhost:5173
-npm test         # tests con vitest
-npx vitest run --coverage   # cobertura
-npm run build    # genera dist/
-npm run preview  # sirve el build
+pnpm install
+pnpm dev          # abrí http://localhost:5173
+pnpm test        # tests con vitest
+pnpm vitest run --coverage   # cobertura
+pnpm build        # genera dist/
+pnpm preview      # sirve el build
 ```
 
 Hacé doble click en la pantalla para pasar a fullscreen (o usá el modo kiosko del navegador: `chromium --kiosk http://localhost:5173`).
@@ -35,11 +35,11 @@ El historial de posts y zaps se guarda en `localStorage` del navegador.
 Importá el repo en Vercel (detecta Vite) o usá la CLI:
 
 ```bash
-npx vercel        # preview
-npx vercel --prod
+pnpm dlx vercel        # preview
+pnpm dlx vercel --prod
 ```
 
-`vercel.json` ya define `npm run build` y salida en `dist`.
+`vercel.json` ya define `pnpm install --frozen-lockfile`, `pnpm build` y salida en `dist`.
 
 ## Desarrollo
 
