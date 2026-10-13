@@ -9,6 +9,8 @@ import { ago, esc, sats, shortKey } from '../util';
 
 export interface LinkOptions { relays: string[]; template: string }
 
+export const EMPTY_POSTS = 'Todavía no hay posts con #lacrypta / #labitconf';
+
 function qr(post: Post, link: LinkOptions): string {
   const uri = noteUri(post, link.relays, link.template);
   if (!uri) return '';
@@ -16,19 +18,29 @@ function qr(post: Post, link: LinkOptions): string {
   return `<figure class="qr" data-uri="${esc(uri)}">${svg}<figcaption>Escaneá y zapeá</figcaption></figure>`;
 }
 
-/** Escena 1: un post con su QR y su lista de zaps; rota entre posts en cada aparición. */
+/** Escena 1: un post con su QR y su lista de zaps; rota entre posts. Sin posts muestra un estado vacío. */
 export function postScene(store: ZapStore, duration: number, link: LinkOptions = { relays: [], template: 'nostr:{nevent}' }): Scene {
   let cursor = 0;
+  const pick = () => {
+    const list = store.stats().filter((s) => s.post);
+    return list.length ? list[cursor++ % list.length].postId : null;
+  };
   return {
     name: 'post',
     duration,
-    // @ts-expect-error ready se elimina en el próximo ciclo
-    ready: () => store.posts.size > 0,
     render(root) {
-      const list = store.stats().filter((s) => s.post);
-      const id = list[cursor++ % list.length].postId;
-      const code = qr(store.posts.get(id)!, link);
+      let id = pick();
+      let code = id ? qr(store.posts.get(id)!, link) : '';
       const draw = () => {
+        if (!id || !store.posts.has(id)) {
+          id = pick();
+          code = id ? qr(store.posts.get(id)!, link) : '';
+        }
+        if (!id) {
+          root.innerHTML = `<div class="empty-state"><p class="empty-msg" data-fit="text" data-max="7" data-min="16">${EMPTY_POSTS}</p></div>`;
+          fitRegions(root);
+          return;
+        }
         const cur = store.stats().find((x) => x.postId === id)!;
         const zaps = cur.zaps.slice(0, 8).map((z) =>
           `<li><b>${sats(z.msats)}</b> sats · ${shortKey(z.sender)}${z.comment ? ` — <i>${esc(z.comment)}</i>` : ''}</li>`).join('');
