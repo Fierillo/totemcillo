@@ -36,7 +36,7 @@ describe('startNostr', () => {
   it('suscribe notas en los relays y las agrega al store', () => {
     const p = mockPool(), store = new ZapStore();
     startNostr(cfg, store, p, 1500, resolverFor(null));
-    expect(p.subscribeMany).toHaveBeenCalledWith(cfg.relays, notesFilter(cfg.hashtags), expect.anything());
+    expect(p.subscribeMany).toHaveBeenCalledWith(cfg.relays, expect.objectContaining(notesFilter(cfg.hashtags)), expect.anything());
     const n = note('hola');
     p.subs[0].h.onevent(n);
     expect(store.posts.get(n.id)?.content).toBe('hola');
@@ -116,5 +116,18 @@ describe('firmas de notas', () => {
     expect(store.posts.size).toBe(0);
     p.subs[0].h.onevent(n);
     expect(store.posts.size).toBe(1);
+  });
+});
+
+describe('ventana de tiempo en la suscripción', () => {
+  it('el filtro de notas pide since = ahora - postMaxAgeHours', () => {
+    vi.setSystemTime(1_000_000_000);
+    const p = mockPool();
+    startNostr({ ...cfg, postMaxAgeHours: 2 }, new ZapStore(), p, 1500, resolverFor(null));
+    expect(p.subs[0].filter).toEqual({ ...notesFilter(cfg.hashtags), since: 1_000_000 - 7200 });
+  });
+  it('notesFilter sin since no lo agrega', () => {
+    expect(notesFilter(['a'])).not.toHaveProperty('since');
+    expect(notesFilter(['a'], 5)).toHaveProperty('since', 5);
   });
 });
