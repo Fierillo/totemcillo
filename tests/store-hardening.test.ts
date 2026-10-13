@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as storeMod from '../src/nostr/store';
 import { ZapStore } from '../src/nostr/store';
+import { graphemes } from '../src/text';
 
 const KEY = 'totemcillo:v1';
 const mem = (data?: unknown) => {
@@ -56,17 +57,24 @@ describe('límites de memoria', () => {
 });
 
 describe('contenido enorme', () => {
-  it('trunca contenido de posts y comentarios de zaps, también al cargar', () => {
-    const { MAX_CONTENT, MAX_COMMENT } = storeMod;
-    expect(MAX_CONTENT).toBeGreaterThan(0);
+  const len = (t: string) => graphemes(t).length;
+  it('trunca posts a postMaxChars (210 por defecto) en límite de palabra, al ingresar y al cargar', () => {
+    const big = 'palabra '.repeat(20_000);
     const s = new ZapStore();
-    s.addPost({ ...post, content: 'x'.repeat(100_000) });
+    s.addPost({ ...post, content: big });
+    const c = s.posts.get('a')!.content;
+    expect(len(c)).toBeLessThanOrEqual(210);
+    expect(c).toMatch(/palabra…$/);
+    const l = new ZapStore(mem({ posts: [{ ...post, content: big }], zaps: [] }));
+    expect(len(l.posts.get('a')!.content)).toBeLessThanOrEqual(210);
+    const custom = new ZapStore(undefined, { postMaxChars: 50 });
+    custom.addPost({ ...post, content: '😀'.repeat(100) });
+    expect(custom.posts.get('a')!.content).toBe('😀'.repeat(49) + '…');
+  });
+  it('trunca comentarios de zaps enormes', () => {
+    const { MAX_COMMENT } = storeMod;
+    const s = new ZapStore();
     s.addZap({ ...zap, comment: 'y'.repeat(100_000) });
-    expect(s.posts.get('a')!.content).toHaveLength(MAX_CONTENT + 1);
-    expect(s.posts.get('a')!.content.endsWith('…')).toBe(true);
     expect(s.zaps.get('1')!.comment).toHaveLength(MAX_COMMENT + 1);
-    const l = new ZapStore(mem({ posts: [{ ...post, content: 'x'.repeat(100_000) }], zaps: [{ ...zap, comment: 'y'.repeat(100_000) }] }));
-    expect(l.posts.get('a')!.content).toHaveLength(MAX_CONTENT + 1);
-    expect(l.zaps.get('1')!.comment).toHaveLength(MAX_COMMENT + 1);
   });
 });

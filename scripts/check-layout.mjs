@@ -57,6 +57,8 @@ function check(scene) {
     [['cabecera', head], ['cuerpo', body], ['total', total]].forEach(([n, el]) => inside(n, el, post));
     disjoint([['cabecera', head], ['cuerpo', body], ['total', total]]);
     inside('texto', content, body); inside('QR', qr, body); disjoint([['texto', content], ['QR', qr]]);
+    const chars = content ? [...new Intl.Segmenter().segment(content.textContent)].length : 0;
+    if (chars > 210) P.push(`texto del post con ${chars} caracteres (> 210)`);
     noOverflow('texto del post', content); noOverflow('autor', author); noOverflow('lista de zaps', ul); noOverflow('total', total);
     inside('lista de zaps', ul, zaps); itemsInside('zap', ul);
   } else {
