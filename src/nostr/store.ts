@@ -12,6 +12,12 @@ export const isZap = (x: any): x is Zap =>
   !!x && str(x.id, 64) && str(x.postId, 64) && num(x.msats) && x.msats > 0 && typeof x.comment === 'string' &&
   num(x.created_at) && (x.sender === undefined || str(x.sender, 64));
 
+export const MAX_CONTENT = 2000;
+export const MAX_COMMENT = 280;
+const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
+const clipPost = (p: Post): Post => ({ ...p, content: clip(p.content, MAX_CONTENT) });
+const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
+
 export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
@@ -44,14 +50,14 @@ export class ZapStore {
 
   addPost(p: Post) {
     if (this.posts.has(p.id)) return;
-    this.posts.set(p.id, p);
+    this.posts.set(p.id, clipPost(p));
     trimOldest(this.posts, this.maxPosts);
     if (this.posts.has(p.id)) this.changed();
   }
 
   addZap(z: Zap) {
     if (this.zaps.has(z.id)) return;
-    this.zaps.set(z.id, z);
+    this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (this.zaps.has(z.id)) this.changed();
   }
@@ -76,8 +82,8 @@ export class ZapStore {
       const raw = this.storage?.getItem(this.key);
       if (!raw) return;
       const d = JSON.parse(raw);
-      arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, p));
-      arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, z));
+      arr(d?.posts).filter(isPost).forEach((p) => this.posts.set(p.id, clipPost(p)));
+      arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, clipZap(z)));
       trimOldest(this.posts, this.maxPosts);
       trimOldest(this.zaps, this.maxZaps);
     } catch (e) {
