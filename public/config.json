@@ -36,5 +36,6 @@
     }
   ],
   "announcement": "¡Pasá por el stand de La Crypta! ⚡",
-  "noteUriTemplate": "nostr:{nevent}"
+  "noteUriTemplate": "nostr:{nevent}",
+  "postMaxChars": 210
 }

@@ -8,6 +8,8 @@ export interface Config {
   announcement: string;
   /** URI del QR de cada post; {nevent} se reemplaza. Ej: 'https://njump.me/{nevent}'. */
   noteUriTemplate: string;
+  /** Máximo de caracteres percibidos por post (se trunca con '…'). */
+  postMaxChars: number;
 }
 
 export const defaultConfig: Config = {
@@ -18,6 +20,7 @@ export const defaultConfig: Config = {
   talks: [],
   announcement: '',
   noteUriTemplate: 'nostr:{nevent}',
+  postMaxChars: 210,
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {
