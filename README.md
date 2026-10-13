@@ -11,6 +11,7 @@ Stack: Vite + TypeScript (vanilla) + nostr-tools. Sitio estático, sin backend.
 npm install
 npm run dev      # abrí http://localhost:5173
 npm test         # tests con vitest
+npx vitest run --coverage   # cobertura
 npm run build    # genera dist/
 npm run preview  # sirve el build
 ```
@@ -39,3 +40,7 @@ npx vercel --prod
 ```
 
 `vercel.json` ya define `npm run build` y salida en `dist`.
+
+## Desarrollo
+
+Todo se desarrolla con TDD estricto: primero un test que falla (commit `test: ... (rojo)`), después el código mínimo para pasarlo (`feat: ... (verde)`) y por último el refactor.
