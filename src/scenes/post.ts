@@ -1,5 +1,6 @@
 import type { Scene } from '../rotator';
 import type { ZapStore } from '../nostr/store';
+import { live } from './live';
 import { ago, esc, sats, shortKey } from '../util';
 
 /** Escena 1: un post con su lista de zaps; rota entre posts en cada aparición. */
@@ -27,8 +28,7 @@ export function postScene(store: ZapStore, duration: number): Scene {
             <ul>${zaps || '<li class="muted">Todavía sin zaps. ¡Sé el primero!</li>'}</ul>
           </aside>`;
       };
-      draw();
-      return store.onChange(draw);
+      return live(store, draw);
     },
   };
 }

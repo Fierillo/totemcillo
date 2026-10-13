@@ -1,5 +1,6 @@
 import type { Scene } from '../rotator';
 import type { ZapStore } from '../nostr/store';
+import { live } from './live';
 import { ago, esc, sats, shortKey } from '../util';
 
 /** Escena 2: últimos zaps recibidos. */
@@ -16,8 +17,7 @@ export function latestZapsScene(store: ZapStore, duration: number): Scene {
         }).join('');
         root.innerHTML = `<h1>⚡ Últimos zaps</h1><ul class="zap-list">${items}</ul>`;
       };
-      draw();
-      return store.onChange(draw);
+      return live(store, draw);
     },
   };
 }
