@@ -25,9 +25,17 @@ export class Rotator {
     this.runCleanup();
   }
 
-  next() {
+  /** Escena siguiente (reinicia el timer). */
+  next() { this.go(1); }
+
+  /** Escena anterior (reinicia el timer). */
+  prev() { this.go(-1); }
+
+  private go(dir: 1 | -1) {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
     this.runCleanup();
-    const i = this.nextReadyIndex();
+    const i = this.readyIndex(dir);
     if (i < 0) return this.waiting();
     this.idx = i;
     const scene = this.scenes[i];
@@ -37,10 +45,10 @@ export class Rotator {
     this.schedule(scene.duration);
   }
 
-  private nextReadyIndex() {
+  private readyIndex(dir: 1 | -1) {
     const n = this.scenes.length;
     for (let k = 1; k <= n; k++) {
-      const i = (this.idx + k) % n;
+      const i = (((this.idx + dir * k) % n) + n) % n;
       const s = this.scenes[i];
       if (!s.ready || s.ready()) return i;
     }
