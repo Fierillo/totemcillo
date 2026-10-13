@@ -33,15 +33,15 @@ describe('poda de posts vencidos', () => {
     s.addZap({ id: 'z', postId: 'b', msats: 5000, comment: '', created_at: NOW - 2000 });
     return { s, clock };
   };
-  it('prune quita posts vencidos, conserva sus zaps para estadísticas y notifica', () => {
+  it('prune quita posts vencidos junto con sus zaps y notifica', () => {
     const { s, clock } = setup();
+    s.addZap({ id: 'za', postId: 'a', msats: 1000, comment: '', created_at: NOW - 50 });
     const fn = vi.fn();
     s.onChange(fn);
     clock.now = NOW + 1000;
     expect(s.prune()).toBe(1);
     expect([...s.posts.keys()]).toEqual(['a']);
-    expect(s.zaps.has('z')).toBe(true);
-    expect(s.top(10).map((x) => x.postId)).toEqual([]);
+    expect([...s.zaps.keys()]).toEqual(['za']);
     expect(fn).toHaveBeenCalledTimes(1);
     expect(s.prune()).toBe(0);
     expect(fn).toHaveBeenCalledTimes(1);
@@ -59,5 +59,15 @@ describe('poda de posts vencidos', () => {
     clock.now = NOW + 10_000;
     vi.advanceTimersByTime(120_000);
     expect(s.posts.has('a')).toBe(true);
+  });
+});
+
+describe('zaps de posts vencidos al cargar', () => {
+  it('con ventana, descarta zaps cuyo post no quedó cargado', () => {
+    const s = new ZapStore(mem({
+      posts: [post('viejo', NOW - 5000), post('nuevo', NOW - 10)],
+      zaps: [{ id: 'zv', postId: 'viejo', msats: 1000, comment: '', created_at: NOW - 4000 }, { id: 'zn', postId: 'nuevo', msats: 1000, comment: '', created_at: NOW - 5 }],
+    }), { maxAgeSec: 3600, now: () => NOW });
+    expect([...s.zaps.keys()]).toEqual(['zn']);
   });
 });
