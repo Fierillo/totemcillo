@@ -52,3 +52,15 @@ describe('postScene', () => {
     expect(root.querySelectorAll('.zaps li')).toHaveLength(2);
   });
 });
+
+describe('XSS', () => {
+  it('escapa pubkeys/senders maliciosos (p.ej. historial envenenado)', () => {
+    const store = new ZapStore();
+    const root = document.createElement('div');
+    store.addPost({ id: 'x', pubkey: '<img src=x onerror=alert(1)>', content: 'hola', created_at: 1 });
+    store.addZap({ id: 'z', postId: 'x', sender: '<svg onload=alert(1)>', msats: 1000, comment: '', created_at: 2 });
+    postScene(store, 1).render(root);
+    expect(root.querySelector('img, svg')).toBeNull();
+    expect(root.querySelector('.author')!.textContent).toContain('<img');
+  });
+});
