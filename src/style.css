@@ -26,3 +26,8 @@ h1 { font-size: 2.6em; }
 .zap-list li { display: grid; grid-template-columns: 5em 1fr auto; gap: 1em; align-items: center; font-size: 1.4em; padding: .4em 0; border-bottom: 1px solid #222; }
 .amount { color: var(--accent); font-weight: 900; font-size: 1.3em; text-align: right; }
 .who small { display: block; color: var(--muted); font-size: .7em; }
+.post-body { flex: 1; display: flex; gap: 1em; align-items: flex-start; min-height: 0; }
+.post-body .post-content { flex: 1; }
+.qr { flex: 0 0 auto; width: min(34vh, 22vw); background: #fff; padding: .4em; border-radius: .5em; text-align: center; }
+.qr svg { display: block; width: 100%; height: auto; shape-rendering: crispEdges; }
+.qr figcaption { color: #000; font-weight: 800; font-size: 1.1em; margin-top: .2em; }
