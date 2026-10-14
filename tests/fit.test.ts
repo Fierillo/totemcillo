@@ -63,3 +63,42 @@ describe('fitRegions', () => {
     expect(root.querySelector('span')!.style.fontSize).toBe('');
   });
 });
+
+describe('mensajes recortados', () => {
+  const box = (sw: number, cw: number, sh = 0, ch = 0) => {
+    const e = document.createElement('div');
+    Object.defineProperties(e, { scrollWidth: { value: sw }, clientWidth: { value: cw }, scrollHeight: { value: sh }, clientHeight: { value: ch } });
+    return e;
+  };
+  it('domMeasurer: no entra si alguna línea [data-clip] está recortada', () => {
+    const ul = box(100, 100);
+    const line = box(300, 200);
+    line.setAttribute('data-clip', '');
+    ul.append(line);
+    expect(domMeasurer.fits(ul)).toBe(false);
+    expect(domMeasurer.fitsBox!(ul)).toBe(true);
+    const ok = box(100, 100);
+    const l2 = box(150, 200);
+    l2.setAttribute('data-clip', '');
+    ok.append(l2);
+    expect(domMeasurer.fits(ok)).toBe(true);
+  });
+  const ul5 = () => { const ul = document.createElement('ul'); for (let i = 0; i < 5; i++) ul.append(document.createElement('li')); return ul; };
+  it('fitList achica hasta que los mensajes entran completos', () => {
+    const m: Measurer = { setSize: domMeasurer.setSize, fitsBox: (el) => size(el) * el.children.length <= 100, fits: (el) => size(el) <= 10 && size(el) * el.children.length <= 100 };
+    const ul = ul5();
+    expect(fitList(ul, { max: 40, min: 8 }, m)).toEqual({ size: 10, removed: 0 });
+  });
+  it('si ni en el mínimo entran completos, usa el mínimo y no saca items por eso', () => {
+    const m: Measurer = { setSize: domMeasurer.setSize, fitsBox: (el) => size(el) * el.children.length <= 40, fits: () => false };
+    const ul = ul5();
+    expect(fitList(ul, { max: 40, min: 8 }, m)).toEqual({ size: 8, removed: 0 });
+    expect(ul.children).toHaveLength(5);
+  });
+  it('fitRegions respeta además un máximo en vw (data-maxw)', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<ul data-fit="list" data-max="4" data-maxw="2" data-min="8"><li></li></ul>';
+    fitRegions(root, { setSize: domMeasurer.setSize, fits: () => true }, 1000, 500);
+    expect(root.querySelector('ul')!.style.fontSize).toBe('10px');
+  });
+});
