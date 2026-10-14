@@ -2,13 +2,16 @@ export interface Scene {
   name: string;
   /** Duración en ms */
   duration: number;
+  /** Si es true, la escena no usa `duration`: termina cuando llama a `done`. */
+  untilDone?: boolean;
   /** Dibuja la escena (incluido su estado vacío); devuelve la limpieza. */
-  render: (root: HTMLElement) => void | (() => void);
+  render: (root: HTMLElement, done?: () => void) => void | (() => void);
 }
 
 /** Rota por todas las escenas, en orden, sin saltear ninguna. */
 export class Rotator {
   private idx = -1;
+  private token = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private cleanup: (() => void) | void = undefined;
 
@@ -22,6 +25,7 @@ export class Rotator {
   }
 
   stop() {
+    this.token++;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.runCleanup();
@@ -72,8 +76,10 @@ export class Rotator {
     const scene = this.scenes[i];
     this.root.className = `scene scene-${scene.name}`;
     this.root.innerHTML = '';
-    this.cleanup = scene.render(this.root);
-    this.timer = setTimeout(() => this.show(this.wrap(this.idx + 1)), scene.duration);
+    const token = ++this.token;
+    const advance = () => { if (token === this.token) this.show(this.wrap(this.idx + 1)); };
+    this.cleanup = scene.render(this.root, advance);
+    if (!scene.untilDone) this.timer = setTimeout(advance, scene.duration);
   }
 
   private runCleanup() { this.cleanup?.(); this.cleanup = undefined; }

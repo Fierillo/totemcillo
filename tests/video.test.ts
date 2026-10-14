@@ -31,7 +31,8 @@ describe('videoScene: se reproduce entero una vez y avisa al terminar', () => {
   });
   it('al terminar el video (ended) llama done una sola vez', () => {
     const { v, done } = show();
-    v!.dispatchEvent(new Event('playing'));
+    Object.defineProperty(v!, 'currentTime', { value: 1, configurable: true });
+    v!.dispatchEvent(new Event('timeupdate'));
     vi.advanceTimersByTime(600_000);
     expect(done).not.toHaveBeenCalled();
     v!.dispatchEvent(new Event('ended'));
