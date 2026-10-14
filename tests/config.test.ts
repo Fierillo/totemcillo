@@ -51,3 +51,10 @@ describe('keyboardNav', () => {
     expect((await loadConfig(f as any)).keyboardNav).toBe(false);
   });
 });
+
+import shipped from '../public/config.json';
+describe('config.json publicada', () => {
+  it('incluye el relay donde LaWallet publica los receipts de zaps hechos desde Primal', () => {
+    expect(shipped.relays).toContain('wss://relay-nwc.rizful.com');
+  });
+});
