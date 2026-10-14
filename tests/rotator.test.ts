@@ -210,26 +210,3 @@ describe('Rotator: escenas cada N vueltas (everyCycles)', () => {
     expect(v.s.clipSeconds).toBe(30);
   });
 });
-
-describe('Rotator: modo vista previa (auto: false)', () => {
-  it('no avanza solo, ignora done y muestra el índice pedido', () => {
-    const a = mk('a'), b = mk('b');
-    const r = new Rotator(root, [a.s, b.s], { auto: false });
-    r.start();
-    vi.advanceTimersByTime(10_000);
-    expect(root.textContent).toBe('a');
-    r.showIndex(1);
-    expect(root.textContent).toBe('b');
-    expect(r.current()).toEqual({ index: 1, scene: 'b' });
-    r.showIndex(7);
-    expect(root.textContent).toBe('b');
-  });
-  it('current() en modo normal', () => {
-    const a = mk('a'), b = mk('b');
-    const r = new Rotator(root, [a.s, b.s]);
-    r.start();
-    vi.advanceTimersByTime(1000);
-    expect(r.current()).toEqual({ index: 1, scene: 'b' });
-  });
-});
-

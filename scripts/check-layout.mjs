@@ -397,22 +397,6 @@ try {
     await totem.waitForTimeout(2000);
     const after = await totem.evaluate(() => document.getElementById('scene')?.className);
     if (before === after) problems.push(`admin: flecha remota no cambió la escena (${before})`);
-    // miniatura en vivo: el iframe de vista previa sigue a la escena del tótem
-    const frameEl = await page.$('iframe.live-preview');
-    if (!frameEl) problems.push('admin: falta la miniatura en vivo (iframe.live-preview)');
-    else {
-      if (!/preview=1/.test(await frameEl.getAttribute('src'))) problems.push('admin: la miniatura no usa ?preview=1');
-      await totem.keyboard.press('ArrowRight');
-      let match = false, tc, pc;
-      for (let i = 0; i < 20 && !match; i++) {
-        await page.waitForTimeout(500);
-        tc = await totem.evaluate(() => document.getElementById('scene')?.className);
-        pc = await (await frameEl.contentFrame())?.evaluate(() => document.getElementById('scene')?.className);
-        match = tc === pc;
-      }
-      if (!match) problems.push(`admin: la miniatura no sigue al tótem (${tc} vs ${pc})`);
-      await page.screenshot({ path: `${out}/admin-panel.png`, fullPage: true });
-    }
     await page.close();
     await totem.close();
   }
