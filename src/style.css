@@ -56,11 +56,10 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-section { margin-bottom: 1.5rem; }
 .m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
 .m-post { background: var(--card); border-radius: .8rem; padding: .9rem 1rem; margin-bottom: .8rem; border-left: .25em solid var(--accent); }
-.m-meta { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; font-size: .9rem; }
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: .5rem; }
 .m-total { color: var(--accent); font-weight: 800; margin-bottom: .35rem; }
-.m-zaps, .m-list { list-style: none; padding: 0; margin: 0; }
-.m-zaps li, .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
+.m-list { list-style: none; padding: 0; margin: 0; }
+.m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
 .m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
 .zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; }
 .zap-alt { color: var(--muted); font-size: .85rem; }

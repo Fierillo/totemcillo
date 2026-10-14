@@ -2,7 +2,7 @@ import type { Config } from './config';
 import type { ZapStore } from './nostr/store';
 import type { Announcement } from './announcement';
 import { noteUri } from './nostr/link';
-import { recentPosts, latestOf, zapLine, EMPTY_POSTS } from './scenes/post';
+import { recentPosts, EMPTY_POSTS } from './scenes/post';
 import { EMPTY_ANUNCIO } from './scenes/anuncio';
 import { ago, esc, sats, shortKey } from './util';
 
@@ -17,12 +17,9 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
     const posts = recentPosts(store, 50).map((s) => {
       const uri = noteUri(s.post!, cfg.relays, 'nostr:{nevent}');
       const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');
-      const zaps = latestOf(s, 2).map((z) => `<li>${zapLine(z)}</li>`).join('');
       return `<article class="m-post">
-        <div class="m-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="muted">${ago(s.post!.created_at)}</span></div>
         <p class="m-excerpt">${esc(s.post!.content)}</p>
         <div class="m-total">⚡ ${sats(s.msats)} sats</div>
-        ${zaps ? `<ul class="m-zaps">${zaps}</ul>` : ''}
         ${uri && web ? `<div class="m-actions"><a class="zap-btn" href="${esc(uri)}">⚡ Zapear</a><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}
       </article>`;
     }).join('');
