@@ -43,7 +43,7 @@ describe('postScene: lista vertical de posts recientes', () => {
     expect(b.innerHTML).toBe(a.innerHTML);
     expect(c.innerHTML).toBe(a.innerHTML);
   });
-  it('cada fila: sólo el mensaje (escapado) y el total acumulado; sin autor, hora ni zaps', () => {
+  it('cada fila: autor, hace cuánto, mensaje (escapado) y total acumulado; sin mensajes de zaps', () => {
     const store = new ZapStore();
     store.addPost({ id: 'a', pubkey: 'a'.repeat(64), content: 'Hola <b>mundo</b>', created_at: 1 });
     store.addPost({ id: 'b', pubkey: 'b'.repeat(64), content: 'Segundo', created_at: 2 });
@@ -55,9 +55,10 @@ describe('postScene: lista vertical de posts recientes', () => {
     expect(a.querySelector('.excerpt b')).toBeNull();
     expect(a.querySelector('.row-total')!.textContent).toContain(sats(4_000_000));
     expect(b.querySelector('.row-total')!.textContent).toContain('0');
-    expect([...a.children].map((c) => c.className)).toEqual(['excerpt', 'row-total']);
+    expect(a.querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
+    expect(a.querySelector('.ago')!.textContent).toMatch(/^hace/);
     expect(root.textContent).not.toContain('comentario');
-    expect(root.querySelector('.author, .ago, .row-zaps')).toBeNull();
+    expect(root.querySelector('.row-zaps')).toBeNull();
   });
   it('un solo QR en la escena, con la URL pública de la app (no por post)', () => {
     const root = document.createElement('div');
@@ -79,7 +80,7 @@ describe('postScene: lista vertical de posts recientes', () => {
     store.addPost({ id: hex(10), pubkey: 'a'.repeat(64), content: 'otro', created_at: 1000 });
     expect(excerpts(root)[0]).toBe('nuevo');
   });
-  it('no inyecta HTML de pubkeys/senders maliciosos', () => {
+  it('escapa pubkeys/senders maliciosos', () => {
     const store = new ZapStore();
     const root = document.createElement('div');
     store.addPost({ id: 'x', pubkey: '<img src=x onerror=alert(1)>', content: 'hola', created_at: 1 });
@@ -87,6 +88,7 @@ describe('postScene: lista vertical de posts recientes', () => {
     postScene(store, 1, { publicUrl: URL_ }).render(root);
     expect(root.querySelector('img')).toBeNull();
     expect(root.querySelectorAll('svg')).toHaveLength(1);
+    expect(root.querySelector('.author')!.textContent).toContain('<img');
   });
 });
 
