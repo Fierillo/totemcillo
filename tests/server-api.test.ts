@@ -100,7 +100,7 @@ describe('PUT /api/settings (requiere sesión)', () => {
   it('valida: anuncio ≤ 280, duraciones entre 3 y 120 s, escenas conocidas', async () => {
     const d = deps();
     const { cookie } = await login(d);
-    expect(LIMITS).toEqual({ maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10 });
+    expect(LIMITS).toEqual({ maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120 });
     for (const bad of [{ announcement: 'x'.repeat(281) }, { announcement: 5 }, { sceneDurations: { post: 2999 } }, { sceneDurations: { post: 120001 } },
       { sceneDurations: { post: '10000' } }, { sceneDurations: { hackeo: 5000 } }, { sceneDurations: { video: 30000 } }, { command: 'reboot' }, [], null])
       expect((await handle(req('PUT', '/api/settings', bad, { cookie }), d)).status, JSON.stringify(bad)).toBe(400);
@@ -115,6 +115,24 @@ describe('PUT /api/settings (requiere sesión)', () => {
     expect(((await handle(req('GET', '/api/settings'), d)).body as { videoEveryCycles?: number }).videoEveryCycles).toBe(3);
     await handle(req('PUT', '/api/settings', { announcement: 'x' }, { cookie }), d);
     expect(((await handle(req('GET', '/api/settings'), d)).body as { videoEveryCycles?: number }).videoEveryCycles).toBe(3);
+  });
+  it('videoMode: full o clip, se guarda y se lee', async () => {
+    const d = deps();
+    const { cookie } = await login(d);
+    for (const bad of ['loop', '', 1, null])
+      expect((await handle(req('PUT', '/api/settings', { videoMode: bad }, { cookie }), d)).status, String(bad)).toBe(400);
+    expect((await handle(req('PUT', '/api/settings', { videoMode: 'clip' }, { cookie }), d)).status).toBe(200);
+    await handle(req('PUT', '/api/settings', { announcement: 'x' }, { cookie }), d);
+    expect(((await handle(req('GET', '/api/settings'), d)).body as { videoMode?: string }).videoMode).toBe('clip');
+  });
+  it('videoClipSeconds: entero de 3 a 120, se guarda y se lee', async () => {
+    const d = deps();
+    const { cookie } = await login(d);
+    for (const bad of [2, 121, 10.5, '21', null])
+      expect((await handle(req('PUT', '/api/settings', { videoClipSeconds: bad }, { cookie }), d)).status, String(bad)).toBe(400);
+    expect((await handle(req('PUT', '/api/settings', { videoClipSeconds: 30 }, { cookie }), d)).status).toBe(200);
+    await handle(req('PUT', '/api/settings', { announcement: 'x' }, { cookie }), d);
+    expect(((await handle(req('GET', '/api/settings'), d)).body as { videoClipSeconds?: number }).videoClipSeconds).toBe(30);
   });
   it('comandos remotos ← → con secuencia creciente', async () => {
     const d = deps();

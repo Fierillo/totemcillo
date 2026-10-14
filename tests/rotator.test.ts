@@ -199,4 +199,14 @@ describe('Rotator: escenas cada N vueltas (everyCycles)', () => {
     for (let i = 0; i < 4; i++) { vi.advanceTimersByTime(1000); seen.push(root.textContent!); }
     expect(seen).toEqual(['a', 'v', 'a', 'v', 'a']);
   });
+  it('setVideoMode cambia el modo de las escenas con ese nombre', () => {
+    const v = mk('video', 1000, { videoMode: 'full' });
+    new Rotator(root, [v.s]).setVideoMode('video', 'clip');
+    expect(v.s.videoMode).toBe('clip');
+  });
+  it('setClipSeconds cambia la duración del clip de las escenas con ese nombre', () => {
+    const v = mk('video', 1000, { clipSeconds: 21 });
+    new Rotator(root, [v.s]).setClipSeconds('video', 30);
+    expect(v.s.clipSeconds).toBe(30);
+  });
 });

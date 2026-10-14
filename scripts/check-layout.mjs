@@ -360,12 +360,16 @@ try {
     await page.fill('input[name="dur-post"]', '20');
     if (!(await page.$('input[name="videoEveryCycles"]'))) problems.push('admin: falta el campo videoEveryCycles');
     else await page.fill('input[name="videoEveryCycles"]', '3');
+    if (!(await page.$('select[name="videoMode"]'))) problems.push('admin: falta el select videoMode');
+    else await page.selectOption('select[name="videoMode"]', 'clip');
+    if (!(await page.$('input[name="videoClipSeconds"]'))) problems.push('admin: falta el campo videoClipSeconds');
+    else await page.fill('input[name="videoClipSeconds"]', '30');
     await page.click('button.save');
     await page.waitForFunction(() => document.querySelector('.status')?.textContent, null, { timeout: 5000 }).catch(() => {});
     const status = await page.evaluate(() => document.querySelector('.status')?.textContent ?? '');
     if (status !== 'Guardado') problems.push(`admin: Guardar respondió "${status}"`);
     const saved = await page.evaluate(async () => (await fetch('/api/settings')).json());
-    if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000 || saved.videoEveryCycles !== 3) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
+    if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000 || saved.videoEveryCycles !== 3 || saved.videoMode !== 'clip' || saved.videoClipSeconds !== 30) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
     await page.click('button.cmd-next');
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());

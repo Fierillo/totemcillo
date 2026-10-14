@@ -89,3 +89,73 @@ describe('video en config, rotación y admin', () => {
     expect(root.querySelector('video')!.getAttribute('src')).toBe('/x.webm');
   });
 });
+
+describe('videoScene: modo clip (videoMode)', () => {
+  const meta = (v: HTMLVideoElement, duration: number) => {
+    Object.defineProperty(v, 'duration', { value: duration, configurable: true });
+    v.dispatchEvent(new Event('loadedmetadata'));
+  };
+  const at = (v: HTMLVideoElement, t: number) => { v.currentTime = t; v.dispatchEvent(new Event('timeupdate')); };
+  it('por defecto es full; config: videoMode full y videoClipSeconds 21', () => {
+    expect(videoScene('/v.webm').videoMode).toBe('full');
+    expect(defaultConfig.videoMode).toBe('full');
+    expect(defaultConfig.videoClipSeconds).toBe(21);
+    const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const json = JSON.parse(readFileSync(new URL('../public/config.json', import.meta.url), 'utf8'));
+    expect([json.videoMode, json.videoClipSeconds]).toEqual(['full', 21]);
+    const v = buildScenes({ ...defaultConfig, videoMode: 'clip', videoClipSeconds: 10 }, new ZapStore()).at(-1)!;
+    expect(v.videoMode).toBe('clip');
+    expect(v.clipSeconds).toBe(10);
+  });
+  it('clip: arranca en un punto al azar de [0, duración-21] y termina a los 21 s', () => {
+    const { v, done } = show('/v.webm', { mode: 'clip', random: () => 0.5 });
+    meta(v!, 121);
+    expect(v!.currentTime).toBe(50);
+    at(v!, 60);
+    expect(done).not.toHaveBeenCalled();
+    at(v!, 71);
+    expect(done).toHaveBeenCalledOnce();
+  });
+  it('clip: respeta clipSeconds y tiene timeout por si no llegan timeupdates', () => {
+    const { v, done } = show('/v.webm', { mode: 'clip', clipSeconds: 5, random: () => 1 });
+    meta(v!, 100);
+    expect(v!.currentTime).toBe(95);
+    at(v!, 96);
+    vi.advanceTimersByTime(5000);
+    expect(done).toHaveBeenCalledOnce();
+  });
+  it('clip con video de 21 s o menos: desde 0 hasta el final', () => {
+    const { v, done } = show('/v.webm', { mode: 'clip', random: () => 0.7 });
+    meta(v!, 21);
+    expect(v!.currentTime).toBe(0);
+    at(v!, 20);
+    vi.advanceTimersByTime(30000);
+    expect(done).not.toHaveBeenCalled();
+    v!.dispatchEvent(new Event('ended'));
+    expect(done).toHaveBeenCalledOnce();
+  });
+  it('clipSeconds cambiado en caliente: nunca deja menos de X s por delante', () => {
+    const s = videoScene('/v.webm', { mode: 'clip', random: () => 1 });
+    s.clipSeconds = 30;
+    const root = document.createElement('div');
+    const done = vi.fn();
+    s.render(root, done);
+    const v = root.querySelector('video')!;
+    meta(v, 100);
+    expect(v.currentTime).toBe(70);
+    at(v, 99);
+    expect(done).not.toHaveBeenCalled();
+    at(v, 100);
+    expect(done).toHaveBeenCalledOnce();
+  });
+  it('el modo se puede cambiar en caliente (rige desde la próxima vez)', () => {
+    const s = videoScene('/v.webm', { random: () => 0.5 });
+    s.videoMode = 'clip';
+    const root = document.createElement('div');
+    s.render(root, () => {});
+    const v = root.querySelector('video')!;
+    meta(v, 121);
+    expect(v.currentTime).toBe(50);
+  });
+});
+
