@@ -12,7 +12,8 @@
     "wss://nostr-pub.wellorder.net",
     "wss://yabu.me",
     "wss://nostr21.com",
-    "wss://relay.nos.social"
+    "wss://relay.nos.social",
+    "wss://relay-nwc.rizful.com"
   ],
   "hashtags": [
     "lacrypta",
