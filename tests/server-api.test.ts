@@ -91,11 +91,11 @@ describe('PUT /api/settings (requiere sesión)', () => {
   it('guarda anuncio (recortado) y duraciones; GET los devuelve', async () => {
     const d = deps();
     const { cookie } = await login(d);
-    const r = await handle(req('PUT', '/api/settings', { announcement: '  <b>Hola</b> stand  ', sceneDurations: { post: 20000, anuncio: 3000 } }, { cookie }), d);
+    const r = await handle(req('PUT', '/api/settings', { announcement: '  <b>Hola</b> stand  ', sceneDurations: { post: 20000, anuncio: 3000, video: 60000 } }, { cookie }), d);
     expect(r.status).toBe(200);
     const g = (await handle(req('GET', '/api/settings'), d)).body as typeof DEFAULT_SETTINGS;
     expect(g.announcement).toBe('<b>Hola</b> stand');
-    expect(g.sceneDurations).toEqual({ post: 20000, anuncio: 3000 });
+    expect(g.sceneDurations).toEqual({ post: 20000, anuncio: 3000, video: 60000 });
   });
   it('valida: anuncio ≤ 280, duraciones entre 3 y 120 s, escenas conocidas', async () => {
     const d = deps();

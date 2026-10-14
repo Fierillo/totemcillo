@@ -145,7 +145,7 @@ try {
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(300);
     const afterLefts = await scene();
-    if (keyboardNav && (afterRight !== 'scene scene-latestZaps' || afterLefts !== 'scene scene-anuncio'))
+    if (keyboardNav && (afterRight !== 'scene scene-latestZaps' || afterLefts !== 'scene scene-video'))
       problems.push(`teclado: → dio "${afterRight}", ←← dio "${afterLefts}"`);
     if (!keyboardNav && (afterRight !== 'scene scene-post' || afterLefts !== 'scene scene-post'))
       problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
@@ -209,7 +209,7 @@ try {
     if (first.visible < 3) problems.push(`${w}x${h} 5 posts: sólo ${first.visible} posts visibles a la vez`);
     if (first.qr !== 1) problems.push(`${w}x${h} 5 posts: ${first.qr} QRs (tiene que haber 1)`);
     await page.screenshot({ path: `${out}/${w}x${h}-5posts-post.png` });
-    for (const keys of [['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'], ['ArrowLeft', 'ArrowRight'], ['ArrowRight', 'ArrowLeft']]) {
+    for (const keys of [['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'], ['ArrowLeft', 'ArrowRight'], ['ArrowRight', 'ArrowLeft']]) {
       for (const k of keys) { await page.keyboard.press(k); await page.waitForTimeout(150); }
       await page.waitForTimeout(600);
       const again = await sig();
@@ -269,6 +269,33 @@ try {
     }
     await page.close();
   }
+  // Escena de video: pantalla completa, en loop, reproduciendo
+  for (const [w, h] of viewports) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000, video: 60000 } } }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForSelector('.scene-post');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForSelector('.scene-video video', { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    const v = await page.evaluate(() => {
+      const el = document.querySelector('.scene-video video');
+      if (!el) return null;
+      const r = el.getBoundingClientRect(), m = document.getElementById('scene').getBoundingClientRect();
+      return { loop: el.loop, muted: el.muted, paused: el.paused, t: el.currentTime, fit: getComputedStyle(el).objectFit, w: r.width, h: r.height, mw: m.width, mh: m.height, bg: getComputedStyle(document.getElementById('scene')).backgroundColor };
+    });
+    if (!v) problems.push(`${w}x${h} video: no hay <video>`);
+    else {
+      if (!v.loop || !v.muted) problems.push(`${w}x${h} video: loop/muted ${v.loop}/${v.muted}`);
+      if (v.paused || v.t <= 0) problems.push(`${w}x${h} video: no se reproduce (paused ${v.paused}, t ${v.t})`);
+      if (v.fit !== 'contain') problems.push(`${w}x${h} video: object-fit ${v.fit}`);
+      if (Math.abs(v.w - v.mw) > 2 || Math.abs(v.h - v.mh) > 2) problems.push(`${w}x${h} video: no ocupa la escena (${v.w}x${v.h} vs ${v.mw}x${v.mh})`);
+      if (v.bg !== 'rgb(0, 0, 0)') problems.push(`${w}x${h} video: fondo ${v.bg}`);
+    }
+    await page.screenshot({ path: `${out}/${w}x${h}-video.png` });
+    await page.close();
+  }
+
   // Admin: login, anuncio y flechas remotas
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
