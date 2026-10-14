@@ -6,13 +6,15 @@ export interface Settings {
   command: { seq: number; action: Action | null };
   /** El video aparece una de cada N vueltas (si falta, rige config.json). */
   videoEveryCycles?: number;
+  videoMode?: 'full' | 'clip';
+  videoClipSeconds?: number;
 }
 export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } };
 /** Duraciones por defecto de cada escena (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10 };
+export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number }
 
 /** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
 export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok: false; error: string } {
@@ -46,6 +48,16 @@ export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok:
       return { ok: false, error: `videoEveryCycles debe ser un entero de ${LIMITS.minEveryCycles} a ${LIMITS.maxEveryCycles}` };
     patch.videoEveryCycles = n;
   }
+  if ('videoMode' in b) {
+    if (b.videoMode !== 'full' && b.videoMode !== 'clip') return { ok: false, error: 'videoMode debe ser full o clip' };
+    patch.videoMode = b.videoMode;
+  }
+  if ('videoClipSeconds' in b) {
+    const n = b.videoClipSeconds;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < LIMITS.minClipSeconds || n > LIMITS.maxClipSeconds)
+      return { ok: false, error: `videoClipSeconds debe ser un entero de ${LIMITS.minClipSeconds} a ${LIMITS.maxClipSeconds}` };
+    patch.videoClipSeconds = n;
+  }
   return { ok: true, patch };
 }
 
@@ -55,5 +67,7 @@ export function applyPatch(s: Settings, p: Patch): Settings {
     sceneDurations: p.sceneDurations ? { ...s.sceneDurations, ...p.sceneDurations } : s.sceneDurations,
     command: p.command ? { seq: s.command.seq + 1, action: p.command } : s.command,
     ...((p.videoEveryCycles ?? s.videoEveryCycles) !== undefined ? { videoEveryCycles: p.videoEveryCycles ?? s.videoEveryCycles } : {}),
+    ...((p.videoMode ?? s.videoMode) !== undefined ? { videoMode: p.videoMode ?? s.videoMode } : {}),
+    ...((p.videoClipSeconds ?? s.videoClipSeconds) !== undefined ? { videoClipSeconds: p.videoClipSeconds ?? s.videoClipSeconds } : {}),
   };
 }

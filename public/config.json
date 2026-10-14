@@ -61,5 +61,7 @@
   "publicUrl": "",
   "settingsPollMs": 4000,
   "videoSrc": "/video/totem-video.webm",
-  "videoEveryCycles": 2
+  "videoEveryCycles": 2,
+  "videoMode": "full",
+  "videoClipSeconds": 21
 }

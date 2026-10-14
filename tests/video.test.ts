@@ -101,7 +101,7 @@ describe('videoScene: modo clip (videoMode)', () => {
     expect(defaultConfig.videoMode).toBe('full');
     expect(defaultConfig.videoClipSeconds).toBe(21);
     const { readFileSync } = require('node:fs') as typeof import('node:fs');
-    const json = JSON.parse(readFileSync(new URL('../public/config.json', import.meta.url), 'utf8'));
+    const json = JSON.parse(readFileSync(`${process.cwd()}/public/config.json`, 'utf8'));
     expect([json.videoMode, json.videoClipSeconds]).toEqual(['full', 21]);
     const v = buildScenes({ ...defaultConfig, videoMode: 'clip', videoClipSeconds: 10 }, new ZapStore()).at(-1)!;
     expect(v.videoMode).toBe('clip');

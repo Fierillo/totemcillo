@@ -23,6 +23,9 @@ export interface Config {
   videoSrc: string;
   /** El video aparece en la rotación automática una de cada N vueltas. */
   videoEveryCycles: number;
+  /** full: el video entero; clip: `videoClipSeconds` s desde un punto al azar. */
+  videoMode: 'full' | 'clip';
+  videoClipSeconds: number;
 }
 
 export const defaultConfig: Config = {
@@ -40,6 +43,8 @@ export const defaultConfig: Config = {
   settingsPollMs: 4000,
   videoSrc: '/video/totem-video.webm',
   videoEveryCycles: 2,
+  videoMode: 'full',
+  videoClipSeconds: 21,
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {

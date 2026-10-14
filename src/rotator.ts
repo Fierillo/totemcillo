@@ -6,6 +6,9 @@ export interface Scene {
   untilDone?: boolean;
   /** Si es > 1, la rotación automática la muestra sólo una de cada N vueltas (las flechas siempre llegan). */
   everyCycles?: number;
+  /** Escena de video: modo y largo del clip (s). */
+  videoMode?: 'full' | 'clip';
+  clipSeconds?: number;
   /** Dibuja la escena (incluido su estado vacío); devuelve la limpieza. */
   render: (root: HTMLElement, done?: () => void) => void | (() => void);
 }
@@ -30,6 +33,14 @@ export class Rotator {
   /** Cambia cada cuántas vueltas aparecen las escenas con ese nombre. */
   setEveryCycles(name: string, n: number) {
     for (const s of this.scenes) if (s.name === name) s.everyCycles = n;
+  }
+
+  setVideoMode(name: string, mode: 'full' | 'clip') {
+    for (const s of this.scenes) if (s.name === name) s.videoMode = mode;
+  }
+
+  setClipSeconds(name: string, sec: number) {
+    for (const s of this.scenes) if (s.name === name) s.clipSeconds = sec;
   }
 
   stop() {

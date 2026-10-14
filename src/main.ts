@@ -23,12 +23,12 @@ if (isMobileViewport()) {
   document.documentElement.classList.add('is-mobile');
   scene.className = 'mobile';
   renderMobile(scene, store, cfg, announcement);
-  createRemote({ nav: { next() {}, prev() {}, setDuration() {}, setEveryCycles() {} }, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles }).start(cfg.settingsPollMs);
+  createRemote({ nav: { next() {}, prev() {}, setDuration() {}, setEveryCycles() {}, setVideoMode() {}, setClipSeconds() {} }, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds }).start(cfg.settingsPollMs);
 } else {
   const rotator = new Rotator(scene, buildScenes(cfg, store, announcement, window.location.origin));
   rotator.start();
   if (cfg.keyboardNav) bindKeyboard(rotator);
-  createRemote({ nav: rotator, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles }).start(cfg.settingsPollMs);
+  createRemote({ nav: rotator, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds }).start(cfg.settingsPollMs);
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
 
