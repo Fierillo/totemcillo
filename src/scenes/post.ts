@@ -43,7 +43,7 @@ export function postScene(store: ZapStore, duration: number, link: LinkOptions =
         }
         const cur = store.stats().find((x) => x.postId === id)!;
         const zaps = cur.zaps.slice(0, 8).map((z) =>
-          `<li><b>${sats(z.msats)}</b> sats · ${shortKey(z.sender)}${z.comment ? ` — <i>${esc(z.comment)}</i>` : ''}</li>`).join('');
+          `<li data-clip><b>${sats(z.msats)}</b> sats · ${shortKey(z.sender)}${z.comment ? ` — <i>${esc(z.comment)}</i>` : ''}</li>`).join('');
         root.innerHTML = `
           <section class="post">
             <div class="post-head"><span class="author" data-fit="text" data-max="3.5" data-min="12">${shortKey(cur.post!.pubkey)}</span><span class="muted">${ago(cur.post!.created_at)}</span></div>
@@ -55,7 +55,7 @@ export function postScene(store: ZapStore, duration: number, link: LinkOptions =
           </section>
           <aside class="zaps">
             <h2>Zaps (${cur.zaps.length})</h2>
-            <ul data-fit="list" data-max="3.2" data-min="12">${zaps || '<li class="muted">Todavía sin zaps. ¡Sé el primero!</li>'}</ul>
+            <ul data-fit="list" data-max="3.2" data-maxw="3.5" data-min="12">${zaps || '<li class="muted">Todavía sin zaps. ¡Sé el primero!</li>'}</ul>
           </aside>`;
         fitRegions(root);
       };

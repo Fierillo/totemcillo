@@ -17,11 +17,11 @@ export function topScene(o: TopOptions): Scene {
           <li>
             <span class="rank">#${i + 1}</span>
             <span class="amount">${sats(s.msats)}</span>
-            <span class="who"><span class="excerpt">${esc(s.post!.content)}</span><small class="author">${shortKey(s.post!.pubkey)}</small></span>
+            <span class="who"><span class="excerpt" data-clip>${esc(s.post!.content)}</span><small class="author">${shortKey(s.post!.pubkey)}</small></span>
           </li>`).join('');
         root.innerHTML = `<h1 class="top-title" data-fit="text" data-max="6" data-min="20">${esc(o.title)}</h1>
 ` + (rows
-          ? `<ol class="top-list" data-fit="list" data-max="4" data-min="14">${rows}</ol>`
+          ? `<ol class="top-list" data-fit="list" data-max="3.2" data-maxw="4" data-min="14">${rows}</ol>`
           : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps en este período</p>`);
         fitRegions(root);
       };
