@@ -81,6 +81,9 @@ describe('video en config, rotación y admin', () => {
     const v = s[s.length - 1];
     expect(v.name).toBe('video');
     expect(v.untilDone).toBe(true);
+    expect(v.everyCycles).toBe(2);
+    expect(defaultConfig.videoEveryCycles).toBe(2);
+    expect(buildScenes({ ...defaultConfig, videoEveryCycles: 3 }, new ZapStore()).at(-1)!.everyCycles).toBe(3);
     const root = document.createElement('div');
     v.render(root, () => {});
     expect(root.querySelector('video')!.getAttribute('src')).toBe('/x.webm');

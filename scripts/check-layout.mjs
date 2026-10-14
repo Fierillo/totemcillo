@@ -309,6 +309,23 @@ try {
     }
     await page.close();
   }
+  // Video cada 2 vueltas en la rotación automática
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoEveryCycles: 2, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000, sceneDurations: { post: 400, latestZaps: 400, top10Historico: 400, top10Ultimas3h: 400, anuncio: 400 } } }));
+    await page.addInitScript(() => {
+      window.__seq = [];
+      new MutationObserver(() => { const c = document.getElementById('scene')?.className.replace('scene scene-', ''); if (c && window.__seq.at(-1) !== c) window.__seq.push(c); })
+        .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    });
+    await page.goto('http://localhost:4179/');
+    await page.waitForTimeout(11000);
+    const seq = await page.evaluate(() => window.__seq);
+    const cycles = seq.join(' ').split(/(?=post)/).map((c) => c.trim()).filter(Boolean);
+    const withVideo = cycles.slice(0, 3).map((c) => c.includes('video'));
+    if (cycles.length < 3 || JSON.stringify(withVideo) !== '[true,false,true]') problems.push(`video cada 2 vueltas: ${JSON.stringify(cycles)}`);
+    await page.close();
+  }
   // Video roto: el tótem no se traba
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

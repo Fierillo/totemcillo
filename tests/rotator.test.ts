@@ -167,3 +167,27 @@ describe('Rotator: escenas que terminan solas (untilDone)', () => {
     expect(root.textContent).toBe('a');
   });
 });
+
+describe('Rotator: escenas cada N vueltas (everyCycles)', () => {
+  it('la rotación automática muestra la escena en la 1ª vuelta, la saltea en la 2ª y vuelve en la 3ª (N=2)', () => {
+    const a = mk('a'), b = mk('b'), v = mk('v', 1000, { everyCycles: 2 });
+    new Rotator(root, [a.s, b.s, v.s]).start();
+    const seen: string[] = [root.textContent!];
+    for (let i = 0; i < 8; i++) { vi.advanceTimersByTime(1000); seen.push(root.textContent!); }
+    expect(seen).toEqual(['a', 'b', 'v', 'a', 'b', 'a', 'b', 'v', 'a']);
+  });
+  it('con las flechas se puede llegar igual', () => {
+    const a = mk('a'), b = mk('b'), v = mk('v', 1000, { everyCycles: 2 });
+    const r = new Rotator(root, [a.s, b.s, v.s]);
+    r.start();
+    vi.advanceTimersByTime(3000); // a b v a  → 2ª vuelta
+    expect(root.textContent).toBe('a');
+    r.prev();
+    expect(root.textContent).toBe('v');
+    r.next();
+    r.next();
+    expect(root.textContent).toBe('b');
+    r.next();
+    expect(root.textContent).toBe('v');
+  });
+});
