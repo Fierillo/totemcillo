@@ -34,11 +34,11 @@
     "labitconf"
   ],
   "sceneDurations": {
-    "post": 15000,
-    "latestZaps": 12000,
-    "top10Historico": 12000,
-    "top10Ultimas3h": 12000,
-    "anuncio": 10000
+    "post": 21000,
+    "latestZaps": 21000,
+    "top10Historico": 21000,
+    "top10Ultimas3h": 21000,
+    "anuncio": 21000
   },
   "talks": [
     {

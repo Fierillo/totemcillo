@@ -26,7 +26,7 @@ async function panel() {
     <label>Anuncio <textarea name="announcement" maxlength="${LIMITS.maxAnnouncement}" rows="4">${s.announcement.replace(/</g, '&lt;')}</textarea>
     <small>${s.announcement.length}/${LIMITS.maxAnnouncement}</small></label>
     <fieldset><legend>Duración de cada escena (segundos)</legend>
-      ${SCENES.map((n) => `<label>${n} <input type="number" name="dur-${n}" min="${LIMITS.minMs / 1000}" max="${LIMITS.maxMs / 1000}" step="1" value="${Math.round((durs[n] ?? 15000) / 1000)}" /></label>`).join('')}
+      ${SCENES.map((n) => `<label>${n} <input type="number" name="dur-${n}" min="${LIMITS.minMs / 1000}" max="${LIMITS.maxMs / 1000}" step="1" value="${Math.round((durs[n] ?? 21000) / 1000)}" /></label>`).join('')}
     </fieldset>
     <div class="row"><button type="button" class="save">Guardar</button>
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
