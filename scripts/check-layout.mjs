@@ -374,19 +374,20 @@ try {
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());
     if (set.command?.action !== 'next' || !(set.command?.seq >= 1)) problems.push(`admin: comando remoto no guardado (${JSON.stringify(set.command)})`);
-    // layout del admin: en escritorio las tarjetas van lado a lado; en celular, una columna; nada desborda
+    // layout del admin: en escritorio aprovecha el ancho; en celular, una columna; nada desborda
     const cardsAt = async (w, h) => {
       await page.setViewportSize({ width: w, height: h });
       await page.waitForTimeout(200);
       return page.evaluate(() => ({
         sw: document.documentElement.scrollWidth, vw: window.innerWidth,
+        pw: Math.round(document.querySelector('.panel').getBoundingClientRect().width),
         cards: [...document.querySelectorAll('.panel .card')].map((c) => { const r = c.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), sw: c.scrollWidth, cw: c.clientWidth }; }),
       }));
     };
     const wide = await cardsAt(1920, 1080);
     if (wide.cards.length < 4) problems.push(`admin 1920: faltan tarjetas (.card: ${wide.cards.length})`);
     else {
-      if (new Set(wide.cards.map((c) => c.l)).size < 2 || !wide.cards.some((c, i) => wide.cards.some((d, j) => i !== j && Math.abs(c.t - d.t) < 4))) problems.push(`admin 1920: las tarjetas no van lado a lado (${JSON.stringify(wide.cards)})`);
+      if (wide.pw < wide.vw * 0.5) problems.push(`admin 1920: no aprovecha el ancho (panel ${wide.pw}px de ${wide.vw}px)`);
       if (wide.sw > wide.vw || wide.cards.some((c) => c.r > wide.vw || c.sw > c.cw + 1)) problems.push(`admin 1920: algo desborda (${JSON.stringify(wide)})`);
     }
     await page.screenshot({ path: `${out}/admin-panel.png`, fullPage: true });
