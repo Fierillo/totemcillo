@@ -15,13 +15,13 @@ describe('las escenas ajustan el texto a su región', () => {
   it('post: texto, autor y lista de zaps marcados y ajustados (también en vivo)', () => {
     const s = store(), root = document.createElement('div');
     postScene(s, 1).render(root);
-    for (const sel of ['.card-content', '.author', '.card-zaps']) {
+    for (const sel of ['.post-list']) {
       const el = root.querySelector<HTMLElement>(sel)!;
       expect(el.dataset.fit, sel).toBeTruthy();
       expect(el.style.fontSize, sel).toMatch(/px$/);
     }
     s.addZap({ id: 'z2', postId: 'd'.repeat(64), msats: 1000, comment: '', created_at: 3 });
-    expect(root.querySelector<HTMLElement>('.card-zaps')!.style.fontSize).toMatch(/px$/);
+    expect(root.querySelector<HTMLElement>('.post-list')!.style.fontSize).toMatch(/px$/);
   });
   it('últimos zaps: lista ajustada', () => {
     const root = document.createElement('div');
@@ -37,7 +37,7 @@ import { top10HistoricoScene } from '../src/scenes/top10Historico';
 describe('listas con tope de fuente y mensajes que se priorizan', () => {
   it('post, últimos zaps y tops: max ≤ 3.2vh, tope en vw y líneas de mensaje marcadas [data-clip]', () => {
     const s = store();
-    for (const [scene, sel, line] of [[postScene(s, 1), '.card-zaps', '.card-zaps li'], [latestZapsScene(s, 1), '.zap-list', '.zap-list .who'], [top10HistoricoScene(s, 1), '.top-list', '.top-list .excerpt']] as const) {
+    for (const [scene, sel, line] of [[postScene(s, 1), '.post-list', '.post-row .excerpt'], [latestZapsScene(s, 1), '.zap-list', '.zap-list .who'], [top10HistoricoScene(s, 1), '.top-list', '.top-list .excerpt']] as const) {
       const root = document.createElement('div');
       scene.render(root);
       const ul = root.querySelector<HTMLElement>(sel)!;

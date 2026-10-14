@@ -122,3 +122,20 @@ describe('navegación por escenas distintas (bloques con el mismo nombre)', () =
     expect(root.textContent).toBe('a');
   });
 });
+
+describe('Rotator.setDuration (cambio remoto de tiempos)', () => {
+  it('cambia la duración desde la próxima vez que se muestra la escena', () => {
+    const a = mk('a'), b = mk('b');
+    const r = new Rotator(root, [a.s, b.s]);
+    r.start();
+    r.setDuration('a', 5000);
+    vi.advanceTimersByTime(1000);
+    expect(root.textContent).toBe('b');
+    vi.advanceTimersByTime(1000);
+    expect(root.textContent).toBe('a');
+    vi.advanceTimersByTime(4999);
+    expect(root.textContent).toBe('a');
+    vi.advanceTimersByTime(1);
+    expect(root.textContent).toBe('b');
+  });
+});

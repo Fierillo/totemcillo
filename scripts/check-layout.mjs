@@ -24,7 +24,7 @@ const zaps = Array.from({ length: 40 }, (_, i) => ({
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
 zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, comment: 'zap a post viejo', created_at: now - 25 * 3600 });
-const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000 } , talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
+const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000, anuncio: 3000 } , talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
 
 function check(scene) {
   const P = [];
@@ -55,26 +55,22 @@ function check(scene) {
   disjoint([['topbar', top], ['escena', main], ['footer', foot]]);
   [['topbar', top], ['escena', main], ['footer', foot]].forEach(([n, el]) => inside(n, el, VP));
   if (scene === 'post') {
-    const cards = [...document.querySelectorAll('.card')];
-    if (!cards.length) P.push('no hay tarjetas de posts');
-    cards.forEach((c, i) => inside(`tarjeta ${i}`, c, main));
-    disjoint(cards.map((c, i) => [`tarjeta ${i}`, c]));
-    if (document.querySelectorAll('figure.qr').length !== 1) P.push('tiene que haber exactamente un QR');
-    cards.forEach((card, i) => {
-      const g = (s) => { const el = card.querySelector(s); if (!el) P.push(`tarjeta ${i}: falta ${s}`); return el; };
-      const head = g('.card-head'), body = g('.card-body'), zl = g('.card-zaps'), total = g('.card-total'), content = g('.card-content'), author = g('.author');
-      [['cabecera', head], ['cuerpo', body], ['zaps', zl], ['total', total]].forEach(([n, el]) => inside(`tarjeta ${i} ${n}`, el, card));
-      disjoint([[`t${i} cabecera`, head], [`t${i} cuerpo`, body], [`t${i} zaps`, zl], [`t${i} total`, total]]);
-      inside(`tarjeta ${i} texto`, content, body);
-      const qr = card.querySelector('.qr');
-      if (qr) { inside(`tarjeta ${i} QR`, qr, body); disjoint([[`t${i} texto`, content], [`t${i} QR`, qr]]); if (qr.getBoundingClientRect().width < 120) P.push(`QR demasiado chico (${qr.getBoundingClientRect().width}px)`); }
-      const chars = content ? [...new Intl.Segmenter().segment(content.textContent)].length : 0;
-      if (chars > 210) P.push(`tarjeta ${i}: texto con ${chars} caracteres (> 210)`);
-      if (content?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
-      if (content && parseFloat(content.style.fontSize) < 11) P.push(`tarjeta ${i}: texto ilegible (${content.style.fontSize})`);
-      noOverflow(`t${i} texto`, content); noOverflow(`t${i} autor`, author); noOverflow(`t${i} zaps`, zl); noOverflow(`t${i} total`, total);
-      itemsInside(`t${i} zap`, zl);
+    const list = need('ul.post-list'), qr = need('figure.qr');
+    inside('lista', list, main); inside('QR', qr, main); disjoint([['lista', list], ['QR', qr]]);
+    if (qr && qr.getBoundingClientRect().width < 120) P.push(`QR demasiado chico (${qr.getBoundingClientRect().width}px)`);
+    if (qr && !/Escaneá.*celular|Abrí.*celular|Escaneá y abrí/i.test(qr.textContent)) P.push('QR sin leyenda para el celular');
+    const rows = [...document.querySelectorAll('.post-row')];
+    if (!rows.length) P.push('no hay filas de posts');
+    rows.forEach((row, i) => {
+      inside(`fila ${i}`, row, list);
+      for (const sel of ['.author', '.ago', '.excerpt', '.row-total']) if (!row.querySelector(sel)) P.push(`fila ${i}: falta ${sel}`);
+      const excerpt = row.querySelector('.excerpt');
+      const chars = excerpt ? [...new Intl.Segmenter().segment(excerpt.textContent)].length : 0;
+      if (chars > 210) P.push(`fila ${i}: extracto con ${chars} caracteres (> 210)`);
+      if (excerpt?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
+      noOverflow(`fila ${i} extracto`, excerpt);
     });
+    noOverflow('lista de posts', list);
   } else if (scene.startsWith('top')) {
     const h1 = need('h1.top-title'), ol = need('.top-list');
     const expected = scene === 'top10Historico' ? 'Top 10 histórico' : 'Top 10 · últimas 3 horas';
@@ -90,7 +86,7 @@ function check(scene) {
     noOverflow('lista de últimos zaps', ul); itemsInside('último zap', ul);
     if (ul && !ul.children.length) P.push('lista vacía');
   }
-  document.querySelectorAll('.amount, .rank, .total, .card-total').forEach((el, i) => {
+  document.querySelectorAll('.amount, .rank, .total, .row-total').forEach((el, i) => {
     if (el.scrollWidth > el.clientWidth + 1) P.push(`monto/rank recortado #${i}: "${el.textContent.trim()}"`);
   });
   return P;
@@ -148,7 +144,7 @@ try {
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(300);
     const afterLefts = await scene();
-    if (keyboardNav && (afterRight !== 'scene scene-latestZaps' || afterLefts !== 'scene scene-top10Ultimas3h'))
+    if (keyboardNav && (afterRight !== 'scene scene-latestZaps' || afterLefts !== 'scene scene-anuncio'))
       problems.push(`teclado: → dio "${afterRight}", ←← dio "${afterLefts}"`);
     if (!keyboardNav && (afterRight !== 'scene scene-post' || afterLefts !== 'scene scene-post'))
       problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
@@ -166,8 +162,14 @@ try {
     for (const scene of ['post', 'latestZaps']) {
       await page.waitForTimeout(1200);
       if (scene === 'post') {
-        const n = await page.evaluate(() => document.querySelectorAll('.card-zaps li').length);
-        if (n < 3) problems.push(`${w}x${h} 8 zaps post: sólo ${n} zaps en la tarjeta`);
+        const r = await page.evaluate(() => {
+          const ul = document.querySelector('ul.post-list');
+          const clipped = [...document.querySelectorAll('#scene [data-clip]')].filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => c.textContent.trim().slice(0, 40));
+          return { items: ul ? ul.querySelectorAll('.post-row').length : 0, font: ul ? parseFloat(ul.style.fontSize) : 0, clipped, vh: innerHeight, qr: !!document.querySelector('figure.qr') };
+        });
+        if (r.items < 1) problems.push(`${w}x${h} 8 zaps post: sin filas`);
+        if (!r.qr) problems.push(`${w}x${h} 8 zaps post: falta el QR`);
+        if (r.font > r.vh * 0.032 + 1) problems.push(`${w}x${h} 8 zaps post: fuente ${r.font}px > 3.2vh`);
         await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
         await page.keyboard.press('ArrowRight');
         continue;
@@ -186,26 +188,27 @@ try {
     await page.close();
   }
 
-  // 5 posts: se ven ≥3 a la vez y navegar con flechas muestra siempre lo mismo
+  // 5 posts: se ven ≥3 a la vez, un solo QR, y navegar con flechas muestra siempre lo mismo
   const five = Array.from({ length: 5 }, (_, i) => ({ id: hex(700 + i), pubkey: (i + 1).toString().repeat(64), content: `Post número ${i + 1} sobre #lacrypta y la LABITCONF, con un texto de largo normal para ver cómo entra`, created_at: now - (i + 1) * 300 }));
-  const fiveZaps = five.flatMap((p, i) => Array.from({ length: i + 1 }, (_, j) => ({ id: hex(800 + i * 10 + j), postId: p.id, sender: (j + 1).toString().repeat(64), msats: (j + 1) * 21000, comment: comments[j], created_at: now - j * 20 })));
+  const fiveZaps = five.flatMap((p, i) => Array.from({ length: Math.min(i + 1, 2) }, (_, j) => ({ id: hex(800 + i * 10 + j), postId: p.id, sender: (j + 1).toString().repeat(64), msats: (j + 1) * 21000, comment: comments[j], created_at: now - j * 20 })));
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
     await page.goto('http://localhost:4179/');
-    await page.waitForSelector('.scene-post .card');
+    await page.waitForSelector('.scene-post .post-row');
     await page.waitForTimeout(1200);
     const sig = () => page.evaluate(() => {
       const main = document.getElementById('scene').getBoundingClientRect();
-      const cards = [...document.querySelectorAll('.card')].filter((c) => { const r = c.getBoundingClientRect(); return r.width > 50 && r.height > 50 && r.top >= main.top - 1 && r.bottom <= main.bottom + 1; });
-      return { cls: document.getElementById('scene').className, visible: cards.length, text: cards.map((c) => c.querySelector('.card-content').textContent + '|' + c.querySelector('.card-total').textContent).join('\n') };
+      const rows = [...document.querySelectorAll('.post-row')].filter((c) => { const r = c.getBoundingClientRect(); return r.width > 50 && r.height > 30 && r.top >= main.top - 1 && r.bottom <= main.bottom + 1; });
+      return { cls: document.getElementById('scene').className, visible: rows.length, qr: document.querySelectorAll('figure.qr').length, text: rows.map((c) => c.querySelector('.excerpt').textContent + '|' + c.querySelector('.row-total').textContent).join('\n') };
     });
     problems.push(...(await page.evaluate(check, 'post')).map((p) => `${w}x${h} 5 posts: ${p}`));
     const first = await sig();
     if (first.visible < 3) problems.push(`${w}x${h} 5 posts: sólo ${first.visible} posts visibles a la vez`);
+    if (first.qr !== 1) problems.push(`${w}x${h} 5 posts: ${first.qr} QRs (tiene que haber 1)`);
     await page.screenshot({ path: `${out}/${w}x${h}-5posts-post.png` });
-    for (const keys of [['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'], ['ArrowLeft', 'ArrowRight'], ['ArrowRight', 'ArrowLeft']]) {
+    for (const keys of [['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'], ['ArrowLeft', 'ArrowRight'], ['ArrowRight', 'ArrowLeft']]) {
       for (const k of keys) { await page.keyboard.press(k); await page.waitForTimeout(150); }
       await page.waitForTimeout(600);
       const again = await sig();
@@ -214,12 +217,88 @@ try {
     await page.close();
   }
 
+  // Móvil: misma ruta, scrolleable, sin QR, con Zapear
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForSelector('.mobile .m-post');
+    await page.waitForTimeout(800);
+    const m = await page.evaluate(() => ({
+      qr: document.querySelectorAll('figure.qr').length,
+      posts: document.querySelectorAll('.m-post').length,
+      zaps: [...document.querySelectorAll('a.zap-btn')].map((a) => a.getAttribute('href')),
+      alts: [...document.querySelectorAll('a.zap-alt')].map((a) => a.getAttribute('href')),
+      scroll: document.documentElement.scrollHeight > innerHeight,
+      rotator: !!document.querySelector('.scene-post, .scene-latestZaps'),
+    }));
+    if (m.qr) problems.push(`móvil: hay ${m.qr} QRs`);
+    if (m.posts < 3) problems.push(`móvil: sólo ${m.posts} posts`);
+    if (m.zaps.length < 3 || m.zaps.some((h) => !h?.startsWith('nostr:nevent'))) problems.push('móvil: faltan botones Zapear nostr:');
+    if (m.alts.length < 3 || m.alts.some((h) => !h?.startsWith('https://njump.me/'))) problems.push('móvil: faltan links njump');
+    if (!m.scroll) problems.push('móvil: la página no scrollea');
+    if (m.rotator) problems.push('móvil: sigue rotando escenas de kiosko');
+    await page.screenshot({ path: `${out}/390x844-mobile.png`, fullPage: true });
+    await page.close();
+  }
+
+  // Admin: login, anuncio y flechas remotas
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.goto('http://localhost:4179/admin');
+    await page.waitForSelector('#admin');
+    await page.waitForTimeout(400);
+    await page.fill('input[type="password"]', 'incorrecta');
+    await page.click('button[type="submit"]');
+    await page.waitForTimeout(400);
+    const err = await page.evaluate(() => document.body.innerText);
+    if (!/incorrecta|clave/i.test(err)) problems.push('admin: no rechazó la clave incorrecta');
+    await page.fill('input[type="password"]', 'admin');
+    await page.click('button[type="submit"]');
+    await page.waitForSelector('textarea[name="announcement"]', { timeout: 5000 });
+    await page.fill('textarea[name="announcement"]', '¡Sorteo desde e2e!');
+    await page.click('button.save');
+    await page.waitForTimeout(500);
+    await page.click('button.cmd-next');
+    await page.waitForTimeout(300);
+    const set = await page.evaluate(async () => (await fetch('/api/settings')).json());
+    if (set.announcement !== '¡Sorteo desde e2e!') problems.push(`admin: anuncio no guardado (${set.announcement})`);
+    if (set.command?.action !== 'next' || !(set.command?.seq >= 1)) problems.push(`admin: comando remoto no guardado (${JSON.stringify(set.command)})`);
+    await page.screenshot({ path: `${out}/admin-panel.png` });
+
+    const totem = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await totem.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, publicUrl: 'https://totem.lacrypta.ar/', settingsPollMs: 500, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await totem.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
+    await totem.goto('http://localhost:4179/');
+    await totem.waitForTimeout(2500);
+    const saw = await totem.evaluate(() => document.body.innerText.includes('¡Sorteo desde e2e!'));
+    // force anuncio scene via arrows if needed
+    let found = saw;
+    for (let i = 0; i < 6 && !found; i++) {
+      await totem.keyboard.press('ArrowRight');
+      await totem.waitForTimeout(400);
+      found = await totem.evaluate(() => document.body.innerText.includes('¡Sorteo desde e2e!'));
+    }
+    if (!found) problems.push('admin: el anuncio no llegó al tótem');
+    await totem.screenshot({ path: `${out}/totem-anuncio-remoto.png` });
+    // remote next: set seq then see scene change
+    const before = await totem.evaluate(() => document.getElementById('scene')?.className);
+    await page.click('button.cmd-next');
+    await totem.waitForTimeout(2000);
+    const after = await totem.evaluate(() => document.getElementById('scene')?.className);
+    if (before === after) problems.push(`admin: flecha remota no cambió la escena (${before})`);
+    await page.close();
+    await totem.close();
+  }
+
   // Estados vacíos: store vacío, se recorren todas las escenas con →
   const empties = [
     ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
     ['latestZaps', 'Todavía no hay zaps'],
     ['top10Historico', 'Todavía no hay zaps en este período'],
     ['top10Ultimas3h', 'Todavía no hay zaps en este período'],
+    ['anuncio', 'Sin anuncios por ahora'],
   ];
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
