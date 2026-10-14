@@ -358,12 +358,14 @@ try {
     await page.fill('textarea[name="announcement"]', '¡Sorteo desde e2e!');
     if (await page.$('input[name="dur-video"]')) problems.push('admin: no debe haber duración para el video');
     await page.fill('input[name="dur-post"]', '20');
+    if (!(await page.$('input[name="videoEveryCycles"]'))) problems.push('admin: falta el campo videoEveryCycles');
+    else await page.fill('input[name="videoEveryCycles"]', '3');
     await page.click('button.save');
     await page.waitForFunction(() => document.querySelector('.status')?.textContent, null, { timeout: 5000 }).catch(() => {});
     const status = await page.evaluate(() => document.querySelector('.status')?.textContent ?? '');
     if (status !== 'Guardado') problems.push(`admin: Guardar respondió "${status}"`);
     const saved = await page.evaluate(async () => (await fetch('/api/settings')).json());
-    if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
+    if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000 || saved.videoEveryCycles !== 3) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
     await page.click('button.cmd-next');
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());

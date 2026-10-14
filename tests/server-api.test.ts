@@ -106,6 +106,16 @@ describe('PUT /api/settings (requiere sesión)', () => {
       expect((await handle(req('PUT', '/api/settings', bad, { cookie }), d)).status, JSON.stringify(bad)).toBe(400);
     expect((await handle(req('GET', '/api/settings'), d)).body).toEqual(DEFAULT_SETTINGS);
   });
+  it('videoEveryCycles: entero de 1 a 10, se guarda y se lee', async () => {
+    const d = deps();
+    const { cookie } = await login(d);
+    for (const bad of [0, 11, 2.5, '3', null])
+      expect((await handle(req('PUT', '/api/settings', { videoEveryCycles: bad }, { cookie }), d)).status, String(bad)).toBe(400);
+    expect((await handle(req('PUT', '/api/settings', { videoEveryCycles: 3 }, { cookie }), d)).status).toBe(200);
+    expect(((await handle(req('GET', '/api/settings'), d)).body as { videoEveryCycles?: number }).videoEveryCycles).toBe(3);
+    await handle(req('PUT', '/api/settings', { announcement: 'x' }, { cookie }), d);
+    expect(((await handle(req('GET', '/api/settings'), d)).body as { videoEveryCycles?: number }).videoEveryCycles).toBe(3);
+  });
   it('comandos remotos ← → con secuencia creciente', async () => {
     const d = deps();
     const { cookie } = await login(d);

@@ -190,4 +190,13 @@ describe('Rotator: escenas cada N vueltas (everyCycles)', () => {
     r.next();
     expect(root.textContent).toBe('v');
   });
+  it('setEveryCycles cambia N en caliente (N=1 = todas las vueltas)', () => {
+    const a = mk('a'), v = mk('v', 1000, { everyCycles: 2 });
+    const r = new Rotator(root, [a.s, v.s]);
+    r.setEveryCycles('v', 1);
+    r.start();
+    const seen: string[] = [root.textContent!];
+    for (let i = 0; i < 4; i++) { vi.advanceTimersByTime(1000); seen.push(root.textContent!); }
+    expect(seen).toEqual(['a', 'v', 'a', 'v', 'a']);
+  });
 });

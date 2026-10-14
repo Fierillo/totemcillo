@@ -10,9 +10,9 @@ const setup = (responses: unknown[]) => {
     if (r === 'bad') return { ok: false, json: async () => ({}) };
     return { ok: true, json: async () => r };
   });
-  const nav = { next: vi.fn(), prev: vi.fn(), setDuration: vi.fn() };
+  const nav = { next: vi.fn(), prev: vi.fn(), setDuration: vi.fn(), setEveryCycles: vi.fn() };
   const announcement = new Announcement('de config');
-  const remote = createRemote({ fetchFn: fetchFn as unknown as typeof fetch, nav, announcement, baseDurations: { post: 15000, latestZaps: 12000 } });
+  const remote = createRemote({ fetchFn: fetchFn as unknown as typeof fetch, nav, announcement, baseDurations: { post: 15000, latestZaps: 12000 }, baseVideoEveryCycles: 2 });
   return { fetchFn, nav, announcement, remote };
 };
 
@@ -42,6 +42,16 @@ describe('createRemote (polling de /api/settings)', () => {
     nav.setDuration.mockClear();
     await remote.poll();
     expect(nav.setDuration).toHaveBeenCalledWith('post', 15000);
+  });
+  it('aplica videoEveryCycles del admin (1–10); sin valor o inválido vuelve al de config', async () => {
+    const { nav, remote } = setup([settings(0, null, { videoEveryCycles: 4 }), settings(0, null, { videoEveryCycles: 99 }), settings(0, null)]);
+    await remote.poll();
+    expect(nav.setEveryCycles).toHaveBeenLastCalledWith('video', 4);
+    await remote.poll();
+    expect(nav.setEveryCycles).toHaveBeenLastCalledWith('video', 2);
+    nav.setEveryCycles.mockClear();
+    await remote.poll();
+    expect(nav.setEveryCycles).not.toHaveBeenCalled();
   });
   it('anuncio vacío en el server = sin anuncio', async () => {
     const { announcement, remote } = setup([settings(0, null, { announcement: '' })]);
