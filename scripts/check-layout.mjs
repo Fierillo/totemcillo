@@ -360,16 +360,36 @@ try {
     await page.fill('input[name="dur-post"]', '20');
     if (!(await page.$('input[name="videoEveryCycles"]'))) problems.push('admin: falta el campo videoEveryCycles');
     else await page.fill('input[name="videoEveryCycles"]', '3');
+    const clipShown = () => page.evaluate(() => { const i = document.querySelector('input[name="videoClipSeconds"]'); const l = i?.closest('label'); return !!l && l.offsetParent !== null && getComputedStyle(l).display !== 'none' && !l.hidden; });
+    if (await clipShown()) problems.push('admin: "Largo del clip" visible con modo full');
     if (!(await page.$('select[name="videoMode"]'))) problems.push('admin: falta el select videoMode');
     else await page.selectOption('select[name="videoMode"]', 'clip');
     if (!(await page.$('input[name="videoClipSeconds"]'))) problems.push('admin: falta el campo videoClipSeconds');
     else await page.fill('input[name="videoClipSeconds"]', '30');
+    if (!(await clipShown())) problems.push('admin: "Largo del clip" oculto con modo clip');
     await page.click('button.save');
     await page.waitForFunction(() => document.querySelector('.status')?.textContent, null, { timeout: 5000 }).catch(() => {});
     const status = await page.evaluate(() => document.querySelector('.status')?.textContent ?? '');
     if (status !== 'Guardado') problems.push(`admin: Guardar respondió "${status}"`);
     const saved = await page.evaluate(async () => (await fetch('/api/settings')).json());
     if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000 || saved.videoEveryCycles !== 3 || saved.videoMode !== 'clip' || saved.videoClipSeconds !== 30) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
+    // modo full: se oculta en vivo, guardar conserva videoClipSeconds, y al recargar sigue oculto; con clip vuelve a verse
+    const saveAndReload = async () => {
+      await page.evaluate(() => { document.querySelector('.status').textContent = ''; });
+      await page.click('button.save');
+      await page.waitForFunction(() => document.querySelector('.status')?.textContent, null, { timeout: 5000 }).catch(() => {});
+      await page.reload();
+      await page.waitForSelector('select[name="videoMode"]', { timeout: 5000 });
+    };
+    await page.selectOption('select[name="videoMode"]', 'full');
+    if (await clipShown()) problems.push('admin: "Largo del clip" no se ocultó al elegir full');
+    await saveAndReload();
+    const keep = await page.evaluate(async () => (await fetch('/api/settings')).json());
+    if (keep.videoMode !== 'full' || keep.videoClipSeconds !== 30) problems.push(`admin: guardar con full no conservó videoClipSeconds (${JSON.stringify(keep)})`);
+    if (await clipShown()) problems.push('admin: "Largo del clip" visible al cargar con full');
+    await page.selectOption('select[name="videoMode"]', 'clip');
+    await saveAndReload();
+    if (!(await clipShown())) problems.push('admin: "Largo del clip" oculto al cargar con clip');
     await page.click('button.cmd-next');
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());
