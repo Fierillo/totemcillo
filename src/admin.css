@@ -13,3 +13,15 @@ button.logout, button.cmd-prev, button.cmd-next { background: #2a3324; color: va
 .err { color: var(--err); margin: 0; }
 .status { color: var(--muted); min-height: 1.2em; margin: 0; }
 small { color: var(--muted); }
+/* Panel en tarjetas: una columna en celular, varias lado a lado en pantallas anchas */
+.cards { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.card { display: grid; gap: .8rem; align-content: start; min-width: 0; }
+select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
+@media (min-width: 900px) {
+  .panel:has(.cards) { width: min(1200px, calc(100vw - 4rem)); padding: 2rem; }
+  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "remote remote"; }
+  .card { background: #11150f; border: 1px solid #262d21; border-radius: .75rem; padding: 1.25rem; }
+  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-remote { grid-area: remote; }
+  .card-dur fieldset { border: 0; padding: 0; }
+  .card-remote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+}

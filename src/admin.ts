@@ -23,18 +23,20 @@ async function panel() {
   const s = (await (await api('/api/settings')).json()) as Settings;
   const durs = { ...DEFAULT_SCENE_MS, ...s.sceneDurations };
   root.innerHTML = `<section class="panel"><header><h1>Admin · Totemcillo</h1><button type="button" class="logout">Salir</button></header>
-    <label>Anuncio <textarea name="announcement" maxlength="${LIMITS.maxAnnouncement}" rows="4">${s.announcement.replace(/</g, '&lt;')}</textarea>
-    <small>${s.announcement.length}/${LIMITS.maxAnnouncement}</small></label>
-    <fieldset><legend>Duración de cada escena (segundos)</legend>
+    <div class="cards">
+    <section class="card card-anuncio"><label>Anuncio <textarea name="announcement" maxlength="${LIMITS.maxAnnouncement}" rows="4">${s.announcement.replace(/</g, '&lt;')}</textarea>
+    <small>${s.announcement.length}/${LIMITS.maxAnnouncement}</small></label></section>
+    <section class="card card-dur"><fieldset><legend>Duración de cada escena (segundos)</legend>
       ${SCENES.map((n) => `<label>${n} <input type="number" name="dur-${n}" min="${LIMITS.minMs / 1000}" max="${LIMITS.maxMs / 1000}" step="1" value="${Math.round((durs[n] ?? 21000) / 1000)}" /></label>`).join('')}
-    </fieldset>
-    <label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
+    </fieldset></section>
+    <section class="card card-video"><label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
     <label>Modo del video <select name="videoMode">${(['full', 'clip'] as const).map((m) => `<option value="${m}"${(s.videoMode ?? 'full') === m ? ' selected' : ''}>${m === 'full' ? 'Completo (desde 0)' : 'Clip al azar'}</option>`).join('')}</select></label>
-    <label>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label>
-    <div class="row"><button type="button" class="save">Guardar</button>
+    <label>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label></section>
+    <section class="card card-remote"><div class="row"><button type="button" class="save">Guardar</button>
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
       <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
-    <p class="status"></p></section>`;
+    <p class="status"></p></section>
+    </div></section>`;
   const status = root.querySelector('.status')!;
   const say = (t: string) => { status.textContent = t; };
   root.querySelector('.logout')!.addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); loginForm(); });
