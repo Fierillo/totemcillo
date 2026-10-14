@@ -38,7 +38,8 @@
     "latestZaps": 12000,
     "top10Historico": 12000,
     "top10Ultimas3h": 12000,
-    "anuncio": 10000
+    "anuncio": 10000,
+    "video": 30000
   },
   "talks": [
     {
@@ -59,5 +60,6 @@
   "topRecentHours": 3,
   "keyboardNav": true,
   "publicUrl": "",
-  "settingsPollMs": 4000
+  "settingsPollMs": 4000,
+  "videoSrc": "/video/totem-video.mp4"
 }

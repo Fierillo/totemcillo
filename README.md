@@ -30,6 +30,7 @@ El historial de posts y zaps se guarda en `localStorage` del navegador.
 - ✅ Últimos zaps
 - ✅ Top 10 histórico y Top 10 últimas 3 h
 - ✅ Anuncio: lo edita el admin; siempre está en la rotación (sin texto muestra "Sin anuncios por ahora")
+- ✅ Video: `videoSrc` de `public/config.json` (por defecto `/video/totem-video.mp4`), a pantalla completa, mudo y en loop; 30 s por defecto, editable desde /admin. Los `.mp4` de `public/video/` no van a git (copialos a mano o usá una URL externa).
 - 🚧 Próximas charlas
 
 ## Celular

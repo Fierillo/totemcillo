@@ -19,6 +19,8 @@ export interface Config {
   publicUrl: string;
   /** Cada cuánto el tótem consulta /api/settings (ms). */
   settingsPollMs: number;
+  /** Video de la escena de video (vacío = estado vacío). */
+  videoSrc: string;
 }
 
 export const defaultConfig: Config = {
@@ -34,6 +36,7 @@ export const defaultConfig: Config = {
   keyboardNav: true,
   publicUrl: '',
   settingsPollMs: 4000,
+  videoSrc: '/video/totem-video.mp4',
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {

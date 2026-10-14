@@ -7,6 +7,7 @@ import { latestZapsScene } from './latestZaps';
 import { top10HistoricoScene } from './top10Historico';
 import { top10Ultimas3hScene } from './top10Ultimas3h';
 import { anuncioScene } from './anuncio';
+import { videoScene } from './video';
 import { DEFAULT_SCENE_MS } from '../../server/settings';
 
 export const DEFAULT_DURATIONS = DEFAULT_SCENE_MS;
@@ -20,5 +21,6 @@ export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement
     top10HistoricoScene(store, d.top10Historico),
     top10Ultimas3hScene(store, d.top10Ultimas3h, cfg.topRecentHours),
     anuncioScene(ann, d.anuncio),
+    videoScene(cfg.videoSrc, d.video),
   ];
 }
