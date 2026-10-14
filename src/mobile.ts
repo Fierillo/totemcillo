@@ -18,6 +18,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
       const uri = noteUri(s.post!, cfg.relays, 'nostr:{nevent}');
       const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');
       return `<article class="m-post">
+        <div class="m-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="muted">${ago(s.post!.created_at)}</span></div>
         <p class="m-excerpt">${esc(s.post!.content)}</p>
         <div class="m-total">⚡ ${sats(s.msats)} sats</div>
         ${uri && web ? `<div class="m-actions"><a class="zap-btn" href="${esc(uri)}">⚡ Zapear</a><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}

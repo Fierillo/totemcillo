@@ -26,7 +26,7 @@ El historial de posts y zaps se guarda en `localStorage` del navegador.
 
 ## Escenas
 
-- ✅ Posts: lista de los 6 más nuevos (más nuevo arriba, siempre igual para los mismos datos): cada fila muestra el mensaje y el total de sats acumulados. Al costado (abajo en vertical) **un único QR** con la URL de la app para abrirla en el celu.
+- ✅ Posts: lista de los 6 más nuevos (más nuevo arriba, siempre igual para los mismos datos): cada fila muestra autor, hace cuánto, el mensaje y el total de sats acumulados (sin los mensajes de los zaps). Al costado (abajo en vertical) **un único QR** con la URL de la app para abrirla en el celu.
 - ✅ Últimos zaps
 - ✅ Top 10 histórico y Top 10 últimas 3 h
 - ✅ Anuncio: lo edita el admin; siempre está en la rotación (sin texto muestra "Sin anuncios por ahora")

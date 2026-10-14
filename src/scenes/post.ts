@@ -3,7 +3,7 @@ import type { Scene } from '../rotator';
 import type { PostStats, ZapStore } from '../nostr/store';
 import { live } from './live';
 import { fitRegions } from '../fit';
-import { esc, sats } from '../util';
+import { ago, esc, sats, shortKey } from '../util';
 
 export interface PostSceneOptions { publicUrl: string }
 
@@ -18,9 +18,15 @@ export function recentPosts(store: ZapStore, n = MAX_POSTS): PostStats[] {
     .slice(0, n);
 }
 
-const row = (s: PostStats) => `<li class="post-row"><p class="excerpt" data-clip>${esc(s.post!.content)}</p><div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div></li>`;
+const row = (s: PostStats) => `<li class="post-row">
+      <div class="row-main">
+        <div class="row-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="ago muted">${ago(s.post!.created_at)}</span></div>
+        <p class="excerpt" data-clip>${esc(s.post!.content)}</p>
+      </div>
+      <div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div>
+    </li>`;
 
-/** Escena de posts: lista determinística (mensaje + total) + un único QR a la app. */
+/** Escena de posts: lista determinística (autor, hora, mensaje y total) + un único QR a la app. */
 export function postScene(store: ZapStore, duration: number, opts: PostSceneOptions = { publicUrl: `${globalThis.location?.origin ?? ''}/` }): Scene {
   let qrHtml = '';
   const qr = () => (qrHtml ||= `<aside class="qr-box"><figure class="qr" data-uri="${esc(opts.publicUrl)}">${renderSVG(opts.publicUrl, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' })}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`);
