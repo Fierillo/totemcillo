@@ -23,8 +23,6 @@ async function panel() {
   const s = (await (await api('/api/settings')).json()) as Settings;
   const durs = { ...DEFAULT_SCENE_MS, ...s.sceneDurations };
   root.innerHTML = `<section class="panel"><header><h1>Admin · Totemcillo</h1><button type="button" class="logout">Salir</button></header>
-    <figure class="live"><figcaption>En pantalla ahora</figcaption>
-      <div class="live-box"><iframe class="live-preview" src="/?preview=1" title="Vista previa del tótem" tabindex="-1" loading="lazy"></iframe></div></figure>
     <label>Anuncio <textarea name="announcement" maxlength="${LIMITS.maxAnnouncement}" rows="4">${s.announcement.replace(/</g, '&lt;')}</textarea>
     <small>${s.announcement.length}/${LIMITS.maxAnnouncement}</small></label>
     <fieldset><legend>Duración de cada escena (segundos)</legend>
@@ -37,10 +35,6 @@ async function panel() {
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
       <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
     <p class="status"></p></section>`;
-  const box = root.querySelector('.live-box') as HTMLElement;
-  const fit = () => box.style.setProperty('--s', String(box.clientWidth / 1280));
-  fit();
-  new ResizeObserver(fit).observe(box);
   const status = root.querySelector('.status')!;
   const say = (t: string) => { status.textContent = t; };
   root.querySelector('.logout')!.addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); loginForm(); });

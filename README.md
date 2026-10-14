@@ -33,8 +33,6 @@ El historial de posts y zaps se guarda en `localStorage` del navegador.
 - ✅ Video: `videoSrc` de `public/config.json` (por defecto `/video/totem-video.webm`, VP9), a pantalla completa y mudo. Arranca siempre desde 0 y la escena dura lo que dura el video (sin timer ni duración en /admin); las flechas y el control remoto lo pueden saltear. La rotación automática lo muestra una de cada `videoEveryCycles` vueltas (por defecto 2, editable desde /admin entre 1 y 10); con las flechas o el control remoto siempre llegás a él. `videoMode` (por defecto `full`): `full` lo pasa entero desde 0; `clip` pasa `videoClipSeconds` segundos (por defecto 21) desde un punto al azar, sin quedarse nunca corto; si el video dura eso o menos, va entero desde 0. Los tres se editan desde /admin. Si el video falla o no arranca, sigue solo a los pocos segundos. Los videos de `public/video/` no van a git (copialos a mano o usá una URL externa).
 - 🚧 Próximas charlas
 
-- ✅ Miniatura en vivo en /admin: el tótem reporta su escena (y el segundo del video) a `/api/state` cada 2 s, y el admin muestra un iframe chiquito de `/?preview=1` que la sigue (no rota, no reporta, no ejecuta comandos).
-
 ## Celular
 
 Misma ruta `/`. Con pantalla angosta (≤ 700 px) no rota: muestra todo apilado y scrolleable (anuncio, posts, últimos zaps, tops), sin QR, y cada post tiene un botón **⚡ Zapear** (`nostr:nevent…`, abre tu cliente Nostr) y el link alternativo a njump.me.

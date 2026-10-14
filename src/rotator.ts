@@ -21,18 +21,7 @@ export class Rotator {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private cleanup: (() => void) | void = undefined;
 
-  /** `auto: false` = vista previa: no avanza sola ni por `done`; se maneja con showIndex. */
-  constructor(private root: HTMLElement, private scenes: Scene[], private opts: { auto?: boolean } = {}) {}
-
-  /** Escena que se está mostrando. */
-  current(): { index: number; scene: string | null } {
-    return { index: this.idx, scene: this.scenes[this.idx]?.name ?? null };
-  }
-
-  /** Muestra la escena de ese índice (si existe). */
-  showIndex(i: number) {
-    if (Number.isInteger(i) && i >= 0 && i < this.scenes.length) this.show(i);
-  }
+  constructor(private root: HTMLElement, private scenes: Scene[]) {}
 
   start() { this.show(0); }
 
@@ -107,10 +96,9 @@ export class Rotator {
     this.root.className = `scene scene-${scene.name}`;
     this.root.innerHTML = '';
     const token = ++this.token;
-    const auto = this.opts.auto !== false;
-    const advance = () => { if (auto && token === this.token) this.show(this.autoNext()); };
+    const advance = () => { if (token === this.token) this.show(this.autoNext()); };
     this.cleanup = scene.render(this.root, advance);
-    if (auto && !scene.untilDone) this.timer = setTimeout(advance, scene.duration);
+    if (!scene.untilDone) this.timer = setTimeout(advance, scene.duration);
   }
 
   /** Próximo índice de la rotación automática, salteando escenas que no tocan en esta vuelta. */
