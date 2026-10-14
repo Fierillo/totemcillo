@@ -2,14 +2,15 @@ import type { Scene } from '../rotator';
 import { esc } from '../util';
 
 export const EMPTY_VIDEO = 'Sin video configurado';
-export interface VideoOptions { errorDelayMs?: number; startTimeoutMs?: number }
+export interface VideoOptions { errorDelayMs?: number; startTimeoutMs?: number; everyCycles?: number }
 
 /** Escena de video: pantalla completa y mudo, una vez desde 0; avisa `done` al terminar (o si falla). */
-export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 10000 }: VideoOptions = {}): Scene {
+export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 10000, everyCycles = 2 }: VideoOptions = {}): Scene {
   return {
     name: 'video',
     duration: 0,
     untilDone: true,
+    everyCycles,
     render(root, done = () => {}) {
       let finished = false;
       const timers: ReturnType<typeof setTimeout>[] = [];

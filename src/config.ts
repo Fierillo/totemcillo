@@ -21,6 +21,8 @@ export interface Config {
   settingsPollMs: number;
   /** Video de la escena de video; se pasa a la siguiente escena cuando termina (vacío = estado vacío). */
   videoSrc: string;
+  /** El video aparece en la rotación automática una de cada N vueltas. */
+  videoEveryCycles: number;
 }
 
 export const defaultConfig: Config = {
@@ -37,6 +39,7 @@ export const defaultConfig: Config = {
   publicUrl: '',
   settingsPollMs: 4000,
   videoSrc: '/video/totem-video.webm',
+  videoEveryCycles: 2,
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {

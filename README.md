@@ -30,7 +30,7 @@ El historial de posts y zaps se guarda en `localStorage` del navegador.
 - ✅ Últimos zaps
 - ✅ Top 10 histórico y Top 10 últimas 3 h
 - ✅ Anuncio: lo edita el admin; siempre está en la rotación (sin texto muestra "Sin anuncios por ahora")
-- ✅ Video: `videoSrc` de `public/config.json` (por defecto `/video/totem-video.webm`, VP9), a pantalla completa y mudo. Arranca siempre desde 0 y la escena dura lo que dura el video (sin timer ni duración en /admin); las flechas y el control remoto lo pueden saltear. Si el video falla o no arranca, sigue solo a los pocos segundos. Los videos de `public/video/` no van a git (copialos a mano o usá una URL externa).
+- ✅ Video: `videoSrc` de `public/config.json` (por defecto `/video/totem-video.webm`, VP9), a pantalla completa y mudo. Arranca siempre desde 0 y la escena dura lo que dura el video (sin timer ni duración en /admin); las flechas y el control remoto lo pueden saltear. La rotación automática lo muestra una de cada `videoEveryCycles` vueltas (por defecto 2); con las flechas o el control remoto siempre llegás a él. Si el video falla o no arranca, sigue solo a los pocos segundos. Los videos de `public/video/` no van a git (copialos a mano o usá una URL externa).
 - 🚧 Próximas charlas
 
 ## Celular

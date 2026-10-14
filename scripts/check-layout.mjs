@@ -315,8 +315,7 @@ try {
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoEveryCycles: 2, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000, sceneDurations: { post: 400, latestZaps: 400, top10Historico: 400, top10Ultimas3h: 400, anuncio: 400 } } }));
     await page.addInitScript(() => {
       window.__seq = [];
-      new MutationObserver(() => { const c = document.getElementById('scene')?.className.replace('scene scene-', ''); if (c && window.__seq.at(-1) !== c) window.__seq.push(c); })
-        .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      setInterval(() => { const c = document.getElementById('scene')?.className.replace('scene scene-', ''); if (c && c !== 'scene' && window.__seq.at(-1) !== c) window.__seq.push(c); }, 50);
     });
     await page.goto('http://localhost:4179/');
     await page.waitForTimeout(11000);

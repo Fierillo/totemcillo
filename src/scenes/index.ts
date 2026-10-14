@@ -21,6 +21,6 @@ export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement
     top10HistoricoScene(store, d.top10Historico),
     top10Ultimas3hScene(store, d.top10Ultimas3h, cfg.topRecentHours),
     anuncioScene(ann, d.anuncio),
-    videoScene(cfg.videoSrc),
+    videoScene(cfg.videoSrc, { everyCycles: cfg.videoEveryCycles }),
   ];
 }

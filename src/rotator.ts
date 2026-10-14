@@ -4,6 +4,8 @@ export interface Scene {
   duration: number;
   /** Si es true, la escena no usa `duration`: termina cuando llama a `done`. */
   untilDone?: boolean;
+  /** Si es > 1, la rotación automática la muestra sólo una de cada N vueltas (las flechas siempre llegan). */
+  everyCycles?: number;
   /** Dibuja la escena (incluido su estado vacío); devuelve la limpieza. */
   render: (root: HTMLElement, done?: () => void) => void | (() => void);
 }
@@ -12,6 +14,7 @@ export interface Scene {
 export class Rotator {
   private idx = -1;
   private token = 0;
+  private cycle = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private cleanup: (() => void) | void = undefined;
 
@@ -22,6 +25,11 @@ export class Rotator {
   /** Cambia la duración de las escenas con ese nombre (rige desde la próxima vez que se muestren). */
   setDuration(name: string, ms: number) {
     for (const s of this.scenes) if (s.name === name) s.duration = ms;
+  }
+
+  /** Cambia cada cuántas vueltas aparecen las escenas con ese nombre. */
+  setEveryCycles(name: string, n: number) {
+    for (const s of this.scenes) if (s.name === name) s.everyCycles = n;
   }
 
   stop() {
@@ -77,9 +85,22 @@ export class Rotator {
     this.root.className = `scene scene-${scene.name}`;
     this.root.innerHTML = '';
     const token = ++this.token;
-    const advance = () => { if (token === this.token) this.show(this.wrap(this.idx + 1)); };
+    const advance = () => { if (token === this.token) this.show(this.autoNext()); };
     this.cleanup = scene.render(this.root, advance);
     if (!scene.untilDone) this.timer = setTimeout(advance, scene.duration);
+  }
+
+  /** Próximo índice de la rotación automática, salteando escenas que no tocan en esta vuelta. */
+  private autoNext(): number {
+    const n = this.scenes.length;
+    let i = this.idx;
+    for (let k = 0; k < n; k++) {
+      i = this.wrap(i + 1);
+      if (i === 0) this.cycle++;
+      const every = this.scenes[i].everyCycles ?? 1;
+      if (every <= 1 || this.cycle % every === 0) return i;
+    }
+    return this.wrap(this.idx + 1);
   }
 
   private runCleanup() { this.cleanup?.(); this.cleanup = undefined; }
