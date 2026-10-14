@@ -269,30 +269,58 @@ try {
     }
     await page.close();
   }
-  // Escena de video: pantalla completa, en loop, reproduciendo
+  // Escena de video: pantalla completa, desde 0, sin loop; la escena termina cuando termina el video
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000, video: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, videoSrc: '/video/totem-video.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
     await page.goto('http://localhost:4179/');
     await page.waitForSelector('.scene-post');
     await page.keyboard.press('ArrowLeft');
     await page.waitForSelector('.scene-video video', { timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(2500);
-    const v = await page.evaluate(() => {
+    const probe = () => page.evaluate(() => {
       const el = document.querySelector('.scene-video video');
       if (!el) return null;
       const r = el.getBoundingClientRect(), m = document.getElementById('scene').getBoundingClientRect();
-      return { loop: el.loop, muted: el.muted, paused: el.paused, t: el.currentTime, fit: getComputedStyle(el).objectFit, w: r.width, h: r.height, mw: m.width, mh: m.height, bg: getComputedStyle(document.getElementById('scene')).backgroundColor };
+      return { loop: el.loop || el.hasAttribute('loop'), muted: el.muted, paused: el.paused, t: el.currentTime, d: el.duration, fit: getComputedStyle(el).objectFit, w: r.width, h: r.height, mw: m.width, mh: m.height, bg: getComputedStyle(document.getElementById('scene')).backgroundColor };
     });
+    const v = await probe();
     if (!v) problems.push(`${w}x${h} video: no hay <video>`);
     else {
-      if (!v.loop || !v.muted) problems.push(`${w}x${h} video: loop/muted ${v.loop}/${v.muted}`);
-      if (v.paused || v.t <= 0) problems.push(`${w}x${h} video: no se reproduce (paused ${v.paused}, t ${v.t})`);
+      if (v.loop || !v.muted) problems.push(`${w}x${h} video: loop/muted ${v.loop}/${v.muted}`);
+      if (v.paused || v.t <= 0 || v.t > 4) problems.push(`${w}x${h} video: no arranca desde 0 o no se reproduce (paused ${v.paused}, t ${v.t})`);
       if (v.fit !== 'contain') problems.push(`${w}x${h} video: object-fit ${v.fit}`);
       if (Math.abs(v.w - v.mw) > 2 || Math.abs(v.h - v.mh) > 2) problems.push(`${w}x${h} video: no ocupa la escena (${v.w}x${v.h} vs ${v.mw}x${v.mh})`);
       if (v.bg !== 'rgb(0, 0, 0)') problems.push(`${w}x${h} video: fondo ${v.bg}`);
+      await page.waitForTimeout(4000);
+      await page.screenshot({ path: `${out}/${w}x${h}-video.png` });
+      // salir y volver: arranca de nuevo desde 0
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(300);
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(1500);
+      const again = await probe();
+      if (!again || again.t > 3) problems.push(`${w}x${h} video: al volver no arranca desde 0 (t ${again?.t})`);
+      // cerca del final: al terminar pasa a la escena siguiente (post), no por timer
+      await page.evaluate(() => { const el = document.querySelector('.scene-video video'); el.currentTime = Math.max(0, el.duration - 1); });
+      await page.waitForTimeout(3500);
+      const cls = await page.evaluate(() => document.getElementById('scene').className);
+      if (cls !== 'scene scene-post') problems.push(`${w}x${h} video: al terminar no pasó a la siguiente escena (${cls})`);
     }
-    await page.screenshot({ path: `${out}/${w}x${h}-video.png` });
+    await page.close();
+  }
+  // Video roto: el tótem no se traba
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, videoSrc: '/video/no-existe.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForSelector('.scene-post');
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(500);
+    const at = await page.evaluate(() => document.getElementById('scene').className);
+    await page.waitForTimeout(5000);
+    const after = await page.evaluate(() => document.getElementById('scene').className);
+    if (at !== 'scene scene-video' || after !== 'scene scene-post') problems.push(`video roto: ${at} → ${after} (debía seguir solo)`);
     await page.close();
   }
 
@@ -312,6 +340,7 @@ try {
     await page.click('button[type="submit"]');
     await page.waitForSelector('textarea[name="announcement"]', { timeout: 5000 });
     await page.fill('textarea[name="announcement"]', '¡Sorteo desde e2e!');
+    if (await page.$('input[name="dur-video"]')) problems.push('admin: no debe haber duración para el video');
     await page.fill('input[name="dur-post"]', '20');
     await page.click('button.save');
     await page.waitForFunction(() => document.querySelector('.status')?.textContent, null, { timeout: 5000 }).catch(() => {});

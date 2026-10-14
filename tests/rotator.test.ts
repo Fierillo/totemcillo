@@ -139,3 +139,31 @@ describe('Rotator.setDuration (cambio remoto de tiempos)', () => {
     expect(root.textContent).toBe('b');
   });
 });
+
+describe('Rotator: escenas que terminan solas (untilDone)', () => {
+  const selfTimed = () => {
+    let done: (() => void) | undefined;
+    const cleanup = vi.fn();
+    const s: Scene = { name: 'v', duration: 1000, untilDone: true, render: vi.fn((r: HTMLElement, d?: () => void) => { r.textContent = 'v'; done = d; return cleanup; }) };
+    return { s, cleanup, done: () => done?.() };
+  };
+  it('no avanza por tiempo; avanza cuando la escena llama done', () => {
+    const a = mk('a'), v = selfTimed();
+    new Rotator(root, [v.s, a.s]).start();
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(root.textContent).toBe('v');
+    v.done();
+    expect(root.textContent).toBe('a');
+    expect(v.cleanup).toHaveBeenCalledOnce();
+  });
+  it('las flechas la saltean igual y un done viejo no hace nada', () => {
+    const a = mk('a'), b = mk('b'), v = selfTimed();
+    const r = new Rotator(root, [v.s, a.s, b.s]);
+    r.start();
+    const staleDone = v.done;
+    r.next();
+    expect(root.textContent).toBe('a');
+    staleDone();
+    expect(root.textContent).toBe('a');
+  });
+});
