@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
-import { postScene, MAX_POSTS, ZAPS_PER_POST, QR_CAPTION } from '../src/scenes/post';
+import { postScene, MAX_POSTS, QR_CAPTION } from '../src/scenes/post';
 import { sats } from '../src/util';
 import { buildScenes } from '../src/scenes';
 import { defaultConfig, publicUrlOf } from '../src/config';
@@ -43,26 +43,21 @@ describe('postScene: lista vertical de posts recientes', () => {
     expect(b.innerHTML).toBe(a.innerHTML);
     expect(c.innerHTML).toBe(a.innerHTML);
   });
-  it('cada fila: autor, hace cuánto, extracto escapado, total y los últimos 2 zaps', () => {
+  it('cada fila: sólo el mensaje (escapado) y el total acumulado; sin autor, hora ni zaps', () => {
     const store = new ZapStore();
     store.addPost({ id: 'a', pubkey: 'a'.repeat(64), content: 'Hola <b>mundo</b>', created_at: 1 });
     store.addPost({ id: 'b', pubkey: 'b'.repeat(64), content: 'Segundo', created_at: 2 });
-    for (let i = 0; i < 4; i++) store.addZap({ id: `z${i}`, postId: 'a', sender: 's'.repeat(64), msats: 1_000_000, comment: `c${i}`, created_at: 10 + i });
+    for (let i = 0; i < 4; i++) store.addZap({ id: `z${i}`, postId: 'a', sender: 's'.repeat(64), msats: 1_000_000, comment: `comentario${i}`, created_at: 10 + i });
     const root = document.createElement('div');
     postScene(store, 1, { publicUrl: URL_ }).render(root);
     const [b, a] = [...root.querySelectorAll<HTMLElement>('.post-row')];
     expect(a.querySelector('.excerpt')!.textContent).toBe('Hola <b>mundo</b>');
-    expect(a.querySelector('.excerpt')!.hasAttribute('data-clip')).toBe(true);
     expect(a.querySelector('.excerpt b')).toBeNull();
-    expect(a.querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
-    expect(a.querySelector('.ago')!.textContent).toMatch(/^hace/);
     expect(a.querySelector('.row-total')!.textContent).toContain(sats(4_000_000));
-    expect(ZAPS_PER_POST).toBe(2);
-    const z = [...a.querySelectorAll('.row-zaps li')].map((l) => l.textContent);
-    expect(z).toHaveLength(2);
-    expect(z[0]).toContain('c3');
-    expect(z[1]).toContain('c2');
-    expect(b.querySelector('.row-zaps')!.textContent).toContain('¡Sé el primero!');
+    expect(b.querySelector('.row-total')!.textContent).toContain('0');
+    expect([...a.children].map((c) => c.className)).toEqual(['excerpt', 'row-total']);
+    expect(root.textContent).not.toContain('comentario');
+    expect(root.querySelector('.author, .ago, .row-zaps')).toBeNull();
   });
   it('un solo QR en la escena, con la URL pública de la app (no por post)', () => {
     const root = document.createElement('div');
@@ -84,7 +79,7 @@ describe('postScene: lista vertical de posts recientes', () => {
     store.addPost({ id: hex(10), pubkey: 'a'.repeat(64), content: 'otro', created_at: 1000 });
     expect(excerpts(root)[0]).toBe('nuevo');
   });
-  it('escapa pubkeys/senders maliciosos', () => {
+  it('no inyecta HTML de pubkeys/senders maliciosos', () => {
     const store = new ZapStore();
     const root = document.createElement('div');
     store.addPost({ id: 'x', pubkey: '<img src=x onerror=alert(1)>', content: 'hola', created_at: 1 });
@@ -92,7 +87,6 @@ describe('postScene: lista vertical de posts recientes', () => {
     postScene(store, 1, { publicUrl: URL_ }).render(root);
     expect(root.querySelector('img')).toBeNull();
     expect(root.querySelectorAll('svg')).toHaveLength(1);
-    expect(root.querySelector('.author')!.textContent).toContain('<img');
   });
 });
 

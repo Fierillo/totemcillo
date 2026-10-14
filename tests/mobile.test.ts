@@ -32,6 +32,9 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     const posts = root.querySelectorAll('.m-post');
     expect(posts).toHaveLength(3);
     expect(posts[0].querySelector('.m-excerpt')!.textContent).toBe('post <i>1</i>');
+    expect(posts[0].querySelector('.m-total')!.textContent).toContain('21');
+    expect(posts[0].querySelector('.m-meta, .m-zaps')).toBeNull();
+    expect(posts[0].textContent).not.toContain('genial');
     const btn = posts[0].querySelector<HTMLAnchorElement>('a.zap-btn')!;
     expect(btn.textContent).toContain('Zapear');
     expect(btn.getAttribute('href')).toMatch(/^nostr:nevent1/);

@@ -63,7 +63,8 @@ function check(scene) {
     if (!rows.length) P.push('no hay filas de posts');
     rows.forEach((row, i) => {
       inside(`fila ${i}`, row, list);
-      for (const sel of ['.author', '.ago', '.excerpt', '.row-total']) if (!row.querySelector(sel)) P.push(`fila ${i}: falta ${sel}`);
+      for (const sel of ['.excerpt', '.row-total']) if (!row.querySelector(sel)) P.push(`fila ${i}: falta ${sel}`);
+      if (row.querySelector('.author, .ago, .row-zaps')) P.push(`fila ${i}: muestra autor/hora/zaps (sólo mensaje y total)`);
       const excerpt = row.querySelector('.excerpt');
       const chars = excerpt ? [...new Intl.Segmenter().segment(excerpt.textContent)].length : 0;
       if (chars > 210) P.push(`fila ${i}: extracto con ${chars} caracteres (> 210)`);
@@ -228,6 +229,7 @@ try {
     const m = await page.evaluate(() => ({
       qr: document.querySelectorAll('figure.qr').length,
       posts: document.querySelectorAll('.m-post').length,
+      extra: document.querySelectorAll('.m-post .m-meta, .m-post .m-zaps').length,
       zaps: [...document.querySelectorAll('a.zap-btn')].map((a) => a.getAttribute('href')),
       alts: [...document.querySelectorAll('a.zap-alt')].map((a) => a.getAttribute('href')),
       scroll: document.documentElement.scrollHeight > innerHeight,
@@ -235,6 +237,7 @@ try {
     }));
     if (m.qr) problems.push(`móvil: hay ${m.qr} QRs`);
     if (m.posts < 3) problems.push(`móvil: sólo ${m.posts} posts`);
+    if (m.extra) problems.push('móvil: los posts muestran autor/hora/zaps');
     if (m.zaps.length < 3 || m.zaps.some((h) => !h?.startsWith('nostr:nevent'))) problems.push('móvil: faltan botones Zapear nostr:');
     if (m.alts.length < 3 || m.alts.some((h) => !h?.startsWith('https://njump.me/'))) problems.push('móvil: faltan links njump');
     if (!m.scroll) problems.push('móvil: la página no scrollea');
