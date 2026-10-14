@@ -1,11 +1,17 @@
 /** Medición inyectable (happy-dom no tiene layout). */
 export interface Measurer {
+  /** Entra sin desbordar ni recortar líneas [data-clip]. */
   fits(el: HTMLElement): boolean;
+  /** Sólo la caja (recorte horizontal con … permitido); por defecto = fits. */
+  fitsBox?(el: HTMLElement): boolean;
   setSize(el: HTMLElement, px: number): void;
 }
 
+const boxFits = (el: HTMLElement) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1;
+
 export const domMeasurer: Measurer = {
-  fits: (el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1,
+  fitsBox: boxFits,
+  fits: (el) => boxFits(el) && [...el.querySelectorAll<HTMLElement>('[data-clip]')].every((c) => c.scrollWidth <= c.clientWidth + 1),
   setSize: (el, px) => { el.style.fontSize = `${px}px`; },
 };
 
@@ -49,15 +55,19 @@ export function fitList(ul: HTMLElement, { max, min }: FitRange, m: Measurer = d
     m.setSize(ul, size);
     return { size, removed: 0 };
   }
+  // Ni en el mínimo entran completos: mínimo (… como último recurso) y sólo se sacan items si no entran en alto.
   m.setSize(ul, Math.ceil(min));
+  const boxOk = (el: HTMLElement) => (m.fitsBox ?? m.fits)(el);
   let removed = 0;
-  while (!m.fits(ul) && ul.children.length > 1) { ul.lastElementChild!.remove(); removed++; }
+  while (!boxOk(ul) && ul.children.length > 1) { ul.lastElementChild!.remove(); removed++; }
   return { size: Math.ceil(min), removed };
 }
-/** Ajusta todos los elementos [data-fit="text|list"] (data-max en vh, data-min en px). */
-export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight) {
+/** Ajusta los [data-fit="text|list"]: data-max en vh, data-maxw (opcional) en vw, data-min en px. */
+export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight, vw = window.innerWidth) {
   root.querySelectorAll<HTMLElement>('[data-fit]').forEach((el) => {
-    const range = { max: (Number(el.dataset.max) * vh) / 100, min: Number(el.dataset.min ?? 12) };
+    let max = (Number(el.dataset.max) * vh) / 100;
+    if (el.dataset.maxw) max = Math.min(max, (Number(el.dataset.maxw) * vw) / 100);
+    const range = { max, min: Number(el.dataset.min ?? 12) };
     if (el.dataset.fit === 'list') fitList(el, range, m);
     else fitText(el, range, m);
   });
