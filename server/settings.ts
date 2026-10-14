@@ -6,6 +6,8 @@ export interface Settings {
   command: { seq: number; action: Action | null };
 }
 export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } };
+/** Duraciones por defecto de cada escena (ms). */
+export const DEFAULT_SCENE_MS: Record<string, number> = { post: 15000, latestZaps: 12000, top10Historico: 12000, top10Ultimas3h: 12000, anuncio: 10000 };
 export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000 };
 
 export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action }

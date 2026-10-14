@@ -15,6 +15,10 @@ export interface Config {
   topRecentHours: number;
   /** Flechas ←/→ para cambiar de escena (desactivar en el evento si molesta). */
   keyboardNav: boolean;
+  /** URL que codifica el QR del tótem (vacío = origin de la página). */
+  publicUrl: string;
+  /** Cada cuánto el tótem consulta /api/settings (ms). */
+  settingsPollMs: number;
 }
 
 export const defaultConfig: Config = {
@@ -28,6 +32,8 @@ export const defaultConfig: Config = {
   postMaxAgeHours: 24,
   topRecentHours: 3,
   keyboardNav: true,
+  publicUrl: '',
+  settingsPollMs: 4000,
 };
 
 export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config> {
@@ -40,3 +46,6 @@ export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config>
     return defaultConfig;
   }
 }
+
+/** URL pública de la app para el QR. */
+export const publicUrlOf = (cfg: Config, origin: string) => cfg.publicUrl || `${origin.replace(/\/+$/, '')}/`;

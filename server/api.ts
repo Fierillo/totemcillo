@@ -23,6 +23,13 @@ async function readSettings(d: Deps): Promise<Settings> {
   return s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS;
 }
 
+function cookieFlags(req: ApiRequest, maxAge: number): string {
+  const host = (req.headers.host ?? '').split(':')[0];
+  const https = (req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https'
+    || (!['localhost', '127.0.0.1'].includes(host) && host.endsWith('.vercel.app'));
+  return `HttpOnly; Path=/; SameSite=Strict; Max-Age=${maxAge}${https ? '; Secure' : ''}`;
+}
+
 export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
   const route = `${req.method} ${req.path.replace(/\/+$/, '')}`;
   switch (route) {
@@ -43,10 +50,10 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       const pass = (req.body as { password?: unknown } | null)?.password;
       if (!passwordMatches(pass, d.env.ADMIN_PASSWORD!)) return json(401, { error: 'clave incorrecta' });
       const token = signSession(d.env.SESSION_SECRET!, d.now(), SESSION_TTL);
-      return json(200, { ok: true }, { 'set-cookie': `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL}` });
+      return json(200, { ok: true }, { 'set-cookie': `${COOKIE}=${token}; ${cookieFlags(req, SESSION_TTL)}` });
     }
     case 'POST /api/logout':
-      return json(200, { ok: true }, { 'set-cookie': `${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0` });
+      return json(200, { ok: true }, { 'set-cookie': `${COOKIE}=; ${cookieFlags(req, 0)}` });
     case 'GET /api/session':
       return json(200, { authed: authed(req, d) });
   }

@@ -1,0 +1,15 @@
+:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --err: #ff6b6b; }
+* { box-sizing: border-box; }
+body.admin { margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; display: grid; place-items: start center; padding: 2rem 1rem; }
+.panel { width: min(560px, 100%); background: var(--card); border-radius: 1rem; padding: 1.5rem; display: grid; gap: 1rem; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+h1 { margin: 0; color: var(--accent); font-size: 1.4rem; }
+label { display: grid; gap: .35rem; }
+textarea, input[type="password"], input[type="number"] { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
+fieldset { border: 1px solid #333; border-radius: .75rem; padding: .8rem 1rem; display: grid; gap: .6rem; }
+.row { display: flex; gap: .6rem; flex-wrap: wrap; }
+button { background: var(--accent); color: #0b0d0a; border: 0; border-radius: .5rem; padding: .6rem 1rem; font: inherit; font-weight: 700; cursor: pointer; }
+button.logout, button.cmd-prev, button.cmd-next { background: #2a3324; color: var(--fg); }
+.err { color: var(--err); margin: 0; }
+.status { color: var(--muted); min-height: 1.2em; margin: 0; }
+small { color: var(--muted); }

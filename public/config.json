@@ -37,7 +37,8 @@
     "post": 15000,
     "latestZaps": 12000,
     "top10Historico": 12000,
-    "top10Ultimas3h": 12000
+    "top10Ultimas3h": 12000,
+    "anuncio": 10000
   },
   "talks": [
     {
@@ -56,5 +57,7 @@
   "postMaxChars": 210,
   "postMaxAgeHours": 24,
   "topRecentHours": 3,
-  "keyboardNav": true
+  "keyboardNav": true,
+  "publicUrl": "",
+  "settingsPollMs": 4000
 }

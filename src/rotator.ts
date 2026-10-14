@@ -16,6 +16,11 @@ export class Rotator {
 
   start() { this.show(0); }
 
+  /** Cambia la duración de las escenas con ese nombre (rige desde la próxima vez que se muestren). */
+  setDuration(name: string, ms: number) {
+    for (const s of this.scenes) if (s.name === name) s.duration = ms;
+  }
+
   stop() {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;

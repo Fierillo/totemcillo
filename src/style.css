@@ -17,28 +17,55 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .empty-msg { align-self: center; justify-self: center; max-width: 100%; max-height: 100%; min-height: 0; overflow: hidden;
   text-align: center; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
 
-/* Escena post: grilla de tarjetas (1 destacada con QR + 4) */
-.scene-post { display: grid; grid-template-rows: minmax(0, 1fr); }
-.post-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1em; min-width: 0; min-height: 0; }
-.post-grid[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
-.post-grid[data-n="2"], .post-grid[data-n="3"] { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
-.card { background: var(--card); border-radius: 1em; padding: .9em 1em; min-width: 0; min-height: 0; overflow: hidden;
-  display: grid; grid-template-rows: auto minmax(0, 3fr) minmax(0, 2fr) auto; gap: .5em; border-left: .25em solid #333; }
-.card.featured { grid-row: span 2; border-left-color: var(--accent); }
-.post-grid[data-n="2"] .card:not(.featured) { grid-row: span 2; }
-.card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1em; min-width: 0; overflow: hidden; }
-.author { color: var(--accent); font-weight: 700; flex: 1; min-width: 0; line-height: 1.4; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.card-head .muted { flex: 0 0 auto; white-space: nowrap; }
-.card-body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: .6em; min-width: 0; min-height: 0; overflow: hidden; }
-.card-content { min-width: 0; min-height: 0; height: 100%; overflow: hidden; line-height: 1.25; white-space: pre-wrap; overflow-wrap: anywhere; }
-.qr { justify-self: center; width: min(26vh, 15vw); background: #fff; padding: .4em; border-radius: .5em; text-align: center; overflow: hidden; }
+/* Escena post: lista + QR a la app */
+.scene-post { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); gap: 1.2em; align-items: stretch; }
+.posts, .empty-state { min-width: 0; min-height: 0; overflow: hidden; }
+.post-list { list-style: none; min-height: 0; overflow: hidden; height: 100%; }
+.post-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8em; align-items: start; padding: .55em 0; border-bottom: 1px solid #222; min-width: 0; }
+.row-main { min-width: 0; overflow: hidden; }
+.row-meta { display: flex; justify-content: space-between; gap: 1em; min-width: 0; }
+.row-meta .author { color: var(--accent); font-weight: 700; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.excerpt { min-width: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.row-zaps { list-style: none; color: var(--muted); font-size: .85em; min-width: 0; overflow: hidden; }
+.row-zaps li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-zaps b { color: var(--accent); }
+.row-total { color: var(--accent); font-weight: 900; white-space: nowrap; text-align: right; line-height: 1.2; }
+.row-total small { font-weight: 700; font-size: .7em; color: var(--muted); }
+.qr-box { align-self: end; }
+.qr { width: min(28vh, 18vw); background: #fff; padding: .45em; border-radius: .5em; text-align: center; overflow: hidden; }
 .qr svg { display: block; width: 100%; height: auto; shape-rendering: crispEdges; }
-.qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.8vh, 26px); margin-top: .2em; white-space: nowrap; }
-.card-zaps { list-style: none; min-height: 0; overflow: hidden; }
-.card-zaps li { padding: .2em 0; border-bottom: 1px solid #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-zaps b { color: var(--accent); }
-.card-total { font-size: 1.4em; font-weight: 900; color: var(--accent); line-height: 1.35; white-space: nowrap; overflow: hidden; }
-.featured .card-total { font-size: clamp(20px, 4.5vh, 72px); }
+.qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.6vh, 22px); margin-top: .25em; line-height: 1.2; }
+
+@media (orientation: portrait) {
+  .scene-post { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .qr { width: min(22vh, 42vw); justify-self: center; }
+}
+
+/* Anuncio */
+.scene-anuncio { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.anuncio-msg { min-width: 0; min-height: 0; overflow: hidden; text-align: center; align-self: center; justify-self: center;
+  max-width: 100%; color: var(--fg); line-height: 1.3; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Móvil: misma ruta, scrolleable */
+html.is-mobile, html.is-mobile body { height: auto !important; min-height: 100%; overflow: auto !important; cursor: auto; }
+html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display: block; }
+.is-mobile { display: block; }
+.is-mobile .topbar, .is-mobile .footer { position: sticky; top: 0; z-index: 2; background: var(--bg); }
+.is-mobile .footer { top: auto; bottom: 0; }
+.is-mobile .mobile { display: block; padding: 1rem; overflow: visible; animation: none; }
+.m-section { margin-bottom: 1.5rem; }
+.m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
+.m-post { background: var(--card); border-radius: .8rem; padding: .9rem 1rem; margin-bottom: .8rem; border-left: .25em solid var(--accent); }
+.m-meta { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; font-size: .9rem; }
+.m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: .5rem; }
+.m-total { color: var(--accent); font-weight: 800; margin-bottom: .35rem; }
+.m-zaps, .m-list { list-style: none; padding: 0; margin: 0; }
+.m-zaps li, .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
+.m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
+.zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; }
+.zap-alt { color: var(--muted); font-size: .85rem; }
+.m-empty, .m-anuncio { color: var(--muted); }
+.m-anuncio { color: var(--fg); font-size: 1.1rem; white-space: pre-wrap; }
 
 /* Escena últimos zaps */
 .scene-latestZaps { display: grid; grid-template-rows: auto minmax(0, 1fr); }
@@ -50,14 +77,6 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .who small { display: block; color: var(--muted); font-size: .7em; overflow: hidden; text-overflow: ellipsis; }
 .zap-list li > .muted { white-space: nowrap; }
 
-@media (orientation: portrait) {
-  .post-grid, .post-grid[data-n="2"], .post-grid[data-n="3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); }
-  .post-grid[data-n="1"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
-  .card.featured { grid-row: auto; grid-column: 1 / -1; }
-  .post-grid[data-n="2"] .card:not(.featured) { grid-row: span 2; grid-column: 1 / -1; }
-  .featured .card-body { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
-  .qr { width: min(15vh, 30vw); align-self: start; }
-}
 
 /* Escenas Top 10 */
 .scene-top10Historico, .scene-top10Ultimas3h { display: grid; grid-template-rows: auto minmax(0, 1fr); }

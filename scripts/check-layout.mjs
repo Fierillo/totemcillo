@@ -243,6 +243,27 @@ try {
     await page.close();
   }
 
+  // Estados vacíos: store vacío, se recorren todas las escenas con →
+  const empties = [
+    ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
+    ['latestZaps', 'Todavía no hay zaps'],
+    ['top10Historico', 'Todavía no hay zaps en este período'],
+    ['top10Ultimas3h', 'Todavía no hay zaps en este período'],
+    ['anuncio', 'Sin anuncios por ahora'],
+  ];
+  for (const [w, h] of viewports) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForTimeout(800);
+    for (const [scene, expected] of empties) {
+      await page.waitForTimeout(700);
+      problems.push(...(await page.evaluate(checkEmpty, [scene, expected])).map((p) => `${w}x${h} vacío ${scene}: ${p}`));
+      await page.screenshot({ path: `${out}/${w}x${h}-empty-${scene}.png` });
+      await page.keyboard.press('ArrowRight');
+    }
+    await page.close();
+  }
   // Admin: login, anuncio y flechas remotas
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -252,18 +273,23 @@ try {
     await page.fill('input[type="password"]', 'incorrecta');
     await page.click('button[type="submit"]');
     await page.waitForTimeout(400);
-    const err = await page.evaluate(() => document.body.innerText);
-    if (!/incorrecta|clave/i.test(err)) problems.push('admin: no rechazó la clave incorrecta');
+    const err = await page.evaluate(async () => ({ msg: document.querySelector('.err')?.textContent ?? '', authed: (await (await fetch('/api/session')).json()).authed }));
+    if (!/incorrecta/i.test(err.msg) || err.authed) problems.push(`admin: no rechazó la clave incorrecta (${JSON.stringify(err)})`);
+    await page.screenshot({ path: `${out}/admin-login-error.png` });
     await page.fill('input[type="password"]', 'admin');
     await page.click('button[type="submit"]');
     await page.waitForSelector('textarea[name="announcement"]', { timeout: 5000 });
     await page.fill('textarea[name="announcement"]', '¡Sorteo desde e2e!');
+    await page.fill('input[name="dur-post"]', '20');
     await page.click('button.save');
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => document.querySelector('.status')?.textContent, null, { timeout: 5000 }).catch(() => {});
+    const status = await page.evaluate(() => document.querySelector('.status')?.textContent ?? '');
+    if (status !== 'Guardado') problems.push(`admin: Guardar respondió "${status}"`);
+    const saved = await page.evaluate(async () => (await fetch('/api/settings')).json());
+    if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
     await page.click('button.cmd-next');
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());
-    if (set.announcement !== '¡Sorteo desde e2e!') problems.push(`admin: anuncio no guardado (${set.announcement})`);
     if (set.command?.action !== 'next' || !(set.command?.seq >= 1)) problems.push(`admin: comando remoto no guardado (${JSON.stringify(set.command)})`);
     await page.screenshot({ path: `${out}/admin-panel.png` });
 
@@ -292,27 +318,6 @@ try {
     await totem.close();
   }
 
-  // Estados vacíos: store vacío, se recorren todas las escenas con →
-  const empties = [
-    ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
-    ['latestZaps', 'Todavía no hay zaps'],
-    ['top10Historico', 'Todavía no hay zaps en este período'],
-    ['top10Ultimas3h', 'Todavía no hay zaps en este período'],
-    ['anuncio', 'Sin anuncios por ahora'],
-  ];
-  for (const [w, h] of viewports) {
-    const page = await browser.newPage({ viewport: { width: w, height: h } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
-    await page.goto('http://localhost:4179/');
-    await page.waitForTimeout(800);
-    for (const [scene, expected] of empties) {
-      await page.waitForTimeout(700);
-      problems.push(...(await page.evaluate(checkEmpty, [scene, expected])).map((p) => `${w}x${h} vacío ${scene}: ${p}`));
-      await page.screenshot({ path: `${out}/${w}x${h}-empty-${scene}.png` });
-      await page.keyboard.press('ArrowRight');
-    }
-    await page.close();
-  }
 } finally {
   await browser.close();
   server.httpServer.close();

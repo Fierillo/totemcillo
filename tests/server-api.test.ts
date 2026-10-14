@@ -30,13 +30,18 @@ describe('POST /api/login', () => {
     expect(r.status).toBe(401);
     expect(r.headers['set-cookie']).toBeUndefined();
   });
-  it('clave correcta → cookie de sesión HttpOnly, Secure, SameSite=Strict y vencimiento corto', async () => {
+  it('clave correcta → cookie de sesión HttpOnly, SameSite=Strict y vencimiento corto', async () => {
     const { r } = await login(deps());
     expect(r.status).toBe(200);
     const c = String(r.headers['set-cookie']);
     expect(c).toMatch(/^totem_session=[^;]+\.[^;]+;/);
-    for (const flag of ['HttpOnly', 'Secure', 'SameSite=Strict', 'Path=/', 'Max-Age=3600']) expect(c).toContain(flag);
+    for (const flag of ['HttpOnly', 'SameSite=Strict', 'Path=/', 'Max-Age=3600']) expect(c).toContain(flag);
+    expect(c).not.toContain('Secure'); // localhost sobre HTTP
     expect(JSON.stringify(r.body)).not.toContain(PASS);
+  });
+  it('en HTTPS marca la cookie Secure', async () => {
+    const r = await handle(req('POST', '/api/login', { password: PASS }, { 'x-forwarded-proto': 'https' }), deps());
+    expect(String(r.headers['set-cookie'])).toContain('Secure');
   });
   it('sin ADMIN_PASSWORD o SESSION_SECRET (o secreto corto) responde 503: falla cerrado', async () => {
     for (const env of [{ SESSION_SECRET: 's'.repeat(32) }, { ADMIN_PASSWORD: PASS }, { ADMIN_PASSWORD: PASS, SESSION_SECRET: 'corto' }])
