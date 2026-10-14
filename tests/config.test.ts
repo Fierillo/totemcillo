@@ -58,3 +58,16 @@ describe('config.json publicada', () => {
     expect(shipped.relays).toContain('wss://relay-nwc.rizful.com');
   });
 });
+
+describe('cobertura de relays', () => {
+  it('trae entre 25 y 35 relays wss únicos', () => {
+    const r = shipped.relays;
+    expect(r.length).toBeGreaterThanOrEqual(25);
+    expect(r.length).toBeLessThanOrEqual(35);
+    expect(new Set(r).size).toBe(r.length);
+    for (const u of r) expect(u).toMatch(/^wss:\/\/[a-z0-9.-]+\/?$/);
+  });
+  it('quita los relays caídos', () => {
+    for (const dead of ['wss://relay.snort.social', 'wss://yabu.me']) expect(shipped.relays).not.toContain(dead);
+  });
+});
