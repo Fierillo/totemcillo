@@ -20,13 +20,13 @@ Hacé doble click en la pantalla para pasar a fullscreen (o usá el modo kiosko 
 
 ## Configuración
 
-Editá `public/config.json`: relays, hashtags, duración de escenas (ms), cuántos posts por ciclo, lista de charlas y texto de anuncio. No hace falta recompilar si lo cambiás en el deploy.
+Editá `public/config.json`: relays, hashtags, duración de escenas (ms), lista de charlas y texto de anuncio. No hace falta recompilar si lo cambiás en el deploy.
 
 El historial de posts y zaps se guarda en `localStorage` del navegador.
 
 ## Escenas
 
-- ✅ Post con su lista de zaps (rota entre posts)
+- ✅ Posts: grilla con los 5 más nuevos (el más nuevo destacado con QR), cada uno con autor, extracto, total y últimos 3 zaps
 - ✅ Últimos zaps
 - 🚧 Top 10 histórico, top 10 últimas 3h, próximas charlas, anuncio (stubs en `src/scenes/`)
 
@@ -53,4 +53,4 @@ Todo se desarrolla con TDD estricto: primero un test que falla (commit `test: ..
 
 ## QR de cada post
 
-Cada post muestra un QR con `noteUriTemplate` de `public/config.json` (`{nevent}` se reemplaza por el nevent con id, autor y 2 relays). Por defecto `nostr:{nevent}` (abre el cliente Nostr del celu); alternativa: `https://njump.me/{nevent}`.
+El post destacado (el más nuevo) muestra un QR con `noteUriTemplate` de `public/config.json` (`{nevent}` se reemplaza por el nevent con id, autor y 2 relays). Por defecto `nostr:{nevent}` (abre el cliente Nostr del celu); alternativa: `https://njump.me/{nevent}`.

@@ -3,7 +3,6 @@ export interface Config {
   relays: string[];
   hashtags: string[];
   sceneDurations: Record<string, number>;
-  postsPerCycle: number;
   talks: Talk[];
   announcement: string;
   /** URI del QR de cada post; {nevent} se reemplaza. Ej: 'https://njump.me/{nevent}'. */
@@ -22,7 +21,6 @@ export const defaultConfig: Config = {
   relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'],
   hashtags: ['lacrypta', 'labitconf'],
   sceneDurations: { post: 15000, latestZaps: 12000 },
-  postsPerCycle: 3,
   talks: [],
   announcement: '',
   noteUriTemplate: 'nostr:{nevent}',

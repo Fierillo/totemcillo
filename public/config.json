@@ -39,7 +39,6 @@
     "top10Historico": 12000,
     "top10Ultimas3h": 12000
   },
-  "postsPerCycle": 3,
   "talks": [
     {
       "time": "11:00",

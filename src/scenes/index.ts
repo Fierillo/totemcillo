@@ -9,11 +9,10 @@ import { top10Ultimas3hScene } from './top10Ultimas3h';
 /** Escenas activas. TODO: proximasCharlas, anuncio. */
 export function buildScenes(cfg: Config, store: ZapStore): Scene[] {
   const d = cfg.sceneDurations;
-  const scenes = Array.from({ length: cfg.postsPerCycle }, () => postScene(store, d.post ?? 15000, { relays: cfg.relays, template: cfg.noteUriTemplate }));
-  scenes.push(
+  return [
+    postScene(store, d.post ?? 15000, { relays: cfg.relays, template: cfg.noteUriTemplate }),
     latestZapsScene(store, d.latestZaps ?? 12000),
     top10HistoricoScene(store, d.top10Historico ?? 12000),
     top10Ultimas3hScene(store, d.top10Ultimas3h ?? 12000, cfg.topRecentHours),
-  );
-  return scenes;
+  ];
 }
