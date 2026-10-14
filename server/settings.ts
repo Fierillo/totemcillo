@@ -4,13 +4,15 @@ export interface Settings {
   announcement: string;
   sceneDurations: Record<string, number>;
   command: { seq: number; action: Action | null };
+  /** El video aparece una de cada N vueltas (si falta, rige config.json). */
+  videoEveryCycles?: number;
 }
 export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } };
 /** Duraciones por defecto de cada escena (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000 };
+export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number }
 
 /** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
 export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok: false; error: string } {
@@ -38,6 +40,12 @@ export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok:
     if (b.command !== 'next' && b.command !== 'prev') return { ok: false, error: 'comando inválido' };
     patch.command = b.command;
   }
+  if ('videoEveryCycles' in b) {
+    const n = b.videoEveryCycles;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < LIMITS.minEveryCycles || n > LIMITS.maxEveryCycles)
+      return { ok: false, error: `videoEveryCycles debe ser un entero de ${LIMITS.minEveryCycles} a ${LIMITS.maxEveryCycles}` };
+    patch.videoEveryCycles = n;
+  }
   return { ok: true, patch };
 }
 
@@ -46,5 +54,6 @@ export function applyPatch(s: Settings, p: Patch): Settings {
     announcement: p.announcement ?? s.announcement,
     sceneDurations: p.sceneDurations ? { ...s.sceneDurations, ...p.sceneDurations } : s.sceneDurations,
     command: p.command ? { seq: s.command.seq + 1, action: p.command } : s.command,
+    ...((p.videoEveryCycles ?? s.videoEveryCycles) !== undefined ? { videoEveryCycles: p.videoEveryCycles ?? s.videoEveryCycles } : {}),
   };
 }

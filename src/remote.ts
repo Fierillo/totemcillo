@@ -1,7 +1,7 @@
 import type { Announcement } from './announcement';
 
-export interface RemoteNav { next(): void; prev(): void; setDuration(name: string, ms: number): void }
-export interface RemoteOptions { fetchFn?: typeof fetch; nav: RemoteNav; announcement: Announcement; baseDurations: Record<string, number> }
+export interface RemoteNav { next(): void; prev(): void; setDuration(name: string, ms: number): void; setEveryCycles(name: string, n: number): void }
+export interface RemoteOptions { fetchFn?: typeof fetch; nav: RemoteNav; announcement: Announcement; baseDurations: Record<string, number>; baseVideoEveryCycles: number }
 
 const MIN = 3000, MAX = 120000;
 const validMs = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= MIN && v <= MAX;
@@ -11,6 +11,7 @@ export function createRemote(o: RemoteOptions) {
   const fetchFn = o.fetchFn ?? fetch;
   let lastSeq: number | null = null;
   const applied: Record<string, number> = {};
+  let appliedEvery: number | null = null;
 
   async function poll(): Promise<void> {
     try {
@@ -24,6 +25,9 @@ export function createRemote(o: RemoteOptions) {
         const v = validMs(remote[name]) ? remote[name] : o.baseDurations[name];
         if (v !== undefined && applied[name] !== v) { applied[name] = v; o.nav.setDuration(name, v); }
       }
+      const ev = s.videoEveryCycles;
+      const every = typeof ev === 'number' && Number.isInteger(ev) && ev >= 1 && ev <= 10 ? ev : o.baseVideoEveryCycles;
+      if (every !== appliedEvery) { appliedEvery = every; o.nav.setEveryCycles('video', every); }
       const c = s.command;
       if (c && Number.isInteger(c.seq)) {
         if (lastSeq === null || c.seq < lastSeq) lastSeq = c.seq;

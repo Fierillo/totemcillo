@@ -100,7 +100,7 @@ describe('PUT /api/settings (requiere sesión)', () => {
   it('valida: anuncio ≤ 280, duraciones entre 3 y 120 s, escenas conocidas', async () => {
     const d = deps();
     const { cookie } = await login(d);
-    expect(LIMITS).toEqual({ maxAnnouncement: 280, minMs: 3000, maxMs: 120000 });
+    expect(LIMITS).toEqual({ maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10 });
     for (const bad of [{ announcement: 'x'.repeat(281) }, { announcement: 5 }, { sceneDurations: { post: 2999 } }, { sceneDurations: { post: 120001 } },
       { sceneDurations: { post: '10000' } }, { sceneDurations: { hackeo: 5000 } }, { sceneDurations: { video: 30000 } }, { command: 'reboot' }, [], null])
       expect((await handle(req('PUT', '/api/settings', bad, { cookie }), d)).status, JSON.stringify(bad)).toBe(400);

@@ -28,6 +28,7 @@ async function panel() {
     <fieldset><legend>Duración de cada escena (segundos)</legend>
       ${SCENES.map((n) => `<label>${n} <input type="number" name="dur-${n}" min="${LIMITS.minMs / 1000}" max="${LIMITS.maxMs / 1000}" step="1" value="${Math.round((durs[n] ?? 21000) / 1000)}" /></label>`).join('')}
     </fieldset>
+    <label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
     <div class="row"><button type="button" class="save">Guardar</button>
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
       <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
@@ -42,7 +43,7 @@ async function panel() {
       const sec = Number((root.querySelector(`[name="dur-${n}"]`) as HTMLInputElement).value);
       sceneDurations[n] = Math.round(sec * 1000);
     }
-    const r = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ announcement, sceneDurations }) });
+    const r = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ announcement, sceneDurations, videoEveryCycles: Number((root.querySelector('[name="videoEveryCycles"]') as HTMLInputElement).value) }) });
     say(r.ok ? 'Guardado' : `Error: ${(await r.json().catch(() => ({}))).error || r.status}`);
   });
   for (const [sel, command] of [['.cmd-next', 'next'], ['.cmd-prev', 'prev']] as const) {
