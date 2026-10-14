@@ -31,3 +31,19 @@ describe('las escenas ajustan el texto a su región', () => {
     expect(ul.style.fontSize).toMatch(/px$/);
   });
 });
+
+import { top10HistoricoScene } from '../src/scenes/top10Historico';
+
+describe('listas con tope de fuente y mensajes que se priorizan', () => {
+  it('post, últimos zaps y tops: max ≤ 3.2vh, tope en vw y líneas de mensaje marcadas [data-clip]', () => {
+    const s = store();
+    for (const [scene, sel, line] of [[postScene(s, 1), '.zaps ul', '.zaps li'], [latestZapsScene(s, 1), '.zap-list', '.zap-list .who'], [top10HistoricoScene(s, 1), '.top-list', '.top-list .excerpt']] as const) {
+      const root = document.createElement('div');
+      scene.render(root);
+      const ul = root.querySelector<HTMLElement>(sel)!;
+      expect(Number(ul.dataset.max), sel).toBeLessThanOrEqual(3.2);
+      expect(ul.dataset.maxw, sel).toBeTruthy();
+      expect(root.querySelector(line)!.hasAttribute('data-clip'), line).toBe(true);
+    }
+  });
+});

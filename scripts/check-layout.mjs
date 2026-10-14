@@ -145,6 +145,31 @@ try {
       problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
     await page.close();
   }
+  // Zaps reales con comentarios: se ven ≥5 mensajes y los comentarios cortos no se recortan
+  const comments = ['¡Grande La Crypta! 🧡', 'Vamos LABITCONF ⚡⚡', 'Excelente charla, gracias', 'pura vida', 'Zap desde Córdoba', '🔥🔥🔥', 'Nos vemos en el stand', 'Lightning > todo'];
+  const realPost = [{ id: hex(1), pubkey: 'ab'.repeat(32), content: 'Probando #lacrypta con un texto normal de un post', created_at: now - 600 }];
+  const realZaps = comments.map((c, i) => ({ id: hex(500 + i), postId: hex(1), sender: (i + 1).toString().repeat(64), msats: (i + 1) * 21000, comment: c, created_at: now - i * 30 }));
+  for (const [w, h] of viewports) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, postsPerCycle: 1, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: realPost, zaps: realZaps }));
+    await page.goto('http://localhost:4179/');
+    for (const scene of ['post', 'latestZaps']) {
+      await page.waitForTimeout(1200);
+      const r = await page.evaluate(() => {
+        const ul = document.querySelector('#scene ul');
+        const clipped = [...document.querySelectorAll('#scene [data-clip]')].filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => c.textContent.trim().slice(0, 40));
+        return { items: ul ? ul.children.length : 0, font: ul ? parseFloat(ul.style.fontSize) : 0, clipped, vh: innerHeight };
+      });
+      if (r.items < 5) problems.push(`${w}x${h} 8 zaps ${scene}: sólo ${r.items} mensajes visibles`);
+      if (r.font > r.vh * 0.032 + 1) problems.push(`${w}x${h} 8 zaps ${scene}: fuente de lista ${r.font}px > 3.2vh`);
+      if (r.clipped.length) problems.push(`${w}x${h} 8 zaps ${scene}: mensajes recortados: ${r.clipped.join(' | ')}`);
+      await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
+      await page.keyboard.press('ArrowRight');
+    }
+    await page.close();
+  }
+
   // Estados vacíos: store vacío, se recorren todas las escenas con →
   const empties = [
     ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
