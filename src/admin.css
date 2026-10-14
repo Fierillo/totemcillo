@@ -13,3 +13,7 @@ button.logout, button.cmd-prev, button.cmd-next { background: #2a3324; color: va
 .err { color: var(--err); margin: 0; }
 .status { color: var(--muted); min-height: 1.2em; margin: 0; }
 small { color: var(--muted); }
+.live { margin: 0; display: grid; gap: .35rem; }
+.live figcaption { color: var(--muted); font-size: .9rem; }
+.live-box { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: .5rem; background: #000; }
+.live-preview { position: absolute; top: 0; left: 0; width: 1280px; height: 720px; border: 0; transform-origin: 0 0; transform: scale(var(--s, .4)); pointer-events: none; }
