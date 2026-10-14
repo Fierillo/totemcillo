@@ -24,7 +24,7 @@ const zaps = Array.from({ length: 40 }, (_, i) => ({
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
 zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, comment: 'zap a post viejo', created_at: now - 25 * 3600 });
-const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000 }, postsPerCycle: 1, talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
+const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000 } , talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
 
 function check(scene) {
   const P = [];
@@ -55,17 +55,26 @@ function check(scene) {
   disjoint([['topbar', top], ['escena', main], ['footer', foot]]);
   [['topbar', top], ['escena', main], ['footer', foot]].forEach(([n, el]) => inside(n, el, VP));
   if (scene === 'post') {
-    const post = need('.post'), zaps = need('.zaps'), head = need('.post-head'), body = need('.post-body'), total = need('.total');
-    const content = need('.post-content'), qr = need('.qr'), author = need('.author'), ul = need('.zaps ul');
-    inside('post', post, main); inside('zaps', zaps, main); disjoint([['post', post], ['zaps', zaps]]);
-    [['cabecera', head], ['cuerpo', body], ['total', total]].forEach(([n, el]) => inside(n, el, post));
-    disjoint([['cabecera', head], ['cuerpo', body], ['total', total]]);
-    inside('texto', content, body); inside('QR', qr, body); disjoint([['texto', content], ['QR', qr]]);
-    const chars = content ? [...new Intl.Segmenter().segment(content.textContent)].length : 0;
-    if (chars > 210) P.push(`texto del post con ${chars} caracteres (> 210)`);
-    if (content?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
-    noOverflow('texto del post', content); noOverflow('autor', author); noOverflow('lista de zaps', ul); noOverflow('total', total);
-    inside('lista de zaps', ul, zaps); itemsInside('zap', ul);
+    const cards = [...document.querySelectorAll('.card')];
+    if (!cards.length) P.push('no hay tarjetas de posts');
+    cards.forEach((c, i) => inside(`tarjeta ${i}`, c, main));
+    disjoint(cards.map((c, i) => [`tarjeta ${i}`, c]));
+    if (document.querySelectorAll('figure.qr').length !== 1) P.push('tiene que haber exactamente un QR');
+    cards.forEach((card, i) => {
+      const g = (s) => { const el = card.querySelector(s); if (!el) P.push(`tarjeta ${i}: falta ${s}`); return el; };
+      const head = g('.card-head'), body = g('.card-body'), zl = g('.card-zaps'), total = g('.card-total'), content = g('.card-content'), author = g('.author');
+      [['cabecera', head], ['cuerpo', body], ['zaps', zl], ['total', total]].forEach(([n, el]) => inside(`tarjeta ${i} ${n}`, el, card));
+      disjoint([[`t${i} cabecera`, head], [`t${i} cuerpo`, body], [`t${i} zaps`, zl], [`t${i} total`, total]]);
+      inside(`tarjeta ${i} texto`, content, body);
+      const qr = card.querySelector('.qr');
+      if (qr) { inside(`tarjeta ${i} QR`, qr, body); disjoint([[`t${i} texto`, content], [`t${i} QR`, qr]]); if (qr.getBoundingClientRect().width < 120) P.push(`QR demasiado chico (${qr.getBoundingClientRect().width}px)`); }
+      const chars = content ? [...new Intl.Segmenter().segment(content.textContent)].length : 0;
+      if (chars > 210) P.push(`tarjeta ${i}: texto con ${chars} caracteres (> 210)`);
+      if (content?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
+      if (content && parseFloat(content.style.fontSize) < 11) P.push(`tarjeta ${i}: texto ilegible (${content.style.fontSize})`);
+      noOverflow(`t${i} texto`, content); noOverflow(`t${i} autor`, author); noOverflow(`t${i} zaps`, zl); noOverflow(`t${i} total`, total);
+      itemsInside(`t${i} zap`, zl);
+    });
   } else if (scene.startsWith('top')) {
     const h1 = need('h1.top-title'), ol = need('.top-list');
     const expected = scene === 'top10Historico' ? 'Top 10 histórico' : 'Top 10 · últimas 3 horas';
@@ -81,7 +90,7 @@ function check(scene) {
     noOverflow('lista de últimos zaps', ul); itemsInside('último zap', ul);
     if (ul && !ul.children.length) P.push('lista vacía');
   }
-  document.querySelectorAll('.amount, .rank, .total').forEach((el, i) => {
+  document.querySelectorAll('.amount, .rank, .total, .card-total').forEach((el, i) => {
     if (el.scrollWidth > el.clientWidth + 1) P.push(`monto/rank recortado #${i}: "${el.textContent.trim()}"`);
   });
   return P;
@@ -127,7 +136,7 @@ try {
   // Navegación con teclado (activable por config)
   for (const keyboardNav of [true, false]) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, postsPerCycle: 3, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
     await page.goto('http://localhost:4179/');
     await page.waitForSelector('.scene-post');
@@ -151,11 +160,18 @@ try {
   const realZaps = comments.map((c, i) => ({ id: hex(500 + i), postId: hex(1), sender: (i + 1).toString().repeat(64), msats: (i + 1) * 21000, comment: c, created_at: now - i * 30 }));
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, postsPerCycle: 1, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: realPost, zaps: realZaps }));
     await page.goto('http://localhost:4179/');
     for (const scene of ['post', 'latestZaps']) {
       await page.waitForTimeout(1200);
+      if (scene === 'post') {
+        const n = await page.evaluate(() => document.querySelectorAll('.card-zaps li').length);
+        if (n < 3) problems.push(`${w}x${h} 8 zaps post: sólo ${n} zaps en la tarjeta`);
+        await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
+        await page.keyboard.press('ArrowRight');
+        continue;
+      }
       const r = await page.evaluate(() => {
         const ul = document.querySelector('#scene ul');
         const clipped = [...document.querySelectorAll('#scene [data-clip]')].filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => c.textContent.trim().slice(0, 40));
@@ -166,6 +182,34 @@ try {
       if (r.clipped.length) problems.push(`${w}x${h} 8 zaps ${scene}: mensajes recortados: ${r.clipped.join(' | ')}`);
       await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
       await page.keyboard.press('ArrowRight');
+    }
+    await page.close();
+  }
+
+  // 5 posts: se ven ≥3 a la vez y navegar con flechas muestra siempre lo mismo
+  const five = Array.from({ length: 5 }, (_, i) => ({ id: hex(700 + i), pubkey: (i + 1).toString().repeat(64), content: `Post número ${i + 1} sobre #lacrypta y la LABITCONF, con un texto de largo normal para ver cómo entra`, created_at: now - (i + 1) * 300 }));
+  const fiveZaps = five.flatMap((p, i) => Array.from({ length: i + 1 }, (_, j) => ({ id: hex(800 + i * 10 + j), postId: p.id, sender: (j + 1).toString().repeat(64), msats: (j + 1) * 21000, comment: comments[j], created_at: now - j * 20 })));
+  for (const [w, h] of viewports) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
+    await page.goto('http://localhost:4179/');
+    await page.waitForSelector('.scene-post .card');
+    await page.waitForTimeout(1200);
+    const sig = () => page.evaluate(() => {
+      const main = document.getElementById('scene').getBoundingClientRect();
+      const cards = [...document.querySelectorAll('.card')].filter((c) => { const r = c.getBoundingClientRect(); return r.width > 50 && r.height > 50 && r.top >= main.top - 1 && r.bottom <= main.bottom + 1; });
+      return { cls: document.getElementById('scene').className, visible: cards.length, text: cards.map((c) => c.querySelector('.card-content').textContent + '|' + c.querySelector('.card-total').textContent).join('\n') };
+    });
+    problems.push(...(await page.evaluate(check, 'post')).map((p) => `${w}x${h} 5 posts: ${p}`));
+    const first = await sig();
+    if (first.visible < 3) problems.push(`${w}x${h} 5 posts: sólo ${first.visible} posts visibles a la vez`);
+    await page.screenshot({ path: `${out}/${w}x${h}-5posts-post.png` });
+    for (const keys of [['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'], ['ArrowLeft', 'ArrowRight'], ['ArrowRight', 'ArrowLeft']]) {
+      for (const k of keys) { await page.keyboard.press(k); await page.waitForTimeout(150); }
+      await page.waitForTimeout(600);
+      const again = await sig();
+      if (again.cls !== 'scene scene-post' || again.text !== first.text) problems.push(`${w}x${h} 5 posts: tras ${keys.join(',')} cambió el contenido (${again.cls})`);
     }
     await page.close();
   }
