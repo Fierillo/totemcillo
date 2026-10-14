@@ -22,13 +22,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .posts, .empty-state { min-width: 0; min-height: 0; overflow: hidden; }
 .post-list { list-style: none; min-height: 0; overflow: hidden; height: 100%; }
 .post-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8em; align-items: start; padding: .55em 0; border-bottom: 1px solid #222; min-width: 0; }
-.row-main { min-width: 0; overflow: hidden; }
-.row-meta { display: flex; justify-content: space-between; gap: 1em; min-width: 0; }
-.row-meta .author { color: var(--accent); font-weight: 700; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .excerpt { min-width: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
-.row-zaps { list-style: none; color: var(--muted); font-size: .85em; min-width: 0; overflow: hidden; }
-.row-zaps li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-zaps b { color: var(--accent); }
 .row-total { color: var(--accent); font-weight: 900; white-space: nowrap; text-align: right; line-height: 1.2; }
 .row-total small { font-weight: 700; font-size: .7em; color: var(--muted); }
 .qr-box { align-self: end; }
