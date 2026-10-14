@@ -25,3 +25,4 @@ select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #
   .card-dur fieldset { border: 0; padding: 0; }
   .card-remote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 }
+[hidden] { display: none !important; }

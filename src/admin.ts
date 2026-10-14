@@ -31,12 +31,14 @@ async function panel() {
     </fieldset></section>
     <section class="card card-video"><label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
     <label>Modo del video <select name="videoMode">${(['full', 'clip'] as const).map((m) => `<option value="${m}"${(s.videoMode ?? 'full') === m ? ' selected' : ''}>${m === 'full' ? 'Completo (desde 0)' : 'Clip al azar'}</option>`).join('')}</select></label>
-    <label>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label></section>
+    <label class="clip-len"${(s.videoMode ?? 'full') === 'clip' ? '' : ' hidden'}>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label></section>
     <section class="card card-remote"><div class="row"><button type="button" class="save">Guardar</button>
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
       <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
     <p class="status"></p></section>
     </div></section>`;
+  const modeSel = root.querySelector('[name="videoMode"]') as HTMLSelectElement;
+  modeSel.addEventListener('change', () => { (root.querySelector('.clip-len') as HTMLElement).hidden = modeSel.value !== 'clip'; });
   const status = root.querySelector('.status')!;
   const say = (t: string) => { status.textContent = t; };
   root.querySelector('.logout')!.addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); loginForm(); });
