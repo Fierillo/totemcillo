@@ -147,3 +147,26 @@ describe('PUT /api/settings (requiere sesión)', () => {
 it('ruta desconocida → 404', async () => {
   expect((await handle(req('GET', '/api/nada'), deps())).status).toBe(404);
 });
+
+describe('/api/state (estado en vivo del tótem, público)', () => {
+  it('sin reportes → scene null', async () => {
+    const r = await handle(req('GET', '/api/state'), deps());
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ scene: null, index: null, videoTime: null, at: null });
+  });
+  it('POST guarda escena, índice y tiempo de video; GET lo devuelve con la hora', async () => {
+    const d = deps();
+    expect((await handle(req('POST', '/api/state', { scene: 'video', index: 5, videoTime: 12.5 }), d)).status).toBe(200);
+    expect((await handle(req('GET', '/api/state'), d)).body).toEqual({ scene: 'video', index: 5, videoTime: 12.5, at: 1_000_000 });
+    await handle(req('POST', '/api/state', { scene: 'post', index: 0 }), d);
+    expect((await handle(req('GET', '/api/state'), d)).body).toEqual({ scene: 'post', index: 0, videoTime: null, at: 1_000_000 });
+  });
+  it('valida: escena conocida, índice entero 0–50, videoTime ≥ 0; JSON obligatorio', async () => {
+    const d = deps();
+    for (const bad of [{ scene: 'hack', index: 0 }, { scene: 'post', index: -1 }, { scene: 'post', index: 1.5 }, { scene: 'post', index: 99 },
+      { scene: 'video', index: 5, videoTime: -1 }, { scene: 'video', index: 5, videoTime: 'x' }, null, []])
+      expect((await handle(req('POST', '/api/state', bad), d)).status, JSON.stringify(bad)).toBe(400);
+    expect((await handle(req('POST', '/api/state', { scene: 'post', index: 0 }, { 'content-type': 'text/plain' }), d)).status).toBe(415);
+    expect((await handle(req('PUT', '/api/state', {}), d)).status).toBe(405);
+  });
+});
