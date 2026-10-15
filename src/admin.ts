@@ -2,13 +2,14 @@ import './admin.css';
 import { LIMITS, SCENES, DEFAULT_SCENE_MS, type ModAction, type Settings } from '../server/settings';
 import { SimplePool } from 'nostr-tools/pool';
 import { loadConfig, postCutoff } from './config';
-import { ZapStore } from './nostr/store';
-import { startNostr, type PoolLike } from './nostr/pool';
+import { ZapStore, type Moderation } from './nostr/store';
+import { followCutoff, startNostr, type PoolLike } from './nostr/pool';
 import { installAvatarFallback, profiles } from './nostr/profiles';
 import { moderationOf } from './moderation-lists';
 import { renderModeration } from './moderation';
 import { renderProviders } from './providers';
-import { DEFAULT_ZAP_PROVIDERS } from '../server/settings';
+import { DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../server/settings';
+import { fromArInput, toArInput } from './startline';
 
 const root = document.getElementById('admin')!;
 const api = (path: string, init?: RequestInit) => fetch(path, { credentials: 'same-origin', ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
@@ -42,6 +43,8 @@ async function panel() {
     <section class="card card-video"><label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
     <label>Modo del video <select name="videoMode">${(['full', 'clip'] as const).map((m) => `<option value="${m}"${(s.videoMode ?? 'full') === m ? ' selected' : ''}>${m === 'full' ? 'Completo (desde 0)' : 'Clip al azar'}</option>`).join('')}</select></label>
     <label class="clip-len"${(s.videoMode ?? 'full') === 'clip' ? '' : ' hidden'}>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label></section>
+    <section class="card card-start"><label>Inicio: posts y zaps desde (hora de Argentina) <input type="datetime-local" name="startLine" value="${toArInput(s.startLine ?? DEFAULT_START_LINE)}" required /></label>
+    <small>Lo anterior no se muestra ni cuenta. Sin fecha de fin.</small></section>
     <section class="card card-prov"></section>
     <section class="card card-remote"><div class="row"><button type="button" class="save">Guardar</button>
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
@@ -62,7 +65,7 @@ async function panel() {
       const r = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ zapProviders }) });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error || String(r.status));
-      modStore?.setModeration(moderationOf(body));
+      moderate(moderationOf(body));
       return body.zapProviders as string[];
     },
   });
@@ -81,8 +84,11 @@ async function panel() {
     }
     const r = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ announcement, sceneDurations, videoEveryCycles: Number((root.querySelector('[name="videoEveryCycles"]') as HTMLInputElement).value),
       videoMode: (root.querySelector('[name="videoMode"]') as HTMLSelectElement).value,
-      videoClipSeconds: Number((root.querySelector('[name="videoClipSeconds"]') as HTMLInputElement).value) }) });
-    say(r.ok ? 'Guardado' : `Error: ${(await r.json().catch(() => ({}))).error || r.status}`);
+      videoClipSeconds: Number((root.querySelector('[name="videoClipSeconds"]') as HTMLInputElement).value),
+      startLine: fromArInput((root.querySelector('[name="startLine"]') as HTMLInputElement).value) ?? undefined }) });
+    const body = await r.json().catch(() => ({}));
+    if (r.ok) moderate(moderationOf(body));
+    say(r.ok ? 'Guardado' : `Error: ${body.error || r.status}`);
   });
   for (const [sel, command] of [['.cmd-next', 'next'], ['.cmd-prev', 'prev']] as const) {
     root.querySelector(sel)!.addEventListener('click', async () => {
@@ -96,6 +102,9 @@ async function panel() {
 }
 
 let modStore: ZapStore | null = null;
+let modFeed: ReturnType<typeof followCutoff> | null = null;
+/** Aplica listas y línea de largada al panel; si la línea se adelanta, vuelve a pedir a los relays. */
+const moderate = (m: Moderation) => { modStore?.setModeration(m); modFeed?.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
 /** Moderación: los mismos posts que ve el tótem (relays, del lado del cliente) con Eliminar / Banear. */
 async function startModeration(el: HTMLElement, s: Settings) {
   if (!modStore) {
@@ -105,16 +114,17 @@ async function startModeration(el: HTMLElement, s: Settings) {
     const pool = new SimplePool() as unknown as PoolLike;
     profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
     installAvatarFallback(document);
-    startNostr(cfg, modStore, pool, undefined, undefined, cutoff);
+    const st = modStore;
+    modFeed = followCutoff((c) => startNostr(cfg, st, pool, undefined, undefined, c), cutoff);
   }
   const store = modStore;
-  store.setModeration(moderationOf(s));
+  moderate(moderationOf(s));
   renderModeration(el, {
     store,
     act: async (action: ModAction, id: string) => {
       const r = await api('/api/moderation', { method: 'POST', body: JSON.stringify({ action, id }) });
       if (!r.ok) { alert(`Error: ${(await r.json().catch(() => ({}))).error || r.status}`); return false; }
-      store.setModeration(moderationOf(await r.json()));
+      moderate(moderationOf(await r.json()));
       return true;
     },
   });

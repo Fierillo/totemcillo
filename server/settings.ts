@@ -19,17 +19,20 @@ export interface Settings {
   bannedPubkeys?: string[];
   /** Sólo cuentan zaps cuyo LNURL (el que firma el receipt) es de uno de estos dominios o subdominios. */
   zapProviders?: string[];
+  /** Línea de largada (ISO con zona): sólo cuentan posts y zaps desde acá. */
+  startLine?: string;
 }
 export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
-export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, zapProviders: DEFAULT_ZAP_PROVIDERS };
+export const DEFAULT_START_LINE = '2026-10-13T00:00:00-03:00';
+export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE };
 /** Duraciones por defecto de cada escena (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100 };
+export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[] }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[]; startLine?: string }
 
 /** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
-export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok: false; error: string } {
+export function validatePatch(body: unknown, now = Date.now()): { ok: true; patch: Patch } | { ok: false; error: string } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, error: 'cuerpo inválido' };
   const b = body as Record<string, unknown>;
   const patch: Patch = {};
@@ -87,6 +90,13 @@ export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok:
     }
     patch.zapProviders = out;
   }
+  if ('startLine' in b) {
+    const v = typeof b.startLine === 'string' ? b.startLine.trim() : '';
+    const ms = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(v) ? Date.parse(v) : NaN;
+    if (!Number.isFinite(ms) || ms < Date.parse('2020-01-01T00:00:00Z') || ms > now + LIMITS.maxStartLineAheadDays * 86_400_000)
+      return { ok: false, error: 'startLine: fecha y hora ISO con zona, entre 2020 y un año desde hoy' };
+    patch.startLine = v;
+  }
   return { ok: true, patch };
 }
 
@@ -108,6 +118,7 @@ export function applyPatch(s: Settings, p: Patch): Settings {
     ...(s.hiddenPosts ? { hiddenPosts: s.hiddenPosts } : {}),
     ...(s.bannedPubkeys ? { bannedPubkeys: s.bannedPubkeys } : {}),
     ...((p.zapProviders ?? s.zapProviders) ? { zapProviders: p.zapProviders ?? s.zapProviders } : {}),
+    ...((p.startLine ?? s.startLine) ? { startLine: p.startLine ?? s.startLine } : {}),
   };
 }
 

@@ -1,8 +1,8 @@
 import './style.css';
 import { loadConfig, postCutoff } from './config';
 import { DEFAULT_ZAP_PROVIDERS } from '../server/settings';
-import { ZapStore } from './nostr/store';
-import { startNostr, type PoolLike } from './nostr/pool';
+import { ZapStore, type Moderation } from './nostr/store';
+import { followCutoff, startNostr, type PoolLike } from './nostr/pool';
 import { SimplePool } from 'nostr-tools/pool';
 import { installAvatarFallback, profiles } from './nostr/profiles';
 import { Follower } from './follow';
@@ -20,7 +20,9 @@ const pool = new SimplePool() as unknown as PoolLike;
 // Perfiles kind:0 (alias + foto) desde los mismos relays, en lotes y cacheados en localStorage.
 profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
 installAvatarFallback(document);
-startNostr(cfg, store, pool, undefined, undefined, cutoff);
+const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefined, c), cutoff);
+// Moderación, proveedores y línea de largada vienen del servidor; si la línea se adelanta, se vuelve a pedir a los relays.
+const moderate = (m: Moderation) => { store.setModeration(m); feed.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
 const announcement = new Announcement(cfg.announcement);
 if (import.meta.env.DEV) void import('./demo').then((m) => m.installDemo(window, store)); // window.__totemDemo.post()/zap()
 const scene = document.getElementById('scene')!;
@@ -33,13 +35,13 @@ if (isMobileViewport()) {
   document.documentElement.classList.add('is-mobile');
   scene.className = 'mobile';
   renderMobile(scene, store, cfg, announcement);
-  createRemote({ nav: noNav, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds, onModeration: (m) => store.setModeration(m) }).start(cfg.settingsPollMs);
+  createRemote({ nav: noNav, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds, onModeration: moderate }).start(cfg.settingsPollMs);
 } else {
   // El servidor es la fuente de verdad: el tótem calcula la agenda que éste define. Flechas: /admin.
   const strip = document.getElementById('live-strip');
   if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // ⚡/💬 abajo si el objetivo no está en pantalla
   // Una carga de la agenda + chequeo de versión cada settingsPollMs (incluye el anuncio).
-  void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: (m) => store.setModeration(m) }).start();
+  void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate }).start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
 

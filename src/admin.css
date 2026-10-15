@@ -5,7 +5,7 @@ body.admin { margin: 0; min-height: 100vh; background: var(--bg); color: var(--f
 header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 h1 { margin: 0; color: var(--accent); font-size: 1.4rem; }
 label { display: grid; gap: .35rem; }
-textarea, input[type="password"], input[type="number"] { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
+textarea, input[type="password"], input[type="number"], input[type="datetime-local"] { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
 fieldset { border: 1px solid #333; border-radius: .75rem; padding: .8rem 1rem; display: grid; gap: .6rem; }
 .row { display: flex; gap: .6rem; flex-wrap: wrap; }
 button { background: var(--accent); color: #0b0d0a; border: 0; border-radius: .5rem; padding: .6rem 1rem; font: inherit; font-weight: 700; cursor: pointer; }
@@ -19,9 +19,9 @@ small { color: var(--muted); }
 select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
 @media (min-width: 900px) {
   .panel:has(.cards) { width: min(1200px, calc(100vw - 4rem)); padding: 2rem; }
-  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "prov prov" "remote remote"; }
+  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "start dur" "prov prov" "remote remote"; }
   .card { background: #11150f; border: 1px solid #262d21; border-radius: .75rem; padding: 1.25rem; }
-  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-remote { grid-area: remote; } .card-prov { grid-area: prov; }
+  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-remote { grid-area: remote; } .card-prov { grid-area: prov; } .card-start { grid-area: start; }
   .card-dur fieldset { border: 0; padding: 0; }
   .card-remote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 }
@@ -67,3 +67,5 @@ select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #
 .prov-add { display: flex; gap: .5rem; min-width: 0; }
 .prov-add input { flex: 1 1 auto; min-width: 0; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
 .prov-add button { flex: 0 0 auto; }
+.card-start { grid-template-columns: minmax(0, 1fr); }
+input[type="datetime-local"] { color-scheme: dark; min-width: 0; }

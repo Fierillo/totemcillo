@@ -65,10 +65,27 @@ export function startNostr(
   }));
 
   return {
-    close() {
+    /** keepPool: cierra sólo las suscripciones (el pool lo siguen usando perfiles u otra suscripción). */
+    close(keepPool = false) {
       if (timer) clearTimeout(timer);
       subs.forEach((s) => s.close());
-      pool.close(cfg.relays);
+      if (!keepPool) pool.close(cfg.relays);
+    },
+  };
+}
+
+/** Sigue la línea de largada del servidor: si se adelanta a antes de lo cargado, vuelve a suscribirse desde ahí. */
+export function followCutoff(start: (cutoff?: number) => { close(keepPool?: boolean): void }, initial?: number) {
+  let loaded = initial;
+  let h = start(initial);
+  return {
+    setCutoff(c?: number) {
+      const earlier = loaded !== undefined && (c === undefined || c < loaded);
+      if (!earlier) return;
+      loaded = c;
+      const old = h;
+      h = start(c);
+      old.close(true);
     },
   };
 }

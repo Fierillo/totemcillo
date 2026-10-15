@@ -1,7 +1,7 @@
 import { parseCookies, passwordMatches, signSession, verifySession } from './auth.js';
 import type { Storage } from './storage.js';
 import { reanchor, scheduleInputs, shiftSchedule } from '../shared/schedule.js';
-import { applyModeration, applyPatch, DEFAULT_SETTINGS, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from './settings.js';
+import { applyModeration, applyPatch, DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from './settings.js';
 
 export interface ApiRequest { method: string; path: string; headers: Record<string, string | undefined>; body: unknown; ip: string }
 export interface ApiResponse { status: number; headers: Record<string, string>; body: unknown }
@@ -41,12 +41,12 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
     case 'PUT /api/settings': {
       if (!authed(req, d)) return json(401, { error: 'no autorizado' });
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
-      const v = validatePatch(req.body);
+      const v = validatePatch(req.body, d.now());
       if (!v.ok) return json(400, { error: v.error });
       const cur = await readSettings(d);
       const now = d.now();
       let next = applyPatch(cur, v.patch);
-      const { announcement, command, zapProviders, ...sched } = v.patch;
+      const { announcement, command, zapProviders, startLine, ...sched } = v.patch;
       if (Object.keys(sched).length) next = reanchor(cur, next, now);
       if (command) next = shiftSchedule(next, now, command);
       next = { ...next, version: (cur.version ?? 0) + 1 };
@@ -68,7 +68,7 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       const st = await readSettings(d);
       // Sin hora adentro: así el CDN puede cachearla. El tótem la pide como /api/kiosk?v=<version>.
       return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0,
-        hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [], zapProviders: st.zapProviders ?? DEFAULT_ZAP_PROVIDERS }, { 'cache-control': CDN });
+        hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [], zapProviders: st.zapProviders ?? DEFAULT_ZAP_PROVIDERS, startLine: st.startLine ?? DEFAULT_START_LINE }, { 'cache-control': CDN });
     }
     case 'GET /api/version':
       // Chequeo barato y cacheable unos segundos en el CDN (muchas pantallas → pocas lecturas).

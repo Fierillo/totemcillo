@@ -27,7 +27,7 @@ export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: numbe
 
 /** Post o zap que llegó en vivo (no historial): las escenas visibles lo animan. */
 /** Listas de moderación que publica el servidor. */
-export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[] }
+export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string }
 
 /** Dominio exacto o subdominio de alguno de la lista. */
 export const providerAllowed = (domain: string | undefined, list: string[]) =>
@@ -155,8 +155,10 @@ export class ZapStore {
     const same = (a: Set<string>, c: Set<string>) => a.size === c.size && [...a].every((x) => c.has(x));
     const pv = m.zapProviders ?? this.providers;
     const sameP = pv === this.providers || (!!pv && !!this.providers && same(new Set(pv), new Set(this.providers)));
-    if (same(h, this.hidden) && same(b, this.banned) && sameP) return;
-    this.hidden = h; this.banned = b; this.providers = pv;
+    const ms = m.startLine === undefined ? NaN : Date.parse(m.startLine);
+    const cut = m.startLine === undefined ? this.cutoff : Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
+    if (same(h, this.hidden) && same(b, this.banned) && sameP && cut === this.cutoff) return;
+    this.hidden = h; this.banned = b; this.providers = pv; this.cutoff = cut;
     this.listeners.forEach((f) => f());
   }
 
@@ -165,11 +167,12 @@ export class ZapStore {
   private postVisible(id: string) {
     if (this.hidden.has(id)) return false;
     const p = this.posts.get(id);
-    return !p || !this.banned.has(p.pubkey);
+    return !p || (!this.banned.has(p.pubkey) && this.isFresh(p));
   }
 
   private zapVisible(z: Zap) {
     if (this.providers && !providerAllowed(z.domain, this.providers)) return false;
+    if (this.cutoff !== undefined && z.created_at < this.cutoff) return false;
     return !(z.sender && this.banned.has(z.sender)) && this.postVisible(z.postId);
   }
 

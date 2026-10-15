@@ -18,7 +18,7 @@
 - **QR** to the app on posts, tops and announcement.
 - **Mobile view** on the same URL, with a ⚡ Zap button.
 - **Admin** (`/admin`, password protected): announcement, durations, video mode and ← → arrows.
-- Zaps validated per NIP-57; only posts since `startLine` (`public/config.json`) are shown.
+- Zaps validated per NIP-57; only posts and zaps since `startLine` count (editable in `/admin`; default from `public/config.json`).
 
 ## Running
 
