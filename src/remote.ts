@@ -1,7 +1,9 @@
 import type { Announcement } from './announcement';
+import type { Moderation } from './nostr/store';
+import { moderationOf } from './moderation-lists';
 
 export interface RemoteNav { next(): void; prev(): void; setDuration(name: string, ms: number): void; setEveryCycles(name: string, n: number): void; setVideoMode(name: string, mode: 'full' | 'clip'): void; setClipSeconds(name: string, sec: number): void }
-export interface RemoteOptions { fetchFn?: typeof fetch; nav: RemoteNav; announcement: Announcement; baseDurations: Record<string, number>; baseVideoEveryCycles: number; baseVideoMode: 'full' | 'clip'; baseVideoClipSeconds: number }
+export interface RemoteOptions { fetchFn?: typeof fetch; nav: RemoteNav; announcement: Announcement; baseDurations: Record<string, number>; baseVideoEveryCycles: number; baseVideoMode: 'full' | 'clip'; baseVideoClipSeconds: number; onModeration?: (m: Moderation) => void }
 
 const MIN = 3000, MAX = 120000;
 const validMs = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= MIN && v <= MAX;
@@ -22,6 +24,7 @@ export function createRemote(o: RemoteOptions) {
       const s = await res.json();
       if (!s || typeof s !== 'object') return;
       if (typeof s.announcement === 'string') o.announcement.set(s.announcement);
+      o.onModeration?.(moderationOf(s));
       const remote = s.sceneDurations && typeof s.sceneDurations === 'object' ? s.sceneDurations : {};
       for (const name of new Set([...Object.keys(o.baseDurations), ...Object.keys(remote)])) {
         const v = validMs(remote[name]) ? remote[name] : o.baseDurations[name];

@@ -1,9 +1,13 @@
 import type { Scene } from './rotator';
 import type { Announcement } from './announcement';
+import type { Moderation } from './nostr/store';
+import { moderationOf } from './moderation-lists';
 import { positionAt, type ScheduleInputs } from '../shared/schedule';
 
-export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number }
-export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number }
+export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[] }
+export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
+  /** Listas de moderación que vienen en /api/kiosk. */
+  onModeration?: (m: Moderation) => void }
 
 const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 const valid = (k: any): k is KioskInputs =>
@@ -51,6 +55,7 @@ export class Follower {
       if (sync && !(await this.syncTime()) && !this.samples.length) return;
       this.inputs = k;
       if (typeof k.announcement === 'string') this.o.announcement?.set(k.announcement);
+      this.o.onModeration?.(moderationOf(k));
       this.tick();
     } catch { /* sin red: se reintenta en el próximo chequeo */ }
   }

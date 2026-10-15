@@ -1,7 +1,7 @@
 import { parseCookies, passwordMatches, signSession, verifySession } from './auth.js';
 import type { Storage } from './storage.js';
 import { reanchor, scheduleInputs, shiftSchedule } from '../shared/schedule.js';
-import { applyPatch, DEFAULT_SETTINGS, validatePatch, type Settings } from './settings.js';
+import { applyModeration, applyPatch, DEFAULT_SETTINGS, validatePatch, type Settings } from './settings.js';
 
 export interface ApiRequest { method: string; path: string; headers: Record<string, string | undefined>; body: unknown; ip: string }
 export interface ApiResponse { status: number; headers: Record<string, string>; body: unknown }
@@ -53,11 +53,22 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       await d.storage.set(KEY, next);
       return json(200, next);
     }
+    case 'POST /api/moderation': {
+      if (!authed(req, d)) return json(401, { error: 'no autorizado' });
+      if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
+      const cur = await readSettings(d);
+      const m = applyModeration(cur, req.body);
+      if (!m.ok) return json(400, { error: m.error });
+      const next = { ...m.settings, version: (cur.version ?? 0) + 1 };
+      await d.storage.set(KEY, next);
+      return json(200, next);
+    }
     case 'GET /api/kiosk': {
       // Público, de sólo lectura: entradas de la agenda; el tótem calcula las escenas localmente.
       const st = await readSettings(d);
       // Sin hora adentro: así el CDN puede cachearla. El tótem la pide como /api/kiosk?v=<version>.
-      return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0 }, { 'cache-control': CDN });
+      return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0,
+        hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [] }, { 'cache-control': CDN });
     }
     case 'GET /api/version':
       // Chequeo barato y cacheable unos segundos en el CDN (muchas pantallas → pocas lecturas).
@@ -78,7 +89,7 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
     case 'GET /api/session':
       return json(200, { authed: authed(req, d) });
   }
-  if (/^\w+ \/api\/(settings|login|logout|session|kiosk|version|time)$/.test(route))
+  if (/^\w+ \/api\/(settings|login|logout|session|kiosk|version|time|moderation)$/.test(route))
     return json(405, { error: 'método no permitido' });
   return json(404, { error: 'no encontrado' });
 }

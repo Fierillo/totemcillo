@@ -14,13 +14,16 @@ export interface Settings {
   epoch?: number;
   /** Se incrementa en cada cambio del admin (incluidas flechas); el tótem lo consulta barato. */
   version?: number;
+  /** Moderación: ids de posts ocultos y pubkeys baneados (hex, minúscula). */
+  hiddenPosts?: string[];
+  bannedPubkeys?: string[];
 }
 export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } };
 /** Duraciones por defecto de cada escena (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600 };
+export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number  }
 
 /** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
 export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok: false; error: string } {
@@ -84,5 +87,27 @@ export function applyPatch(s: Settings, p: Patch): Settings {
     ...((p.videoDurationSec ?? s.videoDurationSec) !== undefined ? { videoDurationSec: p.videoDurationSec ?? s.videoDurationSec } : {}),
     ...(s.epoch !== undefined ? { epoch: s.epoch } : {}),
     ...(s.version !== undefined ? { version: s.version } : {}),
+    ...(s.hiddenPosts ? { hiddenPosts: s.hiddenPosts } : {}),
+    ...(s.bannedPubkeys ? { bannedPubkeys: s.bannedPubkeys } : {}),
   };
+}
+
+export type ModAction = 'hide' | 'unhide' | 'ban' | 'unban';
+const MOD_LIST = { hide: 'hiddenPosts', unhide: 'hiddenPosts', ban: 'bannedPubkeys', unban: 'bannedPubkeys' } as const;
+
+/** Aplica una acción de moderación (id/pubkey de 64 hex). Devuelve error si es inválida o la lista está llena. */
+export function applyModeration(s: Settings, body: unknown): { ok: true; settings: Settings } | { ok: false; error: string } {
+  const b = (body && typeof body === 'object' ? body : {}) as { action?: unknown; id?: unknown };
+  if (typeof b.action !== 'string' || !(b.action in MOD_LIST)) return { ok: false, error: 'acción inválida' };
+  if (typeof b.id !== 'string' || !/^[0-9a-f]{64}$/i.test(b.id)) return { ok: false, error: 'id inválido (64 hex)' };
+  const action = b.action as ModAction, id = b.id.toLowerCase(), key = MOD_LIST[action];
+  const cur = s[key] ?? [];
+  let next = cur;
+  if (action === 'hide' || action === 'ban') {
+    if (!cur.includes(id)) {
+      if (cur.length >= LIMITS.maxModeration) return { ok: false, error: `lista llena (máx. ${LIMITS.maxModeration})` };
+      next = [...cur, id];
+    }
+  } else next = cur.filter((x) => x !== id);
+  return { ok: true, settings: { ...s, [key]: next } };
 }

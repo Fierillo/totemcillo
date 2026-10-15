@@ -80,7 +80,7 @@ describe('/api/kiosk (sólo lectura)', () => {
   it('GET devuelve las entradas de la agenda, anuncio y versión (sin hora: es cacheable)', async () => {
     const r = await handle(req('GET', '/api/kiosk'), deps());
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0 });
+    expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [] });
     expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
   });
   it('GET /api/time: hora del servidor, nunca cacheada y sin tocar el storage', async () => {

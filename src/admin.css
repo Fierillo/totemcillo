@@ -26,3 +26,33 @@ select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #
   .card-remote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 }
 [hidden] { display: none !important; }
+/* Pestañas Config / Mensajes: pegajosas en celular; en escritorio se ve todo junto. */
+.tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: .5rem; padding: .5rem 0; background: var(--card); }
+.tabs button { flex: 1 1 0; background: #2a3324; color: var(--fg); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: #0b0d0a; }
+@media (max-width: 700px) {
+  body.admin { padding-top: 0; }
+  .panel { border-radius: 0 0 1rem 1rem; }
+  .panel[data-tab="config"] [data-pane="mod"], .panel[data-tab="mod"] [data-pane="config"] { display: none; }
+}
+@media (min-width: 701px) {
+  .tabs { display: none; }
+  .card-mod { background: #11150f; border: 1px solid #262d21; border-radius: .75rem; padding: 1.25rem; }
+}
+/* Moderación: filas sin superposición (alias truncado, botones envuelven). */
+.card-mod h2, .card-mod h3 { margin: 0; font-size: 1.1rem; color: var(--accent); }
+.mod-list, .mod-banned { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.mod-post { display: grid; gap: .4rem; padding: .7rem .8rem; background: #0e120c; border: 1px solid #262d21; border-radius: .6rem; min-width: 0; }
+.mod-meta { display: flex; align-items: center; gap: .6rem; min-width: 0; flex-wrap: wrap; }
+.mod-meta .muted, .mod-sats { flex: 0 0 auto; white-space: nowrap; }
+.mod-sats { color: var(--accent); font-weight: 700; margin-left: auto; }
+.mod-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.mod-post .row button, .mod-banned button { padding: .4rem .8rem; }
+.mod-post button.ban { background: var(--err); color: #0b0d0a; }
+.mod-banned li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; min-width: 0; }
+.muted { color: var(--muted); }
+.author { display: inline-flex; align-items: center; gap: .4em; min-width: 0; max-width: 100%; flex: 0 1 auto; }
+.avatar { width: 1.6em; height: 1.6em; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: #2a2f27; display: block; }
+.avatar-ph { background: #3a4036; }
+.alias { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+@media (min-width: 900px) { .card-mod .mod-list { max-height: 70vh; overflow: auto; } }

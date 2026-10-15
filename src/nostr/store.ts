@@ -23,6 +23,9 @@ export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: numbe
   clock?: () => number; liveWindowSec?: number }
 
 /** Post o zap que llegó en vivo (no historial): las escenas visibles lo animan. */
+/** Listas de moderación que publica el servidor. */
+export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[] }
+
 export interface LiveEvent { type: 'post' | 'zap'; postId: string }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
@@ -43,6 +46,9 @@ export class ZapStore {
   private liveListeners = new Set<(e: LiveEvent) => void>();
   private clock: () => number;
   private liveWindowSec: number;
+  /** Moderación (desde el servidor): se filtra al leer, así también aplica a lo que llegue después. */
+  private hidden = new Set<string>();
+  private banned = new Set<string>();
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private key: string;
@@ -134,6 +140,27 @@ export class ZapStore {
     }
   }
 
+  /** Posts ocultos y autores baneados (desaparecen con sus zaps; los zaps que envían no cuentan). */
+  setModeration(m: Moderation) {
+    const h = new Set(m.hiddenPosts), b = new Set(m.bannedPubkeys);
+    const same = (a: Set<string>, c: Set<string>) => a.size === c.size && [...a].every((x) => c.has(x));
+    if (same(h, this.hidden) && same(b, this.banned)) return;
+    this.hidden = h; this.banned = b;
+    this.listeners.forEach((f) => f());
+  }
+
+  get moderation(): Moderation { return { hiddenPosts: [...this.hidden], bannedPubkeys: [...this.banned] }; }
+
+  private postVisible(id: string) {
+    if (this.hidden.has(id)) return false;
+    const p = this.posts.get(id);
+    return !p || !this.banned.has(p.pubkey);
+  }
+
+  private zapVisible(z: Zap) {
+    return !(z.sender && this.banned.has(z.sender)) && this.postVisible(z.postId);
+  }
+
   stats(since = 0): PostStats[] {
     const map = new Map<string, PostStats>();
     const entry = (id: string) => {
@@ -141,9 +168,9 @@ export class ZapStore {
       if (!s) map.set(id, (s = { postId: id, post: this.posts.get(id), msats: 0, zaps: [] }));
       return s;
     };
-    this.posts.forEach((p) => entry(p.id));
+    this.posts.forEach((p) => { if (this.postVisible(p.id)) entry(p.id); });
     for (const z of this.zaps.values()) {
-      if (z.created_at < since) continue;
+      if (z.created_at < since || !this.zapVisible(z)) continue;
       const s = entry(z.postId);
       s.msats += z.msats;
       s.zaps.push(z);
@@ -157,10 +184,10 @@ export class ZapStore {
   }
 
   latestZaps(n: number): Zap[] {
-    return [...this.zaps.values()].sort((a, b) => b.created_at - a.created_at).slice(0, n);
+    return [...this.zaps.values()].filter((z) => this.zapVisible(z)).sort((a, b) => b.created_at - a.created_at).slice(0, n);
   }
 
   latestPosts(n: number): Post[] {
-    return [...this.posts.values()].sort((a, b) => b.created_at - a.created_at).slice(0, n);
+    return [...this.posts.values()].filter((p) => this.postVisible(p.id)).sort((a, b) => b.created_at - a.created_at).slice(0, n);
   }
 }

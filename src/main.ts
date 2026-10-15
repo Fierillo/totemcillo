@@ -32,13 +32,13 @@ if (isMobileViewport()) {
   document.documentElement.classList.add('is-mobile');
   scene.className = 'mobile';
   renderMobile(scene, store, cfg, announcement);
-  createRemote({ nav: noNav, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds }).start(cfg.settingsPollMs);
+  createRemote({ nav: noNav, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds, onModeration: (m) => store.setModeration(m) }).start(cfg.settingsPollMs);
 } else {
   // El servidor es la fuente de verdad: el tótem calcula la agenda que éste define. Flechas: /admin.
   const strip = document.getElementById('live-strip');
   if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // ⚡/💬 abajo si el objetivo no está en pantalla
   // Una carga de la agenda + chequeo de versión cada settingsPollMs (incluye el anuncio).
-  void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs }).start();
+  void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: (m) => store.setModeration(m) }).start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
 
