@@ -20,11 +20,32 @@ const posts = [
   { id: hex(2), pubkey: 'ab'.repeat(32), content: 'POST VIEJO fuera de la ventana de 24 h', created_at: now - 25 * 3600 },
 ];
 const zaps = Array.from({ length: 40 }, (_, i) => ({
-  id: hex(100 + i), postId: hex(1), sender: 'cd'.repeat(32), msats: (i + 1) * 21_000_000,
+  id: hex(100 + i), postId: hex(1), sender: 'cd'.repeat(32), msats: (i + 1) * 21_000_000, domain: 'getalby.com',
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
-zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, comment: 'zap a post viejo', created_at: now - 25 * 3600 });
+zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, domain: 'getalby.com', comment: 'zap a post viejo', created_at: now - 25 * 3600 });
 const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000, anuncio: 3000 } , talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
+
+
+// The totem follows the server schedule (/api/kiosk + /api/version), not local timers or keys.
+// `kiosk(page, durations, extra)` serves a stubbed schedule; `show(scene)` re-anchors `epoch` so that
+// scene is on air right now and reloads the page (the totem computes the scene from epoch + server time).
+const ORDER = ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio', 'video'];
+const START_LINE = new Date((now - 24 * 3600) * 1000).toISOString(); // older fixtures fall before the start line
+async function kiosk(page, sceneDurations, extra = {}) {
+  const base = await (await fetch('http://localhost:4179/api/kiosk')).json();
+  const st = { ...base, startLine: START_LINE, ...extra, sceneDurations, epoch: Date.now(), version: 1 };
+  await page.route('**/api/kiosk*', (r) => r.fulfill({ json: st }));
+  await page.route('**/api/version*', (r) => r.fulfill({ json: { version: st.version } }));
+  const durs = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000, ...sceneDurations };
+  return {
+    async show(scene, reload = true) {
+      const i = ORDER.indexOf(scene);
+      st.epoch = Date.now() - ORDER.slice(0, i).reduce((a, n) => a + durs[n], 0) - 200;
+      if (reload) { await page.reload(); await page.waitForSelector(`.scene-${scene}`, { timeout: 15000 }); }
+    },
+  };
+}
 
 function check(scene) {
   const P = [];
@@ -74,7 +95,7 @@ function check(scene) {
     noOverflow('lista de posts', list);
   } else if (scene.startsWith('top')) {
     const h1 = need('h1.top-title'), ol = need('.top-list');
-    const expected = scene === 'top10Historico' ? 'Top 10 histórico' : 'Top 10 · últimas 3 horas';
+    const expected = scene === 'top10Historico' ? 'Top 10 zaps · histórico' : 'Top 10 zaps · últimas 3 horas';
     if (h1 && h1.textContent !== expected) P.push(`título "${h1.textContent}" != "${expected}"`);
     if (h1 && (parseFloat(getComputedStyle(h1).fontSize) < 24 || R(h1).height < 20)) P.push(`título demasiado chico (${getComputedStyle(h1).fontSize}, alto ${R(h1).height}, scroll ${h1.scrollWidth}x${h1.scrollHeight} client ${h1.clientWidth}x${h1.clientHeight})`);
     inside('título', h1, main); inside('ranking', ol, main); disjoint([['título', h1], ['ranking', ol]]);
@@ -119,44 +140,25 @@ const viewports = [[1280, 720], [1920, 1080], [1080, 1920]];
 try {
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
+    const k = await kiosk(page, cfg.sceneDurations);
     await page.route('**/config.json', (r) => r.fulfill({ json: cfg }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
     await page.goto('http://localhost:4179/');
     for (const scene of ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h']) {
-      await page.waitForSelector(`.scene-${scene}`, { timeout: 15000 });
+      await k.show(scene);
       await page.waitForTimeout(1200);
       problems.push(...(await page.evaluate(check, scene)).map((p) => `${w}x${h} ${scene}: ${p}`));
       await page.screenshot({ path: `${out}/${w}x${h}-${scene}.png` });
     }
     await page.close();
   }
-  // Keyboard navigation (enabled via config)
-  for (const keyboardNav of [true, false]) {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
-    await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
-    await page.goto('http://localhost:4179/');
-    await page.waitForSelector('.scene-post');
-    const scene = () => page.evaluate(() => document.getElementById('scene').className);
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(300);
-    const afterRight = await scene();
-    await page.keyboard.press('ArrowLeft');
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(300);
-    const afterLefts = await scene();
-    if (keyboardNav && (afterRight !== 'scene scene-latestZaps' || afterLefts !== 'scene scene-video'))
-      problems.push(`teclado: → dio "${afterRight}", ←← dio "${afterLefts}"`);
-    if (!keyboardNav && (afterRight !== 'scene scene-post' || afterLefts !== 'scene scene-post'))
-      problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
-    await page.close();
-  }
   // Real zaps with comments: ≥5 messages visible and short comments are not clipped
   const comments = ['¡Grande La Crypta! 🧡', 'Vamos LABITCONF ⚡⚡', 'Excelente charla, gracias', 'pura vida', 'Zap desde Córdoba', '🔥🔥🔥', 'Nos vemos en el stand', 'Lightning > todo'];
   const realPost = [{ id: hex(1), pubkey: 'ab'.repeat(32), content: 'Probando #lacrypta con un texto normal de un post', created_at: now - 600 }];
-  const realZaps = comments.map((c, i) => ({ id: hex(500 + i), postId: hex(1), sender: (i + 1).toString().repeat(64), msats: (i + 1) * 21000, comment: c, created_at: now - i * 30 }));
+  const realZaps = comments.map((c, i) => ({ id: hex(500 + i), postId: hex(1), sender: (i + 1).toString().repeat(64), msats: (i + 1) * 21000, comment: c, created_at: now - i * 30, domain: 'getalby.com' }));
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
+    const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: realPost, zaps: realZaps }));
     await page.goto('http://localhost:4179/');
@@ -172,7 +174,7 @@ try {
         if (!r.qr) problems.push(`${w}x${h} 8 zaps post: falta el QR`);
         if (r.font > r.vh * 0.032 + 1) problems.push(`${w}x${h} 8 zaps post: fuente ${r.font}px > 3.2vh`);
         await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
-        await page.keyboard.press('ArrowRight');
+        await k.show('latestZaps');
         continue;
       }
       const r = await page.evaluate(() => {
@@ -184,16 +186,16 @@ try {
       if (r.font > r.vh * 0.032 + 1) problems.push(`${w}x${h} 8 zaps ${scene}: fuente de lista ${r.font}px > 3.2vh`);
       if (r.clipped.length) problems.push(`${w}x${h} 8 zaps ${scene}: mensajes recortados: ${r.clipped.join(' | ')}`);
       await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
-      await page.keyboard.press('ArrowRight');
     }
     await page.close();
   }
 
-  // 5 posts: ≥3 visible at once, a single QR, and arrow navigation always shows the same thing
+  // 5 posts: ≥3 visible at once, a single QR, and reloading shows the same thing
   const five = Array.from({ length: 5 }, (_, i) => ({ id: hex(700 + i), pubkey: (i + 1).toString().repeat(64), content: `Post número ${i + 1} sobre #lacrypta y la LABITCONF, con un texto de largo normal para ver cómo entra`, created_at: now - (i + 1) * 300 }));
-  const fiveZaps = five.flatMap((p, i) => Array.from({ length: Math.min(i + 1, 2) }, (_, j) => ({ id: hex(800 + i * 10 + j), postId: p.id, sender: (j + 1).toString().repeat(64), msats: (j + 1) * 21000, comment: comments[j], created_at: now - j * 20 })));
+  const fiveZaps = five.flatMap((p, i) => Array.from({ length: Math.min(i + 1, 2) }, (_, j) => ({ id: hex(800 + i * 10 + j), postId: p.id, sender: (j + 1).toString().repeat(64), msats: (j + 1) * 21000, comment: comments[j], created_at: now - j * 20, domain: 'getalby.com' })));
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
+    const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
     await page.goto('http://localhost:4179/');
@@ -209,11 +211,11 @@ try {
     if (first.visible < 3) problems.push(`${w}x${h} 5 posts: sólo ${first.visible} posts visibles a la vez`);
     if (first.qr !== 1) problems.push(`${w}x${h} 5 posts: ${first.qr} QRs (tiene que haber 1)`);
     await page.screenshot({ path: `${out}/${w}x${h}-5posts-post.png` });
-    for (const keys of [['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'], ['ArrowLeft', 'ArrowRight'], ['ArrowRight', 'ArrowLeft']]) {
-      for (const k of keys) { await page.keyboard.press(k); await page.waitForTimeout(150); }
-      await page.waitForTimeout(600);
+    for (let i = 0; i < 2; i++) {
+      await k.show('post');
+      await page.waitForTimeout(1200);
       const again = await sig();
-      if (again.cls !== 'scene scene-post' || again.text !== first.text) problems.push(`${w}x${h} 5 posts: tras ${keys.join(',')} cambió el contenido (${again.cls})`);
+      if (again.cls !== 'scene scene-post' || again.text !== first.text) problems.push(`${w}x${h} 5 posts: al recargar cambió el contenido (${again.cls})`);
     }
     await page.close();
   }
@@ -221,6 +223,7 @@ try {
   // Mobile: same route, scrollable, no QR, with Zapear
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
     await page.goto('http://localhost:4179/');
@@ -248,7 +251,7 @@ try {
     await page.close();
   }
 
-  // Empty states: empty store, step through every scene with →
+  // Empty states: empty store, every scene in turn
   const empties = [
     ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
     ['latestZaps', 'Todavía no hay zaps'],
@@ -258,52 +261,42 @@ try {
   ];
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
+    const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
     await page.goto('http://localhost:4179/');
     await page.waitForTimeout(800);
     for (const [scene, expected] of empties) {
+      await k.show(scene);
       await page.waitForTimeout(700);
       problems.push(...(await page.evaluate(checkEmpty, [scene, expected])).map((p) => `${w}x${h} vacío ${scene}: ${p}`));
       await page.screenshot({ path: `${out}/${w}x${h}-empty-${scene}.png` });
-      await page.keyboard.press('ArrowRight');
     }
     await page.close();
   }
-  // Video scene: fullscreen, from 0, no loop; the scene ends when the video ends
+  // Video scene: fullscreen, no loop, plays; the schedule (videoDurationSec) ends it and moves on to post
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, videoSrc: '/video/totem-video.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 }, { videoMode: 'full', videoDurationSec: 6 });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/totem-video.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
     await page.goto('http://localhost:4179/');
-    await page.waitForSelector('.scene-post');
-    await page.keyboard.press('ArrowLeft');
+    await k.show('video');
     await page.waitForSelector('.scene-video video', { timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(2500);
-    const probe = () => page.evaluate(() => {
+    await page.waitForTimeout(1500);
+    const v = await page.evaluate(() => {
       const el = document.querySelector('.scene-video video');
       if (!el) return null;
       const r = el.getBoundingClientRect(), m = document.getElementById('scene').getBoundingClientRect();
-      return { loop: el.loop || el.hasAttribute('loop'), muted: el.muted, paused: el.paused, t: el.currentTime, d: el.duration, fit: getComputedStyle(el).objectFit, w: r.width, h: r.height, mw: m.width, mh: m.height, bg: getComputedStyle(document.getElementById('scene')).backgroundColor };
+      return { loop: el.loop || el.hasAttribute('loop'), muted: el.muted, paused: el.paused, t: el.currentTime, fit: getComputedStyle(el).objectFit, w: r.width, h: r.height, mw: m.width, mh: m.height, bg: getComputedStyle(document.getElementById('scene')).backgroundColor };
     });
-    const v = await probe();
     if (!v) problems.push(`${w}x${h} video: no hay <video>`);
     else {
       if (v.loop || !v.muted) problems.push(`${w}x${h} video: loop/muted ${v.loop}/${v.muted}`);
-      if (v.paused || v.t <= 0 || v.t > 4) problems.push(`${w}x${h} video: no arranca desde 0 o no se reproduce (paused ${v.paused}, t ${v.t})`);
+      if (v.paused || v.t <= 0 || v.t > 4) problems.push(`${w}x${h} video: no arranca desde el inicio o no se reproduce (paused ${v.paused}, t ${v.t})`);
       if (v.fit !== 'contain') problems.push(`${w}x${h} video: object-fit ${v.fit}`);
       if (Math.abs(v.w - v.mw) > 2 || Math.abs(v.h - v.mh) > 2) problems.push(`${w}x${h} video: no ocupa la escena (${v.w}x${v.h} vs ${v.mw}x${v.mh})`);
       if (v.bg !== 'rgb(0, 0, 0)') problems.push(`${w}x${h} video: fondo ${v.bg}`);
-      await page.waitForTimeout(4000);
       await page.screenshot({ path: `${out}/${w}x${h}-video.png` });
-      // leave and come back: starts again from 0
-      await page.keyboard.press('ArrowRight');
-      await page.waitForTimeout(300);
-      await page.keyboard.press('ArrowLeft');
-      await page.waitForTimeout(1500);
-      const again = await probe();
-      if (!again || again.t > 3) problems.push(`${w}x${h} video: al volver no arranca desde 0 (t ${again?.t})`);
-      // near the end: when it finishes it moves to the next scene (post), not by timer
-      await page.evaluate(() => { const el = document.querySelector('.scene-video video'); el.currentTime = Math.max(0, el.duration - 1); });
-      await page.waitForTimeout(3500);
+      await page.waitForTimeout(6000);
       const cls = await page.evaluate(() => document.getElementById('scene').className);
       if (cls !== 'scene scene-post') problems.push(`${w}x${h} video: al terminar no pasó a la siguiente escena (${cls})`);
     }
@@ -312,27 +305,29 @@ try {
   // Video every 2 cycles in the automatic rotation
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoEveryCycles: 2, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000, sceneDurations: { post: 400, latestZaps: 400, top10Historico: 400, top10Ultimas3h: 400, anuncio: 400 } } }));
+    const S = { post: 400, latestZaps: 400, top10Historico: 400, top10Ultimas3h: 400, anuncio: 400 };
+    await kiosk(page, S, { videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 0.4 });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000, sceneDurations: S } }));
     await page.addInitScript(() => {
       window.__seq = [];
       setInterval(() => { const c = document.getElementById('scene')?.className.replace('scene scene-', ''); if (c && c !== 'scene' && window.__seq.at(-1) !== c) window.__seq.push(c); }, 50);
     });
     await page.goto('http://localhost:4179/');
-    await page.waitForTimeout(11000);
+    await page.waitForTimeout(9000);
     const seq = await page.evaluate(() => window.__seq);
-    const cycles = seq.join(' ').split(/(?=post)/).map((c) => c.trim()).filter(Boolean);
-    const withVideo = cycles.slice(0, 3).map((c) => c.includes('video'));
-    if (cycles.length < 3 || JSON.stringify(withVideo) !== '[true,false,true]') problems.push(`video cada 2 vueltas: ${JSON.stringify(cycles)}`);
+    const cycles = seq.join(' ').split(/(?=post)/).map((c) => c.trim()).filter(Boolean).slice(1, -1); // first and last may be partial
+    const withVideo = cycles.slice(0, 4).map((c) => c.includes('video'));
+    const alternates = withVideo.length >= 2 && withVideo.every((x, i) => i === 0 || x !== withVideo[i - 1]);
+    if (!alternates) problems.push(`video cada 2 vueltas: ${JSON.stringify(cycles)}`);
     await page.close();
   }
-  // Broken video: the totem does not get stuck
+  // Broken video: the totem does not get stuck (the schedule moves on)
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, videoSrc: '/video/no-existe.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 }, { videoMode: 'full', videoDurationSec: 3 });
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/no-existe.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
     await page.goto('http://localhost:4179/');
-    await page.waitForSelector('.scene-post');
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(500);
+    await k.show('video');
     const at = await page.evaluate(() => document.getElementById('scene').className);
     await page.waitForTimeout(5000);
     const after = await page.evaluate(() => document.getElementById('scene').className);
@@ -390,10 +385,11 @@ try {
     await page.selectOption('select[name="videoMode"]', 'clip');
     await saveAndReload();
     if (!(await clipShown())) problems.push('admin: "Largo del clip" oculto al cargar con clip');
+    const epoch0 = (await page.evaluate(async () => (await fetch('/api/settings')).json())).epoch;
     await page.click('button.cmd-next');
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());
-    if (set.command?.action !== 'next' || !(set.command?.seq >= 1)) problems.push(`admin: comando remoto no guardado (${JSON.stringify(set.command)})`);
+    if (set.epoch === epoch0) problems.push(`admin: la flecha remota no movió la agenda (epoch ${set.epoch})`);
     // admin layout: uses the width on desktop; one column on mobile; nothing overflows
     const cardsAt = async (w, h) => {
       await page.setViewportSize({ width: w, height: h });
@@ -401,7 +397,7 @@ try {
       return page.evaluate(() => ({
         sw: document.documentElement.scrollWidth, vw: window.innerWidth,
         pw: Math.round(document.querySelector('.panel').getBoundingClientRect().width),
-        cards: [...document.querySelectorAll('.panel .card')].map((c) => { const r = c.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), sw: c.scrollWidth, cw: c.clientWidth }; }),
+        cards: [...document.querySelectorAll('.panel .card')].filter((c) => c.getBoundingClientRect().width > 0).map((c) => { const r = c.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), sw: c.scrollWidth, cw: c.clientWidth }; }),
       }));
     };
     const wide = await cardsAt(1920, 1080);
@@ -425,9 +421,9 @@ try {
     const saw = await totem.evaluate(() => document.body.innerText.includes('¡Sorteo desde e2e!'));
     // force anuncio scene via arrows if needed
     let found = saw;
-    for (let i = 0; i < 6 && !found; i++) {
-      await totem.keyboard.press('ArrowRight');
-      await totem.waitForTimeout(400);
+    for (let i = 0; i < 7 && !found; i++) {
+      await page.click('button.cmd-next');
+      await totem.waitForTimeout(1500);
       found = await totem.evaluate(() => document.body.innerText.includes('¡Sorteo desde e2e!'));
     }
     if (!found) problems.push('admin: el anuncio no llegó al tótem');
