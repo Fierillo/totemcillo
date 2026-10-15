@@ -1,5 +1,6 @@
 import type { Post, Zap } from './types';
 import { truncateText } from '../text';
+import { feedFor } from '../livefeed';
 
 export interface PostStats { post?: Post; postId: string; msats: number; zaps: Zap[] }
 
@@ -17,7 +18,12 @@ export const MAX_COMMENT = 280;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
 const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
 
-export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number }
+export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number;
+  /** Reloj en segundos unix (inyectable) y antigüedad máxima (s) para considerar un evento "en vivo". */
+  clock?: () => number; liveWindowSec?: number }
+
+/** Post o zap que llegó en vivo (no historial): las escenas visibles lo animan. */
+export interface LiveEvent { type: 'post' | 'zap'; postId: string }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
   while (m.size > max) {
@@ -34,6 +40,9 @@ export class ZapStore {
   posts = new Map<string, Post>();
   zaps = new Map<string, Zap>();
   private listeners = new Set<() => void>();
+  private liveListeners = new Set<(e: LiveEvent) => void>();
+  private clock: () => number;
+  private liveWindowSec: number;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private key: string;
@@ -49,21 +58,38 @@ export class ZapStore {
     this.maxZaps = opts.maxZaps ?? 5000;
     this.postMaxChars = opts.postMaxChars ?? 210;
     this.cutoff = opts.cutoff;
+    this.clock = opts.clock ?? (() => Math.floor(Date.now() / 1000));
+    this.liveWindowSec = opts.liveWindowSec ?? 120;
     this.load();
+    feedFor(this); // reparte eventos en vivo desde el arranque (indicador/pendientes)
   }
 
   addPost(p: Post) {
     if (this.posts.has(p.id) || !this.isFresh(p)) return;
     this.posts.set(p.id, this.clipPost(p));
     trimOldest(this.posts, this.maxPosts);
-    if (this.posts.has(p.id)) this.changed();
+    if (!this.posts.has(p.id)) return;
+    this.emitLive({ type: 'post', postId: p.id }, p.created_at);
+    this.changed();
   }
 
   addZap(z: Zap) {
     if (this.zaps.has(z.id)) return;
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
-    if (this.zaps.has(z.id)) this.changed();
+    if (!this.zaps.has(z.id)) return;
+    this.emitLive({ type: 'zap', postId: z.postId }, z.created_at);
+    this.changed();
+  }
+
+  /** Avisa eventos recientes (lo cargado de localStorage no pasa por acá). Se emite antes de redibujar. */
+  onLive(fn: (e: LiveEvent) => void): () => void {
+    this.liveListeners.add(fn);
+    return () => { this.liveListeners.delete(fn); };
+  }
+
+  private emitLive(e: LiveEvent, createdAt: number) {
+    if (createdAt >= this.clock() - this.liveWindowSec) this.liveListeners.forEach((f) => f(e));
   }
 
   private dropOrphanZaps() {

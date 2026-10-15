@@ -1,7 +1,7 @@
 import type { Scene } from '../rotator';
 import type { ZapStore } from '../nostr/store';
 import { fitRegions } from '../fit';
-import { live } from './live';
+import { live, liveMarks } from './live';
 import { esc, sats, shortKey } from '../util';
 
 export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number }
@@ -12,20 +12,25 @@ export function topScene(o: TopOptions): Scene {
     name: o.name,
     duration: o.duration,
     render(root) {
+      const marks = liveMarks(o.store, o.name, ['zap'], (id) => o.store.top(10, o.since()).some((x) => x.postId === id));
       const draw = () => {
-        const rows = o.store.top(10, o.since()).map((s, i) => `
-          <li>
+        const list = o.store.top(10, o.since());
+        marks.begin(list.map((x) => x.postId));
+        const rows = list.map((s, i) => { const m = marks.attrs(s.postId); return `
+          <li class="top-row${m.cls}" data-id="${esc(s.postId)}">
             <span class="rank">#${i + 1}</span>
             <span class="amount">${sats(s.msats)}</span>
-            <span class="who"><span class="excerpt" data-clip>${esc(s.post!.content)}</span><small class="author">${shortKey(s.post!.pubkey)}</small></span>
-          </li>`).join('');
+            <span class="who"><span class="excerpt" data-clip>${esc(s.post!.content)}</span><small class="author">${shortKey(s.post!.pubkey)}</small></span>${m.bolt}
+          </li>`; }).join('');
         root.innerHTML = `<h1 class="top-title" data-fit="text" data-max="6" data-min="20">${esc(o.title)}</h1>
 ` + (rows
           ? `<ol class="top-list" data-fit="list" data-max="3.2" data-maxw="4" data-min="14">${rows}</ol>`
           : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps en este período</p>`);
         fitRegions(root);
+        marks.consume();
       };
-      return live(o.store, draw);
+      const off = live(o.store, draw);
+      return () => { off(); marks.off(); };
     },
   };
 }

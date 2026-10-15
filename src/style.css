@@ -7,7 +7,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   min-width: 0; overflow: hidden; white-space: nowrap; }
 .brand { display: block; height: 1.8em; width: auto; max-width: 40vw; object-fit: contain; flex: 0 0 auto; } /* logo oficial (blanco), alto del header */
 .tags { color: var(--accent); font-size: 1.1em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.footer { color: var(--muted); justify-content: center; }
+.footer { color: var(--muted); justify-content: center; position: relative; }
 .footer b { color: var(--accent); }
 .scene { padding: 1em 1.5em; min-width: 0; min-height: 0; overflow: hidden; animation: fade .6s ease; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -87,3 +87,52 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 /* Video */
 .scene-video { padding: 0; background: #000; display: grid; }
 .scene-video-el { width: 100%; height: 100%; min-height: 0; object-fit: contain; background: #000; display: block; }
+
+/* Animaciones en vivo (post nuevo / zap): sólo transform/opacity/box-shadow, sin cambiar el layout. */
+.post-row, .top-list li { position: relative; }
+.is-new { animation: slide-in .5s ease-out both, glow 2.5s ease-out; }
+@keyframes slide-in { from { transform: translateY(-60%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes glow {
+  0%, 40% { box-shadow: inset 0 0 0 2px var(--accent), 0 0 1.2em rgba(199, 255, 91, .45); background: rgba(199, 255, 91, .08); }
+  100% { box-shadow: inset 0 0 0 2px transparent, 0 0 0 transparent; background: transparent; }
+}
+.is-zapped { animation: zap-shake .45s steps(6) .12s, zap-flash 2s ease-out; }
+.post-list, .top-list { padding: 0 .3em; }
+@keyframes zap-flash {
+  0% { background: rgba(255, 238, 120, .55); }
+  8% { background: rgba(255, 238, 120, .05); }
+  14% { background: rgba(255, 238, 120, .4); }
+  100% { background: transparent; }
+}
+@keyframes zap-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-.25em); } 40% { transform: translateX(.22em); }
+  60% { transform: translateX(-.15em); } 80% { transform: translateX(.1em); }
+}
+.bolt { position: absolute; right: 18%; top: -40%; height: 180%; width: auto; pointer-events: none; fill: #ffe86b;
+  filter: drop-shadow(0 0 .4em #fff6a8) drop-shadow(0 0 1em var(--accent)); opacity: 0; animation: strike 1.6s ease-out forwards; }
+.top-list .bolt { right: auto; left: 4em; }
+@keyframes strike {
+  0% { opacity: 0; transform: translateY(-40%) scaleY(.4); }
+  10% { opacity: 1; transform: none; } 18% { opacity: .3; } 26% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.is-zapped .row-total, .is-zapped .amount { animation: total-pop 1.2s ease-out .15s; }
+@keyframes total-pop { 0%, 30% { color: #fff6a8; text-shadow: 0 0 .6em #ffe86b; } 100% { text-shadow: 0 0 0 transparent; } } /* sólo color: el tamaño nunca cambia */
+@media (prefers-reduced-motion: reduce) {
+  .is-new { animation: glow 2.5s ease-out; }
+  .is-zapped { animation: zap-flash 2s ease-out; }
+  .is-zapped .row-total, .is-zapped .amount { animation: none; }
+  .bolt { animation: strike-soft 1.6s ease-out forwards; }
+  @keyframes strike-soft { 0%, 30% { opacity: .9; } 100% { opacity: 0; } }
+}
+
+/* Franja de avisos (esquina derecha del footer, fuera del texto centrado): íconos chicos y breves. */
+#live-strip { position: absolute; right: 1.2em; top: 0; bottom: 0; display: flex; align-items: center; gap: .4em; pointer-events: none; }
+.live-ind { display: block; height: 1.4em; animation: ind-pop 1.5s ease-out forwards; }
+.live-ind svg { height: 100%; width: auto; display: block; }
+.live-ind.zap svg { fill: #ffe86b; filter: drop-shadow(0 0 .35em #ffe86b); }
+.live-ind.post svg { fill: var(--accent); filter: drop-shadow(0 0 .35em var(--accent)); }
+@keyframes ind-pop { 0% { opacity: 0; transform: translateY(60%); } 15% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
+.is-mobile #live-strip { display: none; }
+@media (prefers-reduced-motion: reduce) { .live-ind { animation: ind-fade 1.5s ease-out forwards; } @keyframes ind-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } } }

@@ -1,7 +1,7 @@
 import { renderSVG } from 'uqr';
 import type { Scene } from '../rotator';
 import type { PostStats, ZapStore } from '../nostr/store';
-import { live } from './live';
+import { live, liveMarks } from './live';
 import { fitRegions } from '../fit';
 import { ago, esc, sats, shortKey } from '../util';
 
@@ -18,12 +18,12 @@ export function recentPosts(store: ZapStore, n = MAX_POSTS): PostStats[] {
     .slice(0, n);
 }
 
-const row = (s: PostStats) => `<li class="post-row">
+const row = (s: PostStats, m: { cls: string; bolt: string }) => `<li class="post-row${m.cls}" data-id="${esc(s.postId)}">
       <div class="row-main">
         <div class="row-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="ago muted">${ago(s.post!.created_at)}</span></div>
         <p class="excerpt" data-clip>${esc(s.post!.content)}</p>
       </div>
-      <div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div>
+      <div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div>${m.bolt}
     </li>`;
 
 /** Escena de posts: lista determinística (autor, hora, mensaje y total) + un único QR a la app. */
@@ -34,14 +34,18 @@ export function postScene(store: ZapStore, duration: number, opts: PostSceneOpti
     name: 'post',
     duration,
     render(root) {
+      const marks = liveMarks(store, 'post', ['post', 'zap'], (id) => recentPosts(store).some((x) => x.postId === id));
       const draw = () => {
         const list = recentPosts(store);
+        marks.begin(list.map((x) => x.postId));
         root.innerHTML = (list.length
-          ? `<section class="posts"><ul class="post-list" data-fit="list" data-max="3.2" data-maxw="2.4" data-min="12">${list.map(row).join('')}</ul></section>`
+          ? `<section class="posts"><ul class="post-list" data-fit="list" data-max="3.2" data-maxw="2.4" data-min="12">${list.map((x) => row(x, marks.attrs(x.postId))).join('')}</ul></section>`
           : `<div class="empty-state"><p class="empty-msg" data-fit="text" data-max="7" data-min="16">${EMPTY_POSTS}</p></div>`) + qr();
         fitRegions(root);
+        marks.consume();
       };
-      return live(store, draw);
+      const off = live(store, draw);
+      return () => { off(); marks.off(); };
     },
   };
 }
