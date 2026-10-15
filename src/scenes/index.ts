@@ -1,6 +1,6 @@
 import { publicUrlOf, type Config } from '../config';
 import type { ZapStore } from '../nostr/store';
-import type { Scene } from '../rotator';
+import type { Scene } from './types';
 import { Announcement } from '../announcement';
 import { postScene } from './post';
 import { latestZapsScene } from './latestZaps';
@@ -8,20 +8,17 @@ import { top10HistoricoScene } from './top10Historico';
 import { top10Ultimas3hScene } from './top10Ultimas3h';
 import { anuncioScene } from './anuncio';
 import { videoScene } from './video';
-import { DEFAULT_SCENE_MS } from '../../server/settings';
+import { DEFAULT_SETTINGS } from '../../shared/settings';
 
-export const DEFAULT_DURATIONS = DEFAULT_SCENE_MS;
-
-/** Active scenes, all always in rotation. TODO: proximasCharlas. */
-export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement(cfg.announcement), origin = globalThis.location?.origin ?? ''): Scene[] {
-  const d = { ...DEFAULT_DURATIONS, ...cfg.sceneDurations };
+/** Scene renderers in shared schedule order. */
+export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement(DEFAULT_SETTINGS.announcement), origin = globalThis.location?.origin ?? ''): Scene[] {
   const publicUrl = publicUrlOf(cfg, origin);
   return [
-    postScene(store, d.post, { publicUrl }),
-    latestZapsScene(store, d.latestZaps, publicUrl),
-    top10HistoricoScene(store, d.top10Historico, publicUrl),
-    top10Ultimas3hScene(store, d.top10Ultimas3h, cfg.topRecentHours, undefined, publicUrl),
-    anuncioScene(ann, d.anuncio, publicUrl),
-    videoScene(cfg.videoSrc, { everyCycles: cfg.videoEveryCycles, mode: cfg.videoMode, clipSeconds: cfg.videoClipSeconds }),
+    postScene(store, { publicUrl }),
+    latestZapsScene(store, publicUrl),
+    top10HistoricoScene(store, publicUrl),
+    top10Ultimas3hScene(store, cfg.topRecentHours, undefined, publicUrl),
+    anuncioScene(ann, publicUrl),
+    videoScene(cfg.videoSrc),
   ];
 }

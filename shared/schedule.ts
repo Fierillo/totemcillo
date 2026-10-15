@@ -1,11 +1,9 @@
 // Shared by server and totem: the same deterministic schedule on both sides.
-import { DEFAULT_SCENE_MS, SCENES, type Action, type Settings } from '../server/settings.js';
+import { DEFAULT_SCENE_MS, SCENES, SCHEDULE_DEFAULTS, type Action, type Settings } from './settings.js';
 
 /** The minimum needed to compute the schedule. */
 export type ScheduleInputs = Pick<Settings, 'sceneDurations' | 'videoEveryCycles' | 'videoMode' | 'videoClipSeconds' | 'videoDurationSec' | 'epoch'>;
 
-/** Schedule values when settings doesn't define them (match public/config.json). */
-export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'full' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
 export const ORDER: readonly string[] = [...SCENES, 'video'];
 const VIDEO = ORDER.length - 1;
 

@@ -1,5 +1,5 @@
 import type { ZapStore } from './nostr/store';
-import type { ModAction } from '../server/settings';
+import type { ModAction } from '../shared/settings';
 import { authorHtml, profiles } from './nostr/profiles';
 import { recentPosts } from './scenes/post';
 import { ago, esc, sats } from './util';

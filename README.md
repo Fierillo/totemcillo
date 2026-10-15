@@ -18,7 +18,7 @@
 - **QR** to the app on posts, tops and announcement.
 - **Mobile view** on the same URL, with a ⚡ Zap button.
 - **Admin** (`/admin`, password protected): announcement, durations, video mode and ← → arrows.
-- Zaps validated per NIP-57; only posts and zaps since `startLine` count (editable in `/admin`; default from `public/config.json`).
+- Zaps validated per NIP-57; only posts and zaps since `startLine` count (editable in `/admin`; defaults in `shared/settings.ts`).
 
 ## Running
 
@@ -40,6 +40,8 @@ Environment variables (on Vercel; optional locally):
 Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
 ## How sync works
+
+`public/config.json` contains static client configuration: relays, hashtags, post length, recent ranking window, public URL, polling interval and video asset. Announcement, start line, scene durations and video scheduling are managed by `/admin`, persisted by the server, with defaults in `shared/settings.ts`.
 
 The **server clock** is the single source of truth. From a stored `epoch` and the scene durations, the server computes which scene is on (and, for video, at which second). Screens only read:
 

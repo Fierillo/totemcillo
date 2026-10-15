@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { ProfileCache } from '../src/nostr/profiles';
+import { ProfileCache, profiles, configureProfiles } from '../src/nostr/profiles';
 import { keys, sign } from './helpers';
 
 const meta = (sk: Uint8Array, content: object, created_at = 10) => sign(sk, { kind: 0, created_at, content: JSON.stringify(content), tags: [] });
@@ -91,7 +91,25 @@ describe('ProfileCache: suscripción kind:0 para los autores en pantalla', () =>
     expect(pc2.get(a.pk)).toEqual({ name: 'Ana' });
   });
 
-  it('el tótem y el admin configuran la suscripción con el pool existente', () => {
-    for (const f of ['src/main.ts', 'src/admin.ts']) expect(readFileSync(f, 'utf8')).toMatch(/subscribe: \(authors, onevent\) => pool\.subscribeMany\(cfg\.relays, \{ kinds: \[0\], authors \}/);
+  it.each(['older', 'empty'])('una consulta %s que termina después de un evento en vivo no lo pisa', async (result) => {
+    const a = keys();
+    let resolve!: (events: ReturnType<typeof meta>[]) => void;
+    const query = vi.fn(() => new Promise<ReturnType<typeof meta>[]>((done) => { resolve = done; }));
+    const pc = new ProfileCache({ query, batchMs: 10 });
+    pc.get(a.pk); await vi.advanceTimersByTimeAsync(20);
+    expect(query).toHaveBeenCalledOnce();
+    expect(pc.ingest(meta(a.sk, { name: 'Live' }, 200))).toBe(true);
+    resolve(result === 'older' ? [meta(a.sk, { name: 'Old' }, 100)] : []);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(pc.get(a.pk)).toEqual({ name: 'Live' });
+  });
+  it('la configuración compartida consulta y suscribe usando el mismo pool y relays', async () => {
+    const a = keys(), event = meta(a.sk, { name: 'Initial' });
+    const pool = { querySync: vi.fn(async () => [event]), subscribeMany: vi.fn(() => ({ close: vi.fn() })) };
+    configureProfiles(pool, ['wss://example.com'], mem(), document);
+    profiles.get(a.pk); await vi.advanceTimersByTimeAsync(3100);
+    expect(pool.querySync).toHaveBeenCalledWith(['wss://example.com'], { kinds: [0], authors: [a.pk] }, { maxWait: 4000 });
+    expect(pool.subscribeMany).toHaveBeenCalledWith(['wss://example.com'], { kinds: [0], authors: [a.pk] }, { onevent: expect.any(Function) });
+    expect(profiles.get(a.pk)).toEqual({ name: 'Initial' });
   });
 });

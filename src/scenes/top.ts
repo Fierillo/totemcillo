@@ -1,4 +1,4 @@
-import type { Scene } from '../rotator';
+import type { Scene } from './types';
 import type { ZapStore } from '../nostr/store';
 import { fitRegions } from '../fit';
 import { live, liveMarks } from './live';
@@ -6,7 +6,7 @@ import { esc, sats } from '../util';
 import { authorHtml } from '../nostr/profiles';
 import { appQr } from './post';
 
-export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number;
+export interface TopOptions { name: string; title: string; store: ZapStore; since: () => number;
   /** App QR URL (as in posts); not shown without a URL. */
   publicUrl?: string }
 
@@ -14,7 +14,6 @@ export interface TopOptions { name: string; title: string; store: ZapStore; dura
 export function topScene(o: TopOptions): Scene {
   return {
     name: o.name,
-    duration: o.duration,
     render(root) {
       const marks = liveMarks(o.store, o.name, ['zap'], (id) => o.store.top(10, o.since()).some((x) => x.postId === id));
       const draw = () => {

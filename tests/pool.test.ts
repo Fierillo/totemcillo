@@ -125,10 +125,10 @@ describe('ventana de tiempo en la suscripción', () => {
     startNostr(cfg, new ZapStore(), p, 1500, resolverFor(null), 123_456);
     expect(p.subs[0].filter).toEqual({ ...notesFilter(cfg.hashtags), since: 123_456 });
   });
-  it('sin corte explícito, since = startLine de la config', () => {
+  it('sin corte explícito no agrega since', () => {
     const p = mockPool();
-    startNostr({ ...cfg, startLine: '2026-10-13T21:00:00-03:00' }, new ZapStore(), p, 1500, resolverFor(null));
-    expect(p.subs[0].filter).toEqual({ ...notesFilter(cfg.hashtags), since: Date.UTC(2026, 9, 14) / 1000 });
+    startNostr(cfg, new ZapStore(), p, 1500, resolverFor(null));
+    expect(p.subs[0].filter).toEqual(notesFilter(cfg.hashtags));
   });
   it('notesFilter sin since no lo agrega', () => {
     expect(notesFilter(['a'])).not.toHaveProperty('since');

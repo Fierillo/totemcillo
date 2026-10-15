@@ -11,7 +11,7 @@ const URL_ = 'https://totem.lacrypta.ar/';
 const render = (name: string, ann = new Announcement('Hola a todos')) => {
   const s = buildScenes({ ...defaultConfig, publicUrl: URL_ }, new ZapStore(), ann, 'http://x').find((x) => x.name === name)!;
   const root = document.createElement('div');
-  s.render(root, () => {});
+  s.render(root);
   return root;
 };
 

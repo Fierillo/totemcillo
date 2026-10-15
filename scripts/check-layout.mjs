@@ -24,7 +24,8 @@ const zaps = Array.from({ length: 40 }, (_, i) => ({
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
 zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, domain: 'getalby.com', comment: 'zap a post viejo', created_at: now - 25 * 3600 });
-const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'], sceneDurations: { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000, anuncio: 3000 } , talks: [], announcement: '', noteUriTemplate: 'https://njump.me/{nevent}' };
+const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'] };
+const sceneDurations = { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000, anuncio: 3000 };
 
 
 // The totem follows the server schedule (/api/kiosk + /api/version), not local timers or keys.
@@ -140,7 +141,7 @@ const viewports = [[1280, 720], [1920, 1080], [1080, 1920]];
 try {
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
-    const k = await kiosk(page, cfg.sceneDurations);
+    const k = await kiosk(page, sceneDurations);
     await page.route('**/config.json', (r) => r.fulfill({ json: cfg }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts, zaps }));
     await page.goto('http://localhost:4179/');
@@ -159,7 +160,7 @@ try {
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
     const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: cfg }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: realPost, zaps: realZaps }));
     await page.goto('http://localhost:4179/');
     for (const scene of ['post', 'latestZaps']) {
@@ -196,7 +197,7 @@ try {
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
     const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/' } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
     await page.goto('http://localhost:4179/');
     await page.waitForSelector('.scene-post .post-row');
@@ -224,7 +225,7 @@ try {
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
     const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/' } }));
     await page.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
     await page.goto('http://localhost:4179/');
     await page.waitForSelector('.mobile .m-post');
@@ -262,7 +263,7 @@ try {
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
     const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: cfg }));
     await page.goto('http://localhost:4179/');
     await page.waitForTimeout(800);
     for (const [scene, expected] of empties) {
@@ -277,7 +278,7 @@ try {
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
     const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 }, { videoMode: 'full', videoDurationSec: 6 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/totem-video.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/totem-video.webm' } }));
     await page.goto('http://localhost:4179/');
     await k.show('video');
     await page.waitForSelector('.scene-video video', { timeout: 5000 }).catch(() => {});
@@ -307,7 +308,7 @@ try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     const S = { post: 400, latestZaps: 400, top10Historico: 400, top10Ultimas3h: 400, anuncio: 400 };
     await kiosk(page, S, { videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 0.4 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000, sceneDurations: S } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000 } }));
     await page.addInitScript(() => {
       window.__seq = [];
       setInterval(() => { const c = document.getElementById('scene')?.className.replace('scene scene-', ''); if (c && c !== 'scene' && window.__seq.at(-1) !== c) window.__seq.push(c); }, 50);
@@ -325,7 +326,7 @@ try {
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     const k = await kiosk(page, { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 }, { videoMode: 'full', videoDurationSec: 3 });
-    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/no-existe.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoSrc: '/video/no-existe.webm' } }));
     await page.goto('http://localhost:4179/');
     await k.show('video');
     const at = await page.evaluate(() => document.getElementById('scene').className);
@@ -414,7 +415,7 @@ try {
     await page.setViewportSize({ width: 1280, height: 720 });
 
     const totem = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await totem.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, publicUrl: 'https://totem.lacrypta.ar/', settingsPollMs: 500, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
+    await totem.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/', settingsPollMs: 500 } }));
     await totem.addInitScript((d) => localStorage.setItem('totemcillo:v1', d), JSON.stringify({ posts: five, zaps: fiveZaps }));
     await totem.goto('http://localhost:4179/');
     await totem.waitForTimeout(2500);
@@ -428,7 +429,7 @@ try {
     }
     if (!found) problems.push('admin: el anuncio no llegó al tótem');
     await totem.screenshot({ path: `${out}/totem-anuncio-remoto.png` });
-    // remote next: set seq then see scene change
+    // Remote next re-anchors the schedule, then the totem changes scene.
     const before = await totem.evaluate(() => document.getElementById('scene')?.className);
     await page.click('button.cmd-next');
     await totem.waitForTimeout(2000);

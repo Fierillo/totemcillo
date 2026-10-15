@@ -20,13 +20,6 @@ describe('loadConfig', () => {
   });
 });
 
-describe('noteUriTemplate', () => {
-  it('por defecto nostr:{nevent} y se puede sobreescribir', async () => {
-    expect(defaultConfig.noteUriTemplate).toBe('nostr:{nevent}');
-    const f = async () => ({ ok: true, json: async () => ({ noteUriTemplate: 'https://njump.me/{nevent}' }) });
-    expect((await loadConfig(f as any)).noteUriTemplate).toBe('https://njump.me/{nevent}');
-  });
-});
 
 describe('postMaxChars', () => {
   it('por defecto 210 y se puede sobreescribir', async () => {
@@ -36,22 +29,7 @@ describe('postMaxChars', () => {
   });
 });
 
-describe('startLine', () => {
-  it('tiene default y se puede sobreescribir; reemplaza a postMaxAgeHours', async () => {
-    expect(defaultConfig.startLine).toBe('2026-10-13T00:00:00-03:00');
-    expect(defaultConfig).not.toHaveProperty('postMaxAgeHours');
-    const f = async () => ({ ok: true, json: async () => ({ startLine: '2026-10-13T21:00:00-03:00' }) });
-    expect((await loadConfig(f as any)).startLine).toBe('2026-10-13T21:00:00-03:00');
-  });
-});
 
-describe('keyboardNav', () => {
-  it('por defecto true y se puede desactivar', async () => {
-    expect(defaultConfig.keyboardNav).toBe(true);
-    const f = async () => ({ ok: true, json: async () => ({ keyboardNav: false }) });
-    expect((await loadConfig(f as any)).keyboardNav).toBe(false);
-  });
-});
 
 import shipped from '../public/config.json';
 describe('config.json publicada', () => {
@@ -72,3 +50,10 @@ describe('cobertura de relays', () => {
     for (const dead of ['wss://relay.snort.social', 'wss://yabu.me']) expect(shipped.relays).not.toContain(dead);
   });
 });
+
+it('solo carga opciones del cliente, no ajustes administrables ni opciones retiradas', async () => {
+    const remote = { relays: ['wss://example.com'], sceneDurations: { post: 3 }, videoMode: 'clip', videoEveryCycles: 8, videoClipSeconds: 5, announcement: 'old', startLine: 'old', keyboardNav: true, talks: [], noteUriTemplate: 'old' };
+    const c = await loadConfig((async () => ({ ok: true, json: async () => remote })) as any);
+    expect(c.relays).toEqual(remote.relays);
+    for (const key of Object.keys(remote).filter((key) => key !== 'relays')) expect(c).not.toHaveProperty(key);
+  });

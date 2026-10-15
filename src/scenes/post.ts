@@ -1,5 +1,5 @@
 import { renderSVG } from 'uqr';
-import type { Scene } from '../rotator';
+import type { Scene } from './types';
 import type { PostStats, ZapStore } from '../nostr/store';
 import { live, liveMarks } from './live';
 import { fitRegions } from '../fit';
@@ -39,11 +39,10 @@ export function appQr(publicUrl: string): string {
 }
 
 /** Posts scene: deterministic list (author, time, message and total) + a single app QR. */
-export function postScene(store: ZapStore, duration: number, opts: PostSceneOptions = { publicUrl: `${globalThis.location?.origin ?? ''}/` }): Scene {
+export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl: `${globalThis.location?.origin ?? ''}/` }): Scene {
   const qr = () => appQr(opts.publicUrl);
   return {
     name: 'post',
-    duration,
     render(root) {
       const marks = liveMarks(store, 'post', ['post', 'zap'], (id) => recentPosts(store).some((x) => x.postId === id));
       const draw = () => {

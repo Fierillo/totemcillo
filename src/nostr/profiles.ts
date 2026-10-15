@@ -1,5 +1,6 @@
 import type { NostrEvent } from './types';
 import type { KV } from './store';
+import type { PoolLike } from './pool';
 import { isSigned } from './verify';
 import { esc, shortKey } from '../util';
 
@@ -85,11 +86,17 @@ export class ProfileCache {
    */
   ingest(ev: NostrEvent): boolean {
     if (!ev || ev.kind !== 0 || !(this.watched.has(ev.pubkey) || this.map.has(ev.pubkey))) return false;
-    if (ev.created_at <= (this.at.get(ev.pubkey) ?? -1) || !isSigned(ev)) return false;
-    this.at.set(ev.pubkey, ev.created_at);
-    this.map.set(ev.pubkey, parseProfile(ev));
+    if (!this.accept(ev)) return false;
     this.save();
     this.changed();
+    return true;
+  }
+
+  /** Same signature and freshness rules for queries and live updates. */
+  private accept(ev: NostrEvent): boolean {
+    if (ev.kind !== 0 || ev.created_at <= (this.at.get(ev.pubkey) ?? -1) || !isSigned(ev)) return false;
+    this.at.set(ev.pubkey, ev.created_at);
+    this.map.set(ev.pubkey, parseProfile(ev));
     return true;
   }
 
@@ -138,13 +145,10 @@ export class ProfileCache {
       batch.forEach((pk) => this.inflight.add(pk));
       try {
         const evs = await this.o.query!(batch);
+        const authors = new Set(batch);
+        for (const ev of evs) if (authors.has(ev.pubkey)) this.accept(ev);
         for (const pk of batch) {
-          const ev = evs.filter((e) => e.kind === 0 && e.pubkey === pk && isSigned(e)).sort((a, b) => b.created_at - a.created_at)[0];
-          // A live event may have arrived meanwhile: never go back to an older profile.
-          if (ev && ev.created_at <= (this.at.get(pk) ?? -1)) continue;
-          if (!ev && this.at.has(pk)) continue;
-          this.map.set(pk, ev ? parseProfile(ev) : null);
-          if (ev) this.at.set(pk, ev.created_at);
+          if (!this.map.has(pk)) this.map.set(pk, null);
           this.failedAt.delete(pk);
         }
         this.save();
@@ -183,6 +187,16 @@ export const avatarSrc = (picture: string) => `/api/avatar?url=${encodeURICompon
 
 /** Cache shared by the whole app (main.ts configures it with the relays). */
 export const profiles = new ProfileCache();
+
+/** Configure the same cached, live profiles and avatar fallback in kiosk and admin. */
+export function configureProfiles(pool: Pick<PoolLike, 'querySync' | 'subscribeMany'>, relays: string[], storage: KV, doc: Document) {
+  profiles.configure({
+    query: (authors) => pool.querySync(relays, { kinds: [0], authors }, { maxWait: 4000 }),
+    subscribe: (authors, onevent) => pool.subscribeMany(relays, { kinds: [0], authors }, { onevent }),
+    storage,
+  });
+  installAvatarFallback(doc);
+}
 
 /** Author as round avatar + alias (or short npub and neutral avatar while loading / if missing). Safe HTML. */
 export function authorHtml(pk: string | undefined, pc: ProfileCache = profiles): string {

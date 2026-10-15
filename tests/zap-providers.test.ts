@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_ZAP_PROVIDERS, LIMITS } from '../server/settings';
+import { DEFAULT_ZAP_PROVIDERS, LIMITS } from '../shared/settings';
 import { LnurlResolver } from '../src/nostr/lnurl';
 import { validateZapReceipt } from '../src/nostr/verify';
 import { ZapStore, providerAllowed } from '../src/nostr/store';

@@ -1,7 +1,7 @@
 import { parseCookies, passwordMatches, readSession, signSession } from './auth.js';
 import type { Storage } from './storage.js';
 import { reanchor, scheduleInputs, shiftSchedule } from '../shared/schedule.js';
-import { applyModeration, applyPatch, DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from './settings.js';
+import { applyModeration, applyPatch, DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from '../shared/settings.js';
 
 export interface ApiRequest { method: string; path: string; headers: Record<string, string | undefined>; body: unknown; ip: string;
   /** Raw query string without '?' ('' or undefined when absent). */
@@ -36,8 +36,11 @@ async function authed(req: ApiRequest, d: Deps): Promise<boolean> {
 }
 
 async function readSettings(d: Deps): Promise<Settings> {
-  const s = await d.storage.get<Settings>(KEY);
-  return s ? { ...DEFAULT_SETTINGS, ...s } : DEFAULT_SETTINGS;
+  const s = await d.storage.get<Settings & { command?: unknown }>(KEY);
+  if (!s) return DEFAULT_SETTINGS;
+  // Discard the old rotator's persisted command without resetting any settings.
+  const { command, ...settings } = s;
+  return { ...DEFAULT_SETTINGS, ...settings };
 }
 
 function cookieFlags(req: ApiRequest, maxAge: number): string {

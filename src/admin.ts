@@ -1,13 +1,12 @@
 import './admin.css';
-import { LIMITS, SCENES, DEFAULT_SCENE_MS, type ModAction, type Settings } from '../server/settings';
+import { LIMITS, SCENES, DEFAULT_SCENE_MS, SCHEDULE_DEFAULTS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, type ModAction, type Settings } from '../shared/settings';
 import { loadConfig, postCutoff } from './config';
 import { ZapStore, type Moderation } from './nostr/store';
 import { createPool, followCutoff, startNostr } from './nostr/pool';
-import { installAvatarFallback, profiles } from './nostr/profiles';
+import { configureProfiles } from './nostr/profiles';
 import { moderationOf } from './moderation-lists';
 import { renderModeration } from './moderation';
 import { renderProviders } from './providers';
-import { DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../server/settings';
 import { fromArInput, toArInput } from './startline';
 
 const root = document.getElementById('admin')!;
@@ -40,11 +39,11 @@ async function panel() {
     <section class="card card-anuncio"><label>Anuncio <textarea name="announcement" maxlength="${LIMITS.maxAnnouncement}" rows="4">${s.announcement.replace(/</g, '&lt;')}</textarea>
     <small>${s.announcement.length}/${LIMITS.maxAnnouncement}</small></label></section>
     <section class="card card-dur"><fieldset><legend>Duración de cada escena (segundos)</legend>
-      ${SCENES.map((n) => `<label>${n} <input type="number" name="dur-${n}" min="${LIMITS.minMs / 1000}" max="${LIMITS.maxMs / 1000}" step="1" value="${Math.round((durs[n] ?? 21000) / 1000)}" /></label>`).join('')}
+      ${SCENES.map((n) => `<label>${n} <input type="number" name="dur-${n}" min="${LIMITS.minMs / 1000}" max="${LIMITS.maxMs / 1000}" step="1" value="${Math.round(durs[n] / 1000)}" /></label>`).join('')}
     </fieldset></section>
-    <section class="card card-video"><label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
-    <label>Modo del video <select name="videoMode">${(['full', 'clip'] as const).map((m) => `<option value="${m}"${(s.videoMode ?? 'full') === m ? ' selected' : ''}>${m === 'full' ? 'Completo (desde 0)' : 'Clip al azar'}</option>`).join('')}</select></label>
-    <label class="clip-len"${(s.videoMode ?? 'full') === 'clip' ? '' : ' hidden'}>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label></section>
+    <section class="card card-video"><label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? SCHEDULE_DEFAULTS.videoEveryCycles}" /></label>
+    <label>Modo del video <select name="videoMode">${(['full', 'clip'] as const).map((m) => `<option value="${m}"${(s.videoMode ?? SCHEDULE_DEFAULTS.videoMode) === m ? ' selected' : ''}>${m === 'full' ? 'Completo (desde 0)' : 'Clip al azar'}</option>`).join('')}</select></label>
+    <label class="clip-len"${(s.videoMode ?? SCHEDULE_DEFAULTS.videoMode) === 'clip' ? '' : ' hidden'}>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? SCHEDULE_DEFAULTS.videoClipSeconds}" /></label></section>
     <section class="card card-start"><label>Inicio: posts y zaps desde (hora de Argentina) <input type="datetime-local" name="startLine" value="${toArInput(s.startLine ?? DEFAULT_START_LINE)}" required /></label>
     <small>Lo anterior no se muestra ni cuenta. Sin fecha de fin.</small></section>
     <section class="card card-prov"></section>
@@ -112,16 +111,10 @@ const moderate = (m: Moderation) => { modStore?.setModeration(m); modFeed?.setCu
 async function startModeration(el: HTMLElement, s: Settings) {
   if (!modStore) {
     const cfg = await loadConfig();
-    const cutoff = postCutoff(cfg);
+    const cutoff = postCutoff({ startLine: s.startLine ?? DEFAULT_START_LINE });
     modStore = new ZapStore(undefined, { postMaxChars: cfg.postMaxChars, cutoff });
     const pool = createPool();
-    profiles.configure({
-      query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }),
-      // Live kind:0 for the authors on screen: newer profiles replace the cached ones and re-render.
-      subscribe: (authors, onevent) => pool.subscribeMany(cfg.relays, { kinds: [0], authors }, { onevent }),
-      storage: window.localStorage,
-    });
-    installAvatarFallback(document);
+    configureProfiles(pool, cfg.relays, window.localStorage, document);
     const st = modStore;
     modFeed = followCutoff((c) => startNostr(cfg, st, pool, undefined, undefined, c), cutoff);
   }

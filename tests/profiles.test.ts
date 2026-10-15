@@ -124,9 +124,9 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
   it('post, top, últimos zaps y móvil', async () => {
     const { store } = setup();
     const roots = [document.createElement('div'), document.createElement('div'), document.createElement('div'), document.createElement('div')];
-    postScene(store, 1, { publicUrl: 'https://x/' }).render(roots[0]);
-    topScene({ name: 'top10Historico', title: 'T', store, duration: 1, since: () => 0 }).render(roots[1]);
-    latestZapsScene(store, 1).render(roots[2]);
+    postScene(store, { publicUrl: 'https://x/' }).render(roots[0]);
+    topScene({ name: 'top10Historico', title: 'T', store, since: () => 0 }).render(roots[1]);
+    latestZapsScene(store).render(roots[2]);
     renderMobile(roots[3], store, defaultConfig, new Announcement(''));
     for (const r of roots) expect(r.querySelector(`.${PLACEHOLDER_CLASS}`), r.innerHTML.slice(0, 80)).not.toBeNull();
     await vi.advanceTimersByTimeAsync(1000);

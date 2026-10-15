@@ -33,35 +33,9 @@
     "lacrypta",
     "labitconf"
   ],
-  "sceneDurations": {
-    "post": 21000,
-    "latestZaps": 21000,
-    "top10Historico": 21000,
-    "top10Ultimas3h": 21000,
-    "anuncio": 21000
-  },
-  "talks": [
-    {
-      "time": "11:00",
-      "title": "Charla de ejemplo 1",
-      "speaker": "Por definir"
-    },
-    {
-      "time": "12:00",
-      "title": "Charla de ejemplo 2",
-      "speaker": "Por definir"
-    }
-  ],
-  "announcement": "¡Pasá por el stand de La Crypta! ⚡",
-  "noteUriTemplate": "nostr:{nevent}",
   "postMaxChars": 210,
-  "startLine": "2026-10-13T00:00:00-03:00",
   "topRecentHours": 3,
-  "keyboardNav": false,
   "publicUrl": "",
   "settingsPollMs": 21000,
-  "videoSrc": "/video/totem-video.webm",
-  "videoEveryCycles": 2,
-  "videoMode": "full",
-  "videoClipSeconds": 21
+  "videoSrc": "/video/totem-video.webm"
 }

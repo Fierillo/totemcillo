@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { LIMITS } from '../server/settings';
+import { LIMITS } from '../shared/settings';
 import { ZapStore } from '../src/nostr/store';
 import { recentPosts } from '../src/scenes/post';
 import { Follower } from '../src/follow';
@@ -121,7 +121,7 @@ describe('las listas llegan al tótem y al celular por el flujo existente', () =
     const fetchFn = vi.fn(async () => ({ ok: true, json: async () => res.shift() }));
     const onModeration = vi.fn();
     const nav = { next() {}, prev() {}, setDuration() {}, setEveryCycles() {}, setVideoMode() {}, setClipSeconds() {} };
-    const r = createRemote({ fetchFn: fetchFn as any, nav, announcement: new Announcement(''), baseDurations: {}, baseVideoEveryCycles: 2, baseVideoMode: 'full', baseVideoClipSeconds: 21, onModeration });
+    const r = createRemote({ fetchFn: fetchFn as any, announcement: new Announcement(''), onModeration });
     await r.poll();
     expect(onModeration).toHaveBeenLastCalledWith(expect.objectContaining({ hiddenPosts: ['h'], bannedPubkeys: ['b'] }));
     await r.poll();

@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { positionAt, shiftSchedule, reanchor, SCHEDULE_DEFAULTS } from '../shared/schedule';
+import { positionAt, shiftSchedule, reanchor } from '../shared/schedule';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from '../server/settings';
+import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, SCHEDULE_DEFAULTS, type Settings } from '../shared/settings';
 import { Follower } from '../src/follow';
 import { Announcement } from '../src/announcement';
-import type { Scene } from '../src/rotator';
+import type { Scene } from '../src/scenes/types';
 import { videoScene } from '../src/scenes/video';
 
 const D = { post: 1000, latestZaps: 2000, top10Historico: 1000, top10Ultimas3h: 1000, anuncio: 1000 }; // base 6000
@@ -146,7 +146,7 @@ describe('/api/kiosk (sólo lectura)', () => {
   });
 });
 
-const mk = (name: string) => ({ name, duration: 1000, render: vi.fn((r: HTMLElement) => { r.textContent = name; }) }) as Scene;
+const mk = (name: string) => ({ name, render: vi.fn((r: HTMLElement) => { r.textContent = name; }) }) as Scene;
 let root: HTMLElement;
 const T0 = 1_700_000_000_000;
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(T0); root = document.createElement('div'); });
@@ -264,7 +264,7 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
   const meta = (v: HTMLVideoElement, d = 88) => { Object.defineProperty(v, 'duration', { value: d, configurable: true }); v.dispatchEvent(new Event('loadedmetadata')); };
   const run = (expected: number) => {
     const e = { v: expected };
-    videoScene('/v.webm').render(root, vi.fn(), { elapsedMs: expected * 1000, expectedSec: () => e.v });
+    videoScene('/v.webm').render(root, { elapsedMs: expected * 1000, expectedSec: () => e.v });
     const v = root.querySelector('video')!;
     meta(v);
     return { v, e };
@@ -291,7 +291,7 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
     expect(v.playbackRate).toBe(1);
   });
   it('sin expectedSec (uso normal) no toca la reproducción', () => {
-    videoScene('/v.webm').render(root, vi.fn());
+    videoScene('/v.webm').render(root);
     const v = root.querySelector('video')!;
     meta(v); v.currentTime = 5;
     vi.advanceTimersByTime(3000);

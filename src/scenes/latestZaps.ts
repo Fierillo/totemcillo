@@ -1,4 +1,4 @@
-import type { Scene } from '../rotator';
+import type { Scene } from './types';
 import type { ZapStore } from '../nostr/store';
 import { live } from './live';
 import { fitRegions } from '../fit';
@@ -7,10 +7,9 @@ import { authorHtml } from '../nostr/profiles';
 import { appQr } from './post';
 
 /** Scene 2: latest zaps received, with the shared app QR (when there is a URL). */
-export function latestZapsScene(store: ZapStore, duration: number, publicUrl?: string): Scene {
+export function latestZapsScene(store: ZapStore, publicUrl?: string): Scene {
   return {
     name: 'latestZaps',
-    duration,
     render(root) {
       const draw = () => {
         const items = store.latestZaps(10).map((z) => {

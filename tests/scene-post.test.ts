@@ -19,7 +19,7 @@ describe('postScene: lista vertical de posts recientes', () => {
   it('sin posts muestra estado vacío (con el QR igual) y pasa a la lista cuando llega uno', () => {
     const store = new ZapStore();
     const root = document.createElement('div');
-    postScene(store, 1, { publicUrl: URL_ }).render(root);
+    postScene(store, { publicUrl: URL_ }).render(root);
     expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay posts con #lacrypta / #labitconf');
     expect(root.querySelectorAll('figure.qr')).toHaveLength(1);
     store.addPost({ id: 'n', pubkey: 'n'.repeat(64), content: 'llegó', created_at: 1 });
@@ -29,7 +29,7 @@ describe('postScene: lista vertical de posts recientes', () => {
   it(`muestra hasta ${6} posts, el más nuevo primero, en una lista ajustable`, () => {
     expect(MAX_POSTS).toBe(6);
     const root = document.createElement('div');
-    postScene(many(8), 1, { publicUrl: URL_ }).render(root);
+    postScene(many(8), { publicUrl: URL_ }).render(root);
     expect(excerpts(root)).toEqual(['post 8', 'post 7', 'post 6', 'post 5', 'post 4', 'post 3']);
     const ul = root.querySelector<HTMLElement>('ul.post-list')!;
     expect(ul.dataset.fit).toBe('list');
@@ -37,9 +37,9 @@ describe('postScene: lista vertical de posts recientes', () => {
   });
   it('es determinística: mismo store → mismo HTML, sin importar cuántas veces se muestre', () => {
     const store = many(5);
-    const scene = postScene(store, 1, { publicUrl: URL_ });
+    const scene = postScene(store, { publicUrl: URL_ });
     const a = document.createElement('div'), b = document.createElement('div'), c = document.createElement('div');
-    scene.render(a); scene.render(b); postScene(store, 1, { publicUrl: URL_ }).render(c);
+    scene.render(a); scene.render(b); postScene(store, { publicUrl: URL_ }).render(c);
     expect(b.innerHTML).toBe(a.innerHTML);
     expect(c.innerHTML).toBe(a.innerHTML);
   });
@@ -49,7 +49,7 @@ describe('postScene: lista vertical de posts recientes', () => {
     store.addPost({ id: 'b', pubkey: 'b'.repeat(64), content: 'Segundo', created_at: 2 });
     for (let i = 0; i < 4; i++) store.addZap({ id: `z${i}`, postId: 'a', sender: 's'.repeat(64), msats: 1_000_000, comment: `comentario${i}`, created_at: 10 + i });
     const root = document.createElement('div');
-    postScene(store, 1, { publicUrl: URL_ }).render(root);
+    postScene(store, { publicUrl: URL_ }).render(root);
     const [b, a] = [...root.querySelectorAll<HTMLElement>('.post-row')];
     expect(a.querySelector('.excerpt')!.textContent).toBe('Hola <b>mundo</b>');
     expect(a.querySelector('.excerpt b')).toBeNull();
@@ -62,7 +62,7 @@ describe('postScene: lista vertical de posts recientes', () => {
   });
   it('un solo QR en la escena, con la URL pública de la app (no por post)', () => {
     const root = document.createElement('div');
-    postScene(many(4), 1, { publicUrl: URL_ }).render(root);
+    postScene(many(4), { publicUrl: URL_ }).render(root);
     const figs = root.querySelectorAll('figure.qr');
     expect(figs).toHaveLength(1);
     expect(figs[0].getAttribute('data-uri')).toBe(URL_);
@@ -73,7 +73,7 @@ describe('postScene: lista vertical de posts recientes', () => {
   it('se actualiza en vivo y deja de hacerlo al limpiar', () => {
     const store = many(1);
     const root = document.createElement('div');
-    const cleanup = postScene(store, 1, { publicUrl: URL_ }).render(root) as () => void;
+    const cleanup = postScene(store, { publicUrl: URL_ }).render(root) as () => void;
     store.addPost({ id: hex(9), pubkey: 'a'.repeat(64), content: 'nuevo', created_at: 999 });
     expect(excerpts(root)[0]).toBe('nuevo');
     cleanup();
@@ -85,7 +85,7 @@ describe('postScene: lista vertical de posts recientes', () => {
     const root = document.createElement('div');
     store.addPost({ id: 'x', pubkey: '<img src=x onerror=alert(1)>', content: 'hola', created_at: 1 });
     store.addZap({ id: 'z', postId: 'x', sender: '<svg onload=alert(1)>', msats: 1000, comment: '', created_at: 2 });
-    postScene(store, 1, { publicUrl: URL_ }).render(root);
+    postScene(store, { publicUrl: URL_ }).render(root);
     expect(root.querySelector('img')).toBeNull();
     expect(root.querySelectorAll('svg')).toHaveLength(1);
     expect(root.querySelector('.author')!.textContent).toContain('<img');

@@ -1,96 +1,48 @@
-import type { Scene } from '../rotator';
+import type { Scene } from './types';
 import { esc } from '../util';
 
-/** Drift correction: tolerance and jump (s), rate limits and how often it measures (ms). */
+/** Drift correction: tolerance and jump (s), rate limits and measurement interval (ms). */
 export const DRIFT = { tolerance: 0.25, seek: 1.5, minRate: 0.95, maxRate: 1.05, everyMs: 1000 };
-
 export const EMPTY_VIDEO = 'Sin video configurado';
-export type VideoMode = 'full' | 'clip';
-export interface VideoOptions {
-  errorDelayMs?: number; startTimeoutMs?: number; everyCycles?: number;
-  /** full: whole from 0; clip: `clipSeconds` from a random point. */
-  mode?: VideoMode; clipSeconds?: number; random?: () => number;
-}
 
-/** Video scene: fullscreen and muted, once from 0; signals `done` when it ends (or fails). */
-export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 10000, everyCycles = 2, mode = 'full', clipSeconds = 21, random = Math.random }: VideoOptions = {}): Scene {
-  const scene: Scene = {
+/** Playback only: the shared schedule owns clip selection and all scene transitions. */
+export function videoScene(src: string): Scene {
+  return {
     name: 'video',
-    duration: 0,
-    untilDone: true,
-    everyCycles,
-    videoMode: mode,
-    clipSeconds,
-    render(root, done = () => {}, ctx = {}) {
-      let finished = false;
-      const timers: ReturnType<typeof setTimeout>[] = [];
-      const finish = () => { if (!finished) { finished = true; timers.forEach(clearTimeout); done(); } };
-      const later = (ms: number) => timers.push(setTimeout(finish, ms));
+    render(root, ctx = {}) {
       if (!src) {
         root.innerHTML = `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">${EMPTY_VIDEO}</p>`;
-        later(errorDelayMs);
-        return () => { finished = true; timers.forEach(clearTimeout); };
+        return;
       }
       root.innerHTML = `<video class="scene-video-el" src="${esc(src)}" autoplay muted playsinline preload="auto"></video>`;
       const v = root.querySelector('video')!;
       v.muted = true;
       v.loop = false;
-      try { v.currentTime = 0; } catch { /* no metadata yet */ }
-      const startTimer = setTimeout(finish, startTimeoutMs);
-      timers.push(startTimer);
-      let end: number | null = null;
-      let metaDone = false;
-      const clip = scene.videoMode === 'clip' ? scene.clipSeconds ?? clipSeconds : 0;
-      const off = Math.max(0, (ctx.elapsedMs ?? 0) / 1000);
+      let ready = false;
       const onMeta = () => {
-        const d = v.duration;
-        if (metaDone || !Number.isFinite(d)) return;
-        metaDone = true;
-        if (clip && d > clip) {
-          const c = ctx.clipStart;
-          const resumed = c !== undefined && c >= 0 && c <= d - clip;
-          const start = resumed ? c : random() * (d - clip);
-          if (!resumed) ctx.onClipStart?.(start);
-          if (off >= clip) return finish();
-          end = start + clip;
-          try { v.currentTime = start + off; } catch { /* ignore */ }
-          later((clip - off) * 1000);
-        } else if (off > 0) {
-          if (off >= d) return finish();
-          try { v.currentTime = off; } catch { /* ignore */ }
-        }
+        if (ready || !Number.isFinite(v.duration)) return;
+        ready = true;
+        const sec = Math.max(0, (ctx.elapsedMs ?? 0) / 1000);
+        if (sec < v.duration) { try { v.currentTime = sec; } catch { /* ignore */ } }
       };
-      // Drift vs. the server clock (no network): gentle rate adjustment, or a jump if it's large.
-      let sync: ReturnType<typeof setInterval> | null = null;
-      if (ctx.expectedSec) {
-        sync = setInterval(() => {
-          const d = v.duration;
-          const exp = ctx.expectedSec!();
-          if (!metaDone || finished || !Number.isFinite(d) || exp < 0 || exp >= d) return;
-          const drift = v.currentTime - exp;
-          if (Math.abs(drift) > DRIFT.seek) { try { v.currentTime = exp; } catch { /* ignore */ } v.playbackRate = 1; }
-          else if (Math.abs(drift) > DRIFT.tolerance) v.playbackRate = Math.min(DRIFT.maxRate, Math.max(DRIFT.minRate, 1 - drift * 0.1));
-          else v.playbackRate = 1;
-        }, DRIFT.everyMs);
-      }
       v.addEventListener('loadedmetadata', onMeta);
       if (v.readyState >= 1) onMeta();
-      v.addEventListener('timeupdate', () => {
-        if (v.currentTime > 0) clearTimeout(startTimer);
-        if (end !== null && v.currentTime >= end) finish();
-      });
-      v.addEventListener('ended', finish);
-      v.addEventListener('error', () => later(errorDelayMs));
+      const sync = ctx.expectedSec ? setInterval(() => {
+        const exp = ctx.expectedSec!();
+        if (!ready || exp < 0 || exp >= v.duration) return;
+        const drift = v.currentTime - exp;
+        if (Math.abs(drift) > DRIFT.seek) { try { v.currentTime = exp; } catch { /* ignore */ } v.playbackRate = 1; }
+        else if (Math.abs(drift) > DRIFT.tolerance) v.playbackRate = Math.min(DRIFT.maxRate, Math.max(DRIFT.minRate, 1 - drift * 0.1));
+        else v.playbackRate = 1;
+      }, DRIFT.everyMs) : null;
       void v.play?.()?.catch?.(() => {});
       return () => {
-        finished = true;
-        timers.forEach(clearTimeout);
         if (sync) clearInterval(sync);
+        v.removeEventListener('loadedmetadata', onMeta);
         v.pause();
         v.removeAttribute('src');
         v.load?.();
       };
     },
   };
-  return scene;
 }

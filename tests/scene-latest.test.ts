@@ -14,7 +14,7 @@ const setup = (n: number) => {
 describe('latestZapsScene', () => {
   it('sin zaps muestra título y estado vacío ajustado', () => {
     const root = document.createElement('div');
-    latestZapsScene(setup(0).store, 1).render(root);
+    latestZapsScene(setup(0).store).render(root);
     expect(root.querySelector('h1')!.textContent).toContain('Últimos zaps');
     const msg = root.querySelector<HTMLElement>('.empty-msg')!;
     expect(msg.textContent).toBe('Todavía no hay zaps');
@@ -23,9 +23,9 @@ describe('latestZapsScene', () => {
   });
   it('muestra los 10 más nuevos primero, con comentario y extracto escapado', () => {
     const { store, root } = setup(12);
-    const scene = latestZapsScene(store, 500);
+    const scene = latestZapsScene(store);
     expect(scene.name).toBe('latestZaps');
-    expect(scene.duration).toBe(500);
+
     scene.render(root);
     expect(root.querySelector('h1')!.textContent).toContain('Últimos zaps');
     const lis = root.querySelectorAll('.zap-list li');
@@ -37,7 +37,7 @@ describe('latestZapsScene', () => {
   });
   it('se actualiza en vivo y deja de hacerlo al limpiar', () => {
     const { store, root } = setup(1);
-    const cleanup = latestZapsScene(store, 1).render(root) as () => void;
+    const cleanup = latestZapsScene(store).render(root) as () => void;
     store.addZap({ id: 'n', postId: 'x', msats: 99000, comment: '', created_at: 50 });
     expect(root.querySelector('.amount')!.textContent).toBe(sats(99000));
     cleanup();

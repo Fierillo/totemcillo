@@ -24,8 +24,8 @@ describe('Announcement', () => {
 describe('anuncioScene', () => {
   it('título + mensaje escapado y ajustado', () => {
     const root = document.createElement('div');
-    const s = anuncioScene(new Announcement('Charla a las <b>18</b> en el stand'), 5000);
-    expect([s.name, s.duration]).toEqual(['anuncio', 5000]);
+    const s = anuncioScene(new Announcement('Charla a las <b>18</b> en el stand'));
+    expect(s.name).toBe('anuncio');
     s.render(root);
     expect(root.querySelector('h1')!.textContent).toBe('📣 Anuncio');
     const p = root.querySelector<HTMLElement>('.anuncio-msg')!;
@@ -36,7 +36,7 @@ describe('anuncioScene', () => {
   it('sin anuncio muestra estado vacío y se actualiza en vivo hasta limpiar', () => {
     const root = document.createElement('div');
     const a = new Announcement('');
-    const cleanup = anuncioScene(a, 1).render(root) as () => void;
+    const cleanup = anuncioScene(a).render(root) as () => void;
     expect(root.querySelector('.empty-msg')!.textContent).toBe(EMPTY_ANUNCIO);
     expect(EMPTY_ANUNCIO).toBe('Sin anuncios por ahora');
     a.set('¡Sorteo!');

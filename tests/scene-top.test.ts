@@ -17,7 +17,7 @@ const setup = () => {
 describe('top10HistoricoScene', () => {
   it('sin zaps muestra título y estado vacío ajustado', () => {
     const root = document.createElement('div');
-    top10HistoricoScene(new ZapStore(), 1).render(root);
+    top10HistoricoScene(new ZapStore()).render(root);
     expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · histórico');
     const msg = root.querySelector<HTMLElement>('.empty-msg')!;
     expect(msg.textContent).toBe('Todavía no hay zaps en este período');
@@ -26,8 +26,8 @@ describe('top10HistoricoScene', () => {
   });
   it('título visible y 10 filas: rank, sats, extracto escapado y autor; sin zaps huérfanos', () => {
     const { s, root } = setup();
-    const scene = top10HistoricoScene(s, 5000);
-    expect([scene.name, scene.duration]).toEqual(['top10Historico', 5000]);
+    const scene = top10HistoricoScene(s);
+    expect(scene.name).toBe('top10Historico');
     scene.render(root);
     const h1 = root.querySelector<HTMLElement>('h1')!;
     expect(h1.textContent).toBe('Top 10 zaps · histórico');
@@ -44,7 +44,7 @@ describe('top10HistoricoScene', () => {
   });
   it('lista ajustada y se actualiza en vivo', () => {
     const { s, root } = setup();
-    top10HistoricoScene(s, 1).render(root);
+    top10HistoricoScene(s).render(root);
     expect(root.querySelector<HTMLElement>('.top-list')!.style.fontSize).toMatch(/px$/);
     s.addZap({ id: 'big', postId: 'p0', msats: 10_000_000, comment: '', created_at: 200 });
     expect(root.querySelector('.top-list li .excerpt')!.textContent).toBe('Post 0 <b>x</b>');
@@ -67,7 +67,7 @@ describe('top10Ultimas3hScene', () => {
   };
   it('cuenta sólo zaps de la ventana y tiene título visible', () => {
     const root = document.createElement('div');
-    const scene = top10Ultimas3hScene(store(), 1, 3, () => NOW * 1000);
+    const scene = top10Ultimas3hScene(store(), 3, () => NOW * 1000);
     expect(scene.name).toBe('top10Ultimas3h');
     scene.render(root);
     expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 3 horas');
@@ -76,11 +76,11 @@ describe('top10Ultimas3hScene', () => {
   });
   it('ventana configurable y no lista si no hay zaps recientes', () => {
     const root = document.createElement('div');
-    top10Ultimas3hScene(store(), 1, 6, () => NOW * 1000).render(root);
+    top10Ultimas3hScene(store(), 6, () => NOW * 1000).render(root);
     expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 6 horas');
     expect(root.querySelector('.amount')!.textContent).toBe(sats(902_000));
     const later = document.createElement('div');
-    top10Ultimas3hScene(store(), 1, 3, () => (NOW + 4 * 3600) * 1000).render(later);
+    top10Ultimas3hScene(store(), 3, () => (NOW + 4 * 3600) * 1000).render(later);
     expect(later.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 3 horas');
     expect(later.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps en este período');
   });

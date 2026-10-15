@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_START_LINE } from '../server/settings';
+import { DEFAULT_START_LINE } from '../shared/settings';
 import { ZapStore } from '../src/nostr/store';
 import { followCutoff } from '../src/nostr/pool';
 import { moderationOf } from '../src/moderation-lists';
@@ -17,8 +17,8 @@ const login = async (d: Deps) => String((await handle(req('POST', '/api/login', 
 const sec = (iso: string) => Date.parse(iso) / 1000;
 
 describe('startLine en el servidor', () => {
-  it('por defecto la de config.json, en /api/settings y /api/kiosk', async () => {
-    expect(DEFAULT_START_LINE).toBe(JSON.parse(readFileSync('public/config.json', 'utf8')).startLine);
+  it('defaults compartidos en /api/settings y /api/kiosk', async () => {
+    expect(Number.isFinite(Date.parse(DEFAULT_START_LINE))).toBe(true);
     const d = deps();
     expect((await handle(req('GET', '/api/settings'), d)).body).toMatchObject({ startLine: DEFAULT_START_LINE });
     expect((await handle(req('GET', '/api/kiosk'), d)).body).toMatchObject({ startLine: DEFAULT_START_LINE });

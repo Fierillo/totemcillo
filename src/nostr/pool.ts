@@ -1,5 +1,5 @@
 import { SimplePool } from 'nostr-tools/pool';
-import { postCutoff, type Config } from '../config';
+import type { Config } from '../config';
 import { LnurlResolver } from './lnurl';
 import type { ZapStore } from './store';
 import type { NostrEvent } from './types';
@@ -39,7 +39,7 @@ export function startNostr(
   pool: PoolLike = new SimplePool() as unknown as PoolLike,
   batchMs = 1500,
   resolver: Resolver = new LnurlResolver(profileLoader(pool, cfg.relays)),
-  cutoff: number | undefined = postCutoff(cfg),
+  cutoff?: number,
 ) {
   const subs: { close(): void }[] = [];
   const watched = new Set<string>();

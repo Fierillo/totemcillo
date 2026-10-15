@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_SETTINGS, LIMITS } from '../server/settings';
+import { DEFAULT_SETTINGS, LIMITS } from '../shared/settings';
 
 const PASS = 'clave-de-prueba';
 const deps = (over: Partial<Deps> = {}): Deps => ({
@@ -134,13 +134,20 @@ describe('PUT /api/settings (requiere sesión)', () => {
     await handle(req('PUT', '/api/settings', { announcement: 'x' }, { cookie }), d);
     expect(((await handle(req('GET', '/api/settings'), d)).body as { videoClipSeconds?: number }).videoClipSeconds).toBe(30);
   });
-  it('comandos remotos ← → con secuencia creciente', async () => {
+  it('flechas cambian la agenda sin persistir comandos ni secuencias antiguas', async () => {
     const d = deps();
     const { cookie } = await login(d);
-    await handle(req('PUT', '/api/settings', { command: 'next' }, { cookie }), d);
+    await d.storage.set('totem:settings', { ...DEFAULT_SETTINGS, command: { seq: 8, action: 'prev' } });
+    const before = (await handle(req('GET', '/api/kiosk'), d)).body as { epoch: number };
+    const next = await handle(req('PUT', '/api/settings', { command: 'next' }, { cookie }), d);
+    expect(next.status).toBe(200);
+    expect(next.body).not.toHaveProperty('command');
+    expect((next.body as { epoch: number }).epoch).not.toBe(before.epoch);
     await handle(req('PUT', '/api/settings', { command: 'prev' }, { cookie }), d);
     const g = (await handle(req('GET', '/api/settings'), d)).body as typeof DEFAULT_SETTINGS;
-    expect(g.command).toEqual({ seq: 2, action: 'prev' });
+    expect(g).not.toHaveProperty('command');
+    expect(g.epoch).toEqual(expect.any(Number));
+    expect(await d.storage.get('totem:settings')).not.toHaveProperty('command');
   });
 });
 

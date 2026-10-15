@@ -1,5 +1,5 @@
 import type { Moderation } from './nostr/store';
-import { DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../server/settings';
+import { DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../shared/settings';
 
 const list = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
 /** Moderation lists from an API response (empty if missing). */

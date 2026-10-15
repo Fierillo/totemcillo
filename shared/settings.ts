@@ -3,8 +3,7 @@ export type Action = 'next' | 'prev';
 export interface Settings {
   announcement: string;
   sceneDurations: Record<string, number>;
-  command: { seq: number; action: Action | null };
-  /** The video appears once every N cycles (if missing, config.json applies). */
+  /** The video appears once every N cycles. */
   videoEveryCycles?: number;
   videoMode?: 'full' | 'clip';
   videoClipSeconds?: number;
@@ -24,9 +23,10 @@ export interface Settings {
 }
 export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
 export const DEFAULT_START_LINE = '2026-10-13T00:00:00-03:00';
-export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE };
+export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'full' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
+export const DEFAULT_SETTINGS: Settings = { ...SCHEDULE_DEFAULTS, announcement: '', sceneDurations: {}, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE };
 /** Default duration of each scene (ms). */
-export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
+export const DEFAULT_SCENE_MS: Record<string, number> = Object.fromEntries(SCENES.map((name) => [name, 21000]));
 export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365 };
 
 export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[]; startLine?: string }
@@ -105,20 +105,10 @@ export const isHostname = (h: string) =>
   h.length <= 253 && /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/.test(h);
 
 export function applyPatch(s: Settings, p: Patch): Settings {
+  const { command, sceneDurations, ...fields } = p;
   return {
-    announcement: p.announcement ?? s.announcement,
-    sceneDurations: p.sceneDurations ? { ...s.sceneDurations, ...p.sceneDurations } : s.sceneDurations,
-    command: p.command ? { seq: s.command.seq + 1, action: p.command } : s.command,
-    ...((p.videoEveryCycles ?? s.videoEveryCycles) !== undefined ? { videoEveryCycles: p.videoEveryCycles ?? s.videoEveryCycles } : {}),
-    ...((p.videoMode ?? s.videoMode) !== undefined ? { videoMode: p.videoMode ?? s.videoMode } : {}),
-    ...((p.videoClipSeconds ?? s.videoClipSeconds) !== undefined ? { videoClipSeconds: p.videoClipSeconds ?? s.videoClipSeconds } : {}),
-    ...((p.videoDurationSec ?? s.videoDurationSec) !== undefined ? { videoDurationSec: p.videoDurationSec ?? s.videoDurationSec } : {}),
-    ...(s.epoch !== undefined ? { epoch: s.epoch } : {}),
-    ...(s.version !== undefined ? { version: s.version } : {}),
-    ...(s.hiddenPosts ? { hiddenPosts: s.hiddenPosts } : {}),
-    ...(s.bannedPubkeys ? { bannedPubkeys: s.bannedPubkeys } : {}),
-    ...((p.zapProviders ?? s.zapProviders) ? { zapProviders: p.zapProviders ?? s.zapProviders } : {}),
-    ...((p.startLine ?? s.startLine) ? { startLine: p.startLine ?? s.startLine } : {}),
+    ...s, ...fields,
+    sceneDurations: sceneDurations ? { ...s.sceneDurations, ...sceneDurations } : s.sceneDurations,
   };
 }
 

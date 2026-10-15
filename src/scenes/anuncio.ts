@@ -1,4 +1,4 @@
-import type { Scene } from '../rotator';
+import type { Scene } from './types';
 import type { Announcement } from '../announcement';
 import { fitRegions } from '../fit';
 import { esc } from '../util';
@@ -7,10 +7,9 @@ import { appQr } from './post';
 export const EMPTY_ANUNCIO = 'Sin anuncios por ahora';
 
 /** Special "Anuncio" scene: edited by the admin. Always in rotation (shows an empty state when empty). */
-export function anuncioScene(ann: Announcement, duration: number, publicUrl?: string): Scene {
+export function anuncioScene(ann: Announcement, publicUrl?: string): Scene {
   return {
     name: 'anuncio',
-    duration,
     render(root) {
       const draw = () => {
         root.innerHTML = `<h1>📣 Anuncio</h1>` + (ann.text

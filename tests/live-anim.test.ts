@@ -42,7 +42,7 @@ describe('animación de post nuevo en la lista', () => {
     const s = mkStore();
     s.addPost(post(1));
     const root = document.createElement('div');
-    postScene(s, 1, { publicUrl: 'https://x/' }).render(root);
+    postScene(s, { publicUrl: 'https://x/' }).render(root);
     expect(root.querySelector('.is-new')).toBeNull();
     s.addPost(post(2, NOW - 2));
     const first = root.querySelector('.post-row')!;
@@ -53,7 +53,7 @@ describe('animación de post nuevo en la lista', () => {
   it('no se re-anima en redibujos posteriores', () => {
     const s = mkStore();
     const root = document.createElement('div');
-    postScene(s, 1, { publicUrl: 'https://x/' }).render(root);
+    postScene(s, { publicUrl: 'https://x/' }).render(root);
     s.addPost(post(2, NOW - 2));
     s.addPost(post(3)); // redraw from another change (history)
     expect(root.querySelector('.is-new')).toBeNull();
@@ -62,11 +62,11 @@ describe('animación de post nuevo en la lista', () => {
     const s = mkStore();
     s.addPost(post(2, NOW - 2));
     const root = document.createElement('div');
-    const off = postScene(s, 1, { publicUrl: 'https://x/' }).render(root) as () => void;
+    const off = postScene(s, { publicUrl: 'https://x/' }).render(root) as () => void;
     expect(root.querySelector(`.post-row[data-id="${hex(2)}"]`)!.classList.contains('is-new')).toBe(true);
     off();
     const root2 = document.createElement('div');
-    postScene(s, 1, { publicUrl: 'https://x/' }).render(root2);
+    postScene(s, { publicUrl: 'https://x/' }).render(root2);
     expect(root2.querySelector('.is-new')).toBeNull();
   });
 });
@@ -76,7 +76,7 @@ describe('animación de zap (rayo) en la fila visible', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addPost(post(2));
     const root = document.createElement('div');
-    postScene(s, 1, { publicUrl: 'https://x/' }).render(root);
+    postScene(s, { publicUrl: 'https://x/' }).render(root);
     s.addZap(zap(1, 1, NOW - 1, 2_100_000));
     const r = root.querySelector(`.post-row[data-id="${hex(1)}"]`)!;
     expect(r.classList.contains('is-zapped')).toBe(true);
@@ -89,7 +89,7 @@ describe('animación de zap (rayo) en la fila visible', () => {
     s.addPost(post(1)); s.addPost(post(2));
     s.addZap(zap(1, 2, NOW - 3600));
     const root = document.createElement('div');
-    topScene({ name: 'top10Historico', title: 'T', store: s, duration: 1, since: () => 0 }).render(root);
+    topScene({ name: 'top10Historico', title: 'T', store: s, since: () => 0 }).render(root);
     expect(root.querySelector('.is-zapped')).toBeNull();
     s.addZap(zap(2, 1, NOW - 1));
     const li = root.querySelector(`li[data-id="${hex(1)}"]`)!;
@@ -100,7 +100,7 @@ describe('animación de zap (rayo) en la fila visible', () => {
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     const root = document.createElement('div');
-    postScene(s, 1, { publicUrl: 'https://x/' }).render(root); // shows the 6 newest: 3..8
+    postScene(s, { publicUrl: 'https://x/' }).render(root); // shows the 6 newest: 3..8
     s.addZap(zap(1, 1, NOW - 1));
     expect(root.querySelector('.is-zapped')).toBeNull();
   });
@@ -135,8 +135,8 @@ describe('demo (sólo dev): window.__totemDemo', () => {
 });
 
 describe('pendientes + indicador abajo cuando el objetivo no está en pantalla', () => {
-  const postSc = (s: ZapStore) => { const r = document.createElement('div'); const off = postScene(s, 1, { publicUrl: 'https://x/' }).render(r) as () => void; return { r, off }; };
-  const topSc = (s: ZapStore, name = 'top10Historico') => { const r = document.createElement('div'); const off = topScene({ name, title: 'T', store: s, duration: 1, since: () => 0 }).render(r) as () => void; return { r, off }; };
+  const postSc = (s: ZapStore) => { const r = document.createElement('div'); const off = postScene(s, { publicUrl: 'https://x/' }).render(r) as () => void; return { r, off }; };
+  const topSc = (s: ZapStore, name = 'top10Historico') => { const r = document.createElement('div'); const off = topScene({ name, title: 'T', store: s, since: () => 0 }).render(r) as () => void; return { r, off }; };
   it('zap con otra escena (anuncio/video): indicador ⚡ abajo y pendiente; al entrar a posts, rayo en esa fila', () => {
     const s = mkStore();
     s.addPost(post(1));
@@ -197,7 +197,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     s.addZap(zap(1, 1, NOW - 1));
     // tops with an empty window (future since) → not shown
     postSc(s).off();
-    for (const n of ['top10Historico', 'top10Ultimas3h']) { const r = document.createElement('div'); (topScene({ name: n, title: 'T', store: s, duration: 1, since: () => NOW + 10 }).render(r) as () => void)(); }
+    for (const n of ['top10Historico', 'top10Ultimas3h']) { const r = document.createElement('div'); (topScene({ name: n, title: 'T', store: s, since: () => NOW + 10 }).render(r) as () => void)(); }
     expect(feedFor(s).pending).toHaveLength(0);
   });
   it(`la cola tiene tope (${10})`, () => {

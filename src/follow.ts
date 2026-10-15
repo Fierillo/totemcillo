@@ -1,4 +1,4 @@
-import type { Scene } from './rotator';
+import type { Scene } from './scenes/types';
 import type { Announcement } from './announcement';
 import type { Moderation } from './nostr/store';
 import { moderationOf } from './moderation-lists';
@@ -117,9 +117,8 @@ export class Follower {
     this.root.innerHTML = '';
     const elapsedMs = Math.max(0, this.now() - p.sceneStartedAt);
     // The schedule already fixed segment and length: the video only seeks to the position (offset + elapsed).
-    if (scene.videoMode) scene.videoMode = 'full';
     const posMs = () => (p.videoOffset ?? 0) * 1000 + this.now() - p.sceneStartedAt;
-    this.cleanup = scene.render(this.root, () => {}, { elapsedMs: (p.videoOffset ?? 0) * 1000 + elapsedMs, expectedSec: () => posMs() / 1000 });
+    this.cleanup = scene.render(this.root, { elapsedMs: (p.videoOffset ?? 0) * 1000 + elapsedMs, expectedSec: () => posMs() / 1000 });
   }
 
   async start(): Promise<void> {
