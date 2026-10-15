@@ -3,7 +3,8 @@ import type { Scene } from '../rotator';
 import type { PostStats, ZapStore } from '../nostr/store';
 import { live, liveMarks } from './live';
 import { fitRegions } from '../fit';
-import { ago, esc, sats, shortKey } from '../util';
+import { ago, esc, sats } from '../util';
+import { authorHtml } from '../nostr/profiles';
 
 export interface PostSceneOptions { publicUrl: string }
 
@@ -20,7 +21,7 @@ export function recentPosts(store: ZapStore, n = MAX_POSTS): PostStats[] {
 
 const row = (s: PostStats, m: { cls: string; bolt: string }) => `<li class="post-row${m.cls}" data-id="${esc(s.postId)}">
       <div class="row-main">
-        <div class="row-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="ago muted">${ago(s.post!.created_at)}</span></div>
+        <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${ago(s.post!.created_at)}</span></div>
         <p class="excerpt" data-clip>${esc(s.post!.content)}</p>
       </div>
       <div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div>${m.bolt}

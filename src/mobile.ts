@@ -4,7 +4,8 @@ import type { Announcement } from './announcement';
 import { noteUri } from './nostr/link';
 import { recentPosts, EMPTY_POSTS } from './scenes/post';
 import { EMPTY_ANUNCIO } from './scenes/anuncio';
-import { ago, esc, sats, shortKey } from './util';
+import { ago, esc, sats } from './util';
+import { authorHtml, profiles } from './nostr/profiles';
 import { liveMarks } from './scenes/live';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
@@ -25,13 +26,13 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
       const uri = noteUri(s.post!, cfg.relays, 'nostr:{nevent}');
       const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');
       return `<article class="m-post${m.cls}" data-id="${esc(s.postId)}">
-        <div class="m-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="muted">${ago(s.post!.created_at)}</span></div>
+        <div class="m-meta">${authorHtml(s.post!.pubkey)}<span class="muted">${ago(s.post!.created_at)}</span></div>
         <p class="m-excerpt">${esc(s.post!.content)}</p>
         <div class="m-total">⚡ ${sats(s.msats)} sats${m.bolt}</div>
         ${uri && web ? `<div class="m-actions"><a class="zap-btn" href="${esc(uri)}">⚡ Zapear</a><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}
       </article>`;
     }).join('');
-    const latest = store.latestZaps(10).map((z) => `<li><b>${sats(z.msats)}</b> sats · ${shortKey(z.sender)}${z.comment ? ` — ${esc(z.comment)}` : ''} <span class="muted">${ago(z.created_at)}</span></li>`).join('');
+    const latest = store.latestZaps(10).map((z) => `<li><b>${sats(z.msats)}</b> sats · ${authorHtml(z.sender)}${z.comment ? ` — ${esc(z.comment)}` : ''} <span class="muted">${ago(z.created_at)}</span></li>`).join('');
     const top = (since: number) => store.top(10, since).map((s, i) => `<li><b>#${i + 1}</b> ${sats(s.msats)} sats · ${esc(s.post!.content.slice(0, 80))}</li>`).join('');
     const topAll = top(0), topRecent = top(now - cfg.topRecentHours * 3600);
     root.innerHTML = `
@@ -43,6 +44,6 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
     marks.consume();
   };
   draw();
-  const offs = [store.onChange(draw), ann.onChange(draw), marks.off];
+  const offs = [store.onChange(draw), ann.onChange(draw), profiles.onChange(draw), marks.off];
   return () => offs.forEach((f) => f());
 }

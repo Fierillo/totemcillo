@@ -24,7 +24,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .post-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8em; align-items: start; padding: .55em 0; border-bottom: 1px solid #222; min-width: 0; }
 .row-main { min-width: 0; overflow: hidden; }
 .row-meta { display: flex; justify-content: space-between; gap: 1em; min-width: 0; }
-.row-meta .author { color: var(--accent); font-weight: 700; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.row-meta .author { color: var(--accent); font-weight: 700; }
 .excerpt { min-width: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
 .row-total { color: var(--accent); font-weight: 900; white-space: nowrap; text-align: right; line-height: 1.2; }
 .row-total small { font-weight: 700; font-size: .7em; color: var(--muted); }
@@ -54,6 +54,8 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
 .m-post { background: var(--card); border-radius: .8rem; padding: .9rem 1rem; margin-bottom: .8rem; border-left: .25em solid var(--accent); }
 .m-meta { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; font-size: .9rem; }
+.m-meta > .author { flex: 0 1 auto; min-width: 0; }
+.m-meta > .muted { flex: 0 0 auto; white-space: nowrap; }
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: .5rem; }
 .m-total { color: var(--accent); font-weight: 800; margin-bottom: .35rem; position: relative; width: fit-content; }
 /* Rayo de zap en móvil: a la derecha del total, nunca sobre texto. */
@@ -86,7 +88,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .top-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: .8em; align-items: center; padding: .3em 0; border-bottom: 1px solid #222; }
 .rank { color: var(--accent); font-weight: 900; }
 .top-list .excerpt { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.top-list .author { display: block; color: var(--muted); font-size: .7em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.top-list .by { display: block; color: var(--muted); font-size: .7em; min-width: 0; overflow: hidden; }
 
 /* Video */
 .scene-video { padding: 0; background: #000; display: grid; }
@@ -140,3 +142,12 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 @keyframes ind-pop { 0% { opacity: 0; transform: translateY(60%); } 15% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
 .is-mobile #live-strip { display: none; }
 @media (prefers-reduced-motion: reduce) { .live-ind { animation: ind-fade 1.5s ease-out forwards; } @keyframes ind-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } } }
+
+/* Autor: avatar redondo + alias (perfil kind:0) o npub corto; el alias se trunca, nunca se superpone. */
+.author { display: inline-flex; align-items: center; gap: .35em; max-width: 100%; min-width: 0; vertical-align: middle; }
+.avatar { width: 1.25em; height: 1.25em; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: #2a2f27; display: block; }
+.avatar-ph { background: radial-gradient(circle at 50% 38%, #5b6157 0 22%, transparent 23%), radial-gradient(circle at 50% 100%, #5b6157 0 42%, transparent 43%), #2a2f27; }
+.alias { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.row-meta > .author { flex: 0 1 auto; }
+.row-meta > .ago { flex: 0 0 auto; }
+.who .author { max-width: 60%; }

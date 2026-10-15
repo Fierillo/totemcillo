@@ -1,7 +1,9 @@
 import './style.css';
 import { loadConfig, postCutoff } from './config';
 import { ZapStore } from './nostr/store';
-import { startNostr } from './nostr/pool';
+import { startNostr, type PoolLike } from './nostr/pool';
+import { SimplePool } from 'nostr-tools/pool';
+import { installAvatarFallback, profiles } from './nostr/profiles';
 import { Follower } from './follow';
 import { buildScenes, DEFAULT_DURATIONS } from './scenes';
 import { Announcement } from './announcement';
@@ -13,7 +15,11 @@ const cfg = await loadConfig();
 document.getElementById('tags')!.textContent = cfg.hashtags.map((t) => `#${t}`).join(' ');
 const cutoff = postCutoff(cfg); // línea de largada fija (config.startLine); sin poda por edad
 const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff });
-startNostr(cfg, store, undefined, undefined, undefined, cutoff);
+const pool = new SimplePool() as unknown as PoolLike;
+// Perfiles kind:0 (alias + foto) desde los mismos relays, en lotes y cacheados en localStorage.
+profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
+installAvatarFallback(document);
+startNostr(cfg, store, pool, undefined, undefined, cutoff);
 const announcement = new Announcement(cfg.announcement);
 if (import.meta.env.DEV) void import('./demo').then((m) => m.installDemo(window, store)); // window.__totemDemo.post()/zap()
 const scene = document.getElementById('scene')!;

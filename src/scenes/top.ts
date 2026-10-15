@@ -2,7 +2,8 @@ import type { Scene } from '../rotator';
 import type { ZapStore } from '../nostr/store';
 import { fitRegions } from '../fit';
 import { live, liveMarks } from './live';
-import { esc, sats, shortKey } from '../util';
+import { esc, sats } from '../util';
+import { authorHtml } from '../nostr/profiles';
 
 export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number }
 
@@ -20,7 +21,7 @@ export function topScene(o: TopOptions): Scene {
           <li class="top-row${m.cls}" data-id="${esc(s.postId)}">
             <span class="rank">#${i + 1}</span>
             <span class="amount">${sats(s.msats)}</span>
-            <span class="who"><span class="excerpt" data-clip>${esc(s.post!.content)}</span><small class="author">${shortKey(s.post!.pubkey)}</small></span>${m.bolt}
+            <span class="who"><span class="excerpt" data-clip>${esc(s.post!.content)}</span><small class="by">${authorHtml(s.post!.pubkey)}</small></span>${m.bolt}
           </li>`; }).join('');
         root.innerHTML = `<h1 class="top-title" data-fit="text" data-max="6" data-min="20">${esc(o.title)}</h1>
 ` + (rows
