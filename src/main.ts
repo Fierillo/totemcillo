@@ -16,7 +16,12 @@ const cutoff = postCutoff(cfg); // fixed start line (config.startLine); no age-b
 const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
 const pool = createPool();
 // kind:0 profiles (alias + picture) from the same relays, batched and cached in localStorage.
-profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
+profiles.configure({
+      query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }),
+      // Live kind:0 for the authors on screen: newer profiles replace the cached ones and re-render.
+      subscribe: (authors, onevent) => pool.subscribeMany(cfg.relays, { kinds: [0], authors }, { onevent }),
+      storage: window.localStorage,
+    });
 installAvatarFallback(document);
 const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefined, c), cutoff);
 // Moderation, providers and start line come from the server; if the line moves earlier, refetch from the relays.

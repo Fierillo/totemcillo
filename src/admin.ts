@@ -111,7 +111,12 @@ async function startModeration(el: HTMLElement, s: Settings) {
     const cutoff = postCutoff(cfg);
     modStore = new ZapStore(undefined, { postMaxChars: cfg.postMaxChars, cutoff });
     const pool = createPool();
-    profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
+    profiles.configure({
+      query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }),
+      // Live kind:0 for the authors on screen: newer profiles replace the cached ones and re-render.
+      subscribe: (authors, onevent) => pool.subscribeMany(cfg.relays, { kinds: [0], authors }, { onevent }),
+      storage: window.localStorage,
+    });
     installAvatarFallback(document);
     const st = modStore;
     modFeed = followCutoff((c) => startNostr(cfg, st, pool, undefined, undefined, c), cutoff);
