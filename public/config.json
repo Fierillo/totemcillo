@@ -57,7 +57,7 @@
   "postMaxChars": 210,
   "startLine": "2026-10-13T00:00:00-03:00",
   "topRecentHours": 3,
-  "keyboardNav": true,
+  "keyboardNav": false,
   "publicUrl": "",
   "settingsPollMs": 4000,
   "videoSrc": "/video/totem-video.webm",
