@@ -255,6 +255,44 @@ it('identifica la IP del cliente usando cabeceras de plataforma, proxy y socket 
   expect(clientIp({}, undefined)).toBe('desconocida');
 });
 
+it('la API de producción responde 503 sin usar memoria si falta URL o token de Redis', async () => {
+  try {
+    for (const [url, token] of [['', ''], ['https://redis.example.invalid', ''], ['', 'test-token']]) {
+      vi.stubEnv('UPSTASH_REDIS_REST_URL', url);
+      vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', token);
+      vi.resetModules();
+      const { default: production } = await import('../server/node');
+      const headers: Record<string, string> = {};
+      const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
+      await production({ method: 'GET', url: '/api/session', headers: {}, socket: {}, body: null } as any, res);
+      expect(res.statusCode).toBe(503);
+      expect(headers['cache-control']).toBe('no-store');
+      expect(JSON.parse(res.end.mock.calls[0][0])).toEqual({ error: 'servicio no disponible' });
+    }
+  } finally { vi.unstubAllEnvs(); }
+});
+
+it('producción vuelve a funcionar con ajustes de Redis cuando se completa la configuración', async () => {
+  const get = vi.fn(async () => ({ announcement: 'ajuste compartido' }));
+  vi.doMock('@upstash/redis', () => ({ Redis: class { get = get; } }));
+  try {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.example.invalid');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.resetModules();
+    const { default: production } = await import('../server/node');
+    const request: any = { method: 'GET', url: '/api/settings', headers: {}, socket: {}, body: null };
+    const res: any = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() };
+    await production(request, res);
+    expect(res.statusCode).toBe(503);
+    expect(get).not.toHaveBeenCalled();
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'test-token');
+    await production(request, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.end.mock.lastCall![0])).toMatchObject({ announcement: 'ajuste compartido' });
+    expect(get).toHaveBeenCalledWith('totem:settings');
+  } finally { vi.unstubAllEnvs(); vi.doUnmock('@upstash/redis'); }
+});
+
 it.each(['time', 'kiosk', 'version', 'settings', 'login', 'logout', 'session', 'moderation', 'avatar'])('la Function /api/%s exporta un handler ejecutable', async (route) => {
   const entry = await import(`../api/${route}.ts`);
   expect(typeof entry.default).toBe('function');

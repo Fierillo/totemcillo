@@ -3,12 +3,12 @@ import { randomBytes } from 'node:crypto';
 import { handle, type Deps } from './api.js';
 import { memoryStorage, upstashStorage } from './storage.js';
 
-/** Dependencies from environment variables (Vercel). Without Upstash it uses memory (lost between invocations). */
+/** Production requires shared storage for settings, rate limits and session revocation. */
 export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
   const url = env.UPSTASH_REDIS_REST_URL, token = env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) console.warn('[totemcillo] Missing UPSTASH_REDIS_REST_URL/TOKEN: using memory (not persisted).');
+  if (!url || !token) throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required');
   return {
-    storage: url && token ? upstashStorage(url, token) : memoryStorage(),
+    storage: upstashStorage(url, token),
     env: { ADMIN_PASSWORD: env.ADMIN_PASSWORD, SESSION_SECRET: env.SESSION_SECRET },
     now: Date.now,
   };
@@ -52,7 +52,16 @@ export async function nodeHandler(req: IncomingMessage & { body?: unknown }, res
 }
 
 let cached: Deps | undefined;
+/** Configuration failures must not become cacheable responses or local-memory fallbacks. */
+export function serviceUnavailable(res: ServerResponse) {
+  res.statusCode = 503;
+  res.setHeader('content-type', 'application/json');
+  res.setHeader('cache-control', 'no-store');
+  res.end(JSON.stringify({ error: 'servicio no disponible' }));
+}
+
 /** Default handler for every file in /api. */
 export default function vercel(req: IncomingMessage & { body?: unknown }, res: ServerResponse) {
-  return nodeHandler(req, res, (cached ??= depsFromEnv()));
+  try { cached ??= depsFromEnv(); } catch { return serviceUnavailable(res); }
+  return nodeHandler(req, res, cached);
 }

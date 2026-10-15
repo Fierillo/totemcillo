@@ -93,6 +93,22 @@ describe('renderAvatar', () => {
 });
 
 describe('límite de descargas por IP', () => {
+  it('el proxy de producción responde 503 sin caché si falta URL o token de Redis', async () => {
+    try {
+      for (const [url, token] of [['', ''], ['https://redis.example.invalid', ''], ['', 'test-token']]) {
+        vi.stubEnv('UPSTASH_REDIS_REST_URL', url);
+        vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', token);
+        vi.resetModules();
+        const { default: production } = await import('../server/avatar');
+        const headers: Record<string, string> = {};
+        const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
+        await production({ method: 'GET', url: '/api/avatar', headers: {}, socket: {} } as any, res);
+        expect(res.statusCode).toBe(503);
+        expect(headers['cache-control']).toBe('no-store');
+        expect(JSON.parse(res.end.mock.calls[0][0])).toEqual({ error: 'servicio no disponible' });
+      }
+    } finally { vi.unstubAllEnvs(); }
+  });
   const run = async (storage: ReturnType<typeof memoryStorage>, ip: string, fetcher: Fetcher) => {
     const headers: Record<string, string> = {};
     const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };

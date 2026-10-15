@@ -3,7 +3,7 @@ import { request } from 'node:https';
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
 import { BlockList, isIP } from 'node:net';
 import sharp from 'sharp';
-import { clientIp, depsFromEnv } from './node.js';
+import { clientIp, depsFromEnv, serviceUnavailable } from './node.js';
 import type { Storage } from './storage.js';
 
 /** Avatar proxy: fetches kind:0 pictures server-side (no stand IP leak), bounded and re-encoded small. */
@@ -139,4 +139,7 @@ export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o
 }
 
 let storage: Storage | undefined;
-export default function vercel(req: IncomingMessage, res: ServerResponse) { return avatarHandler(req, res, { storage: (storage ??= depsFromEnv().storage) }); }
+export default function vercel(req: IncomingMessage, res: ServerResponse) {
+  try { storage ??= depsFromEnv().storage; } catch { return serviceUnavailable(res); }
+  return avatarHandler(req, res, { storage });
+}

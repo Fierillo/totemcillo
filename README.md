@@ -35,7 +35,7 @@ Environment variables (on Vercel; optional locally):
 | --- | --- |
 | `ADMIN_PASSWORD` | Admin panel password (defaults to `admin` locally). |
 | `SESSION_SECRET` | Session signing key, at least 32 characters. |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Config persistence (in-memory without them). |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Both required in production for shared settings, rate limits and session revocation. Missing either makes the API and avatar proxy return 503 (no memory fallback). Dev/preview and tests use local memory. |
 
 Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
