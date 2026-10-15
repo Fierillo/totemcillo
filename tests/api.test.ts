@@ -322,6 +322,29 @@ it('producción vuelve a funcionar con ajustes de Redis cuando se completa la co
   } finally { vi.unstubAllEnvs(); vi.doUnmock('@upstash/redis'); }
 });
 
+it('producción carga la agenda con los nombres reales de la integración Upstash instalada en Vercel', async () => {
+  const connect = vi.fn();
+  const get = vi.fn(async () => ({ announcement: 'agenda de Redis', version: 7 }));
+  vi.doMock('@upstash/redis', () => ({ Redis: class {
+    constructor(options: unknown) { connect(options); }
+    get = get;
+  } }));
+  try {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('UPSTASH_REDIS_REST_KV_REST_API_URL', 'https://redis.example.invalid');
+    vi.stubEnv('UPSTASH_REDIS_REST_KV_REST_API_TOKEN', 'integration-token');
+    vi.resetModules();
+    const { default: production } = await import('../server/node');
+    const res: any = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() };
+    await production({ method: 'GET', url: '/api/kiosk', headers: {}, socket: {}, body: null } as any, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.end.mock.lastCall![0])).toMatchObject({ announcement: 'agenda de Redis', version: 7, epoch: expect.any(Number) });
+    expect(connect).toHaveBeenCalledWith({ url: 'https://redis.example.invalid', token: 'integration-token' });
+    expect(get).toHaveBeenCalledWith('totem:settings');
+  } finally { vi.unstubAllEnvs(); vi.doUnmock('@upstash/redis'); }
+});
+
 it.each(['time', 'kiosk', 'version', 'settings', 'login', 'logout', 'session', 'moderation', 'avatar'])('la Function /api/%s exporta un handler ejecutable', async (route) => {
   const entry = await import(`../api/${route}.ts`);
   expect(typeof entry.default).toBe('function');

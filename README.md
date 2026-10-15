@@ -39,6 +39,8 @@ Environment variables (on Vercel; optional locally):
 | `SESSION_SECRET` | Session signing key, at least 32 characters. |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Both required in production for shared settings, rate limits and session revocation. Missing either makes the API and avatar proxy return 503 (no memory fallback). Dev/preview and tests use local memory. |
 
+The installed Vercel Upstash integration exposes these as `UPSTASH_REDIS_REST_KV_REST_API_URL` / `UPSTASH_REDIS_REST_KV_REST_API_TOKEN`; those names are also accepted. Before deploying, verify that the REST URL and read/write token are available to the **Production** environment.
+
 Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
 ## Tests

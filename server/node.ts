@@ -5,7 +5,8 @@ import { memoryStorage, upstashStorage } from './storage.js';
 
 /** Production requires shared storage for settings, rate limits and session revocation. */
 export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
-  const url = env.UPSTASH_REDIS_REST_URL, token = env.UPSTASH_REDIS_REST_TOKEN;
+  const url = env.UPSTASH_REDIS_REST_URL || env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN || env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
   if (!url || !token) throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required');
   return {
     storage: upstashStorage(url, token),
