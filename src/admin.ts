@@ -76,7 +76,8 @@ async function panel() {
   modeSel.addEventListener('change', () => { (root.querySelector('.clip-len') as HTMLElement).hidden = modeSel.value !== 'clip'; });
   const status = root.querySelector('.status')!;
   const say = (t: string) => { status.textContent = t; };
-  root.querySelector('.logout')!.addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); loginForm(); });
+  // After logging out, leave the admin and go back to the totem's root.
+  root.querySelector('.logout')!.addEventListener('click', async () => { const r = await api('/api/logout', { method: 'POST' }).catch(() => null); if (r?.ok) location.assign('/'); else alert('No se pudo cerrar la sesión, probá de nuevo'); });
   root.querySelector('.save')!.addEventListener('click', async () => {
     const announcement = (root.querySelector('textarea') as HTMLTextAreaElement).value;
     const sceneDurations: Record<string, number> = {};

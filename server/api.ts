@@ -1,4 +1,4 @@
-import { parseCookies, passwordMatches, signSession, verifySession } from './auth.js';
+import { parseCookies, passwordMatches, readSession, signSession } from './auth.js';
 import type { Storage } from './storage.js';
 import { reanchor, scheduleInputs, shiftSchedule } from '../shared/schedule.js';
 import { applyModeration, applyPatch, DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from './settings.js';
@@ -25,8 +25,15 @@ const KEY = 'totem:settings';
 const json = (status: number, body: unknown, headers: Record<string, string> = {}): ApiResponse =>
   ({ status, body, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
 const configured = (env: Env) => !!env.ADMIN_PASSWORD && !!env.SESSION_SECRET && env.SESSION_SECRET.length >= 32;
-const authed = (req: ApiRequest, d: Deps) =>
-  configured(d.env) && verifySession(parseCookies(req.headers.cookie)[COOKIE], d.env.SESSION_SECRET!, d.now());
+const REVOKED = (jti: string) => `totem:revoked:${jti}`;
+/** Valid signed session, or null. Pure crypto: no storage read for missing/forged/expired cookies. */
+const session = (req: ApiRequest, d: Deps) =>
+  configured(d.env) ? readSession(parseCookies(req.headers.cookie)[COOKIE], d.env.SESSION_SECRET!, d.now()) : null;
+/** Admin check: a valid signature, then one storage read to make sure it wasn't logged out (revoked). */
+async function authed(req: ApiRequest, d: Deps): Promise<boolean> {
+  const s = session(req, d);
+  return !!s && !(await d.storage.get(REVOKED(s.jti)));
+}
 
 async function readSettings(d: Deps): Promise<Settings> {
   const s = await d.storage.get<Settings>(KEY);
@@ -50,9 +57,9 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
     case 'GET /api/settings':
       // Same content for everyone; with a session it is marked private (no Vary: Cookie: Vercel won't cache that).
       // The admin panel reads fresh settings through /api/session instead, so a CDN copy never goes stale there.
-      return json(200, await readSettings(d), { 'cache-control': authed(req, d) ? PRIVATE : CDN });
+      return json(200, await readSettings(d), { 'cache-control': (await authed(req, d)) ? PRIVATE : CDN });
     case 'PUT /api/settings': {
-      if (!authed(req, d)) return json(401, { error: 'no autorizado' });
+      if (!(await authed(req, d))) return json(401, { error: 'no autorizado' });
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
       const v = validatePatch(req.body, d.now());
       if (!v.ok) return json(400, { error: v.error });
@@ -67,7 +74,7 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       return json(200, next);
     }
     case 'POST /api/moderation': {
-      if (!authed(req, d)) return json(401, { error: 'no autorizado' });
+      if (!(await authed(req, d))) return json(401, { error: 'no autorizado' });
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
       const cur = await readSettings(d);
       const m = applyModeration(cur, req.body);
@@ -97,11 +104,15 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       const token = signSession(d.env.SESSION_SECRET!, d.now(), SESSION_TTL);
       return json(200, { ok: true }, { 'set-cookie': `${COOKIE}=${token}; ${cookieFlags(req, SESSION_TTL)}` });
     }
-    case 'POST /api/logout':
+    case 'POST /api/logout': {
+      // Revoke server-side so a copied cookie stops working; the entry lives only as long as the session would.
+      const s = session(req, d);
+      if (s) await d.storage.set(REVOKED(s.jti), 1, Math.max(1, Math.ceil((s.exp - d.now()) / 1000)));
       return json(200, { ok: true }, { 'set-cookie': `${COOKIE}=; ${cookieFlags(req, 0)}` });
+    }
     case 'GET /api/session': {
       // Session-bearing and never cached: the admin's fresh view of the settings comes from here.
-      if (!authed(req, d)) return json(200, { authed: false });
+      if (!(await authed(req, d))) return json(200, { authed: false });
       return json(200, { authed: true, settings: await readSettings(d) }, { 'cache-control': PRIVATE });
     }
   }
