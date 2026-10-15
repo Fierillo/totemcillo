@@ -18,7 +18,7 @@ export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement
   const publicUrl = publicUrlOf(cfg, origin);
   return [
     postScene(store, d.post, { publicUrl }),
-    latestZapsScene(store, d.latestZaps),
+    latestZapsScene(store, d.latestZaps, publicUrl),
     top10HistoricoScene(store, d.top10Historico, publicUrl),
     top10Ultimas3hScene(store, d.top10Ultimas3h, cfg.topRecentHours, undefined, publicUrl),
     anuncioScene(ann, d.anuncio, publicUrl),

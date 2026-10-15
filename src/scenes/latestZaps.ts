@@ -4,9 +4,10 @@ import { live } from './live';
 import { fitRegions } from '../fit';
 import { ago, esc, sats } from '../util';
 import { authorHtml } from '../nostr/profiles';
+import { appQr } from './post';
 
-/** Scene 2: latest zaps received. */
-export function latestZapsScene(store: ZapStore, duration: number): Scene {
+/** Scene 2: latest zaps received, with the shared app QR (when there is a URL). */
+export function latestZapsScene(store: ZapStore, duration: number, publicUrl?: string): Scene {
   return {
     name: 'latestZaps',
     duration,
@@ -18,7 +19,7 @@ export function latestZapsScene(store: ZapStore, duration: number): Scene {
         }).join('');
         root.innerHTML = `<h1>⚡ Últimos zaps</h1>` + (items
           ? `<ul class="zap-list" data-fit="list" data-max="3.2" data-maxw="4" data-min="14">${items}</ul>`
-          : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps</p>`);
+          : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps</p>`) + (publicUrl ? appQr(publicUrl) : '');
         fitRegions(root);
       };
       return live(store, draw);
