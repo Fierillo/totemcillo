@@ -116,7 +116,7 @@ export function renderAvatar(input: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
-/** GET /api/avatar?url=<https url>. Any failure answers fast with 4xx/502 so the client falls back to initials. */
+/** GET /api/avatar?url=<https url>. Errors let the client fall back to initials; limiter failures stop before downloading. */
 export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o: FetchOpts = {}) {
   const fail = (status: number) => { res.statusCode = status; res.setHeader('cache-control', 'public, max-age=300, s-maxage=3600'); res.end(); };
   if (req.method !== 'GET' && req.method !== 'HEAD') return fail(405);
@@ -124,8 +124,8 @@ export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o
   if (!url) return fail(400);
   if (o.storage) {
     const ip = clientIp(req.headers, req.socket?.remoteAddress);
-    let n = 0;
-    try { n = await o.storage.incr(`totem:rl:avatar:${ip}`, AVATAR_RATE.windowSec); } catch { /* limiter down: don't block avatars */ }
+    let n: number;
+    try { n = await o.storage.incr(`totem:rl:avatar:${ip}`, AVATAR_RATE.windowSec); } catch { return serviceUnavailable(res); }
     if (n > AVATAR_RATE.max) { res.statusCode = 429; res.setHeader('cache-control', 'no-store'); res.setHeader('retry-after', String(AVATAR_RATE.windowSec)); return res.end(); }
   }
   let out: Buffer;

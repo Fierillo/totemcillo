@@ -109,12 +109,32 @@ describe('límite de descargas por IP', () => {
       }
     } finally { vi.unstubAllEnvs(); }
   });
-  const run = async (storage: ReturnType<typeof memoryStorage>, ip: string, fetcher: Fetcher) => {
+  const run = async (storage: ReturnType<typeof memoryStorage>, ip: string, fetcher: Fetcher, method = 'GET') => {
     const headers: Record<string, string> = {};
     const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
-    await avatarHandler({ method: 'GET', url: '/api/avatar?url=' + encodeURIComponent('https://img.example/a.png'), headers: { 'x-vercel-forwarded-for': ip }, socket: {} } as any, res, { fetcher, storage });
+    await avatarHandler({ method, url: '/api/avatar?url=' + encodeURIComponent('https://img.example/a.png'), headers: { 'x-vercel-forwarded-for': ip }, socket: {} } as any, res, { fetcher, storage });
     return { status: res.statusCode, headers };
   };
+  it('si falla Redis responde 503 sin caché ni descargar imágenes, tanto en GET como en HEAD', async () => {
+    const storage = { ...memoryStorage(), incr: vi.fn().mockRejectedValue(new Error('Redis unavailable')) };
+    const fetcher = vi.fn<Fetcher>(async () => { throw new Error('must not download'); });
+    for (const method of ['GET', 'HEAD']) {
+      const response = await run(storage, '5.5.5.5', fetcher, method);
+      expect(response.status).toBe(503);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(fetcher).not.toHaveBeenCalled();
+    }
+  });
+  it('vuelve a servir imágenes en una petición posterior cuando Redis se recupera', async () => {
+    const storage = { ...memoryStorage(), incr: vi.fn().mockRejectedValueOnce(new Error('Redis unavailable')).mockResolvedValue(1) };
+    const fetcher = vi.fn<Fetcher>(okFetcher(await png(2, 2)));
+    expect((await run(storage, '5.5.5.5', fetcher)).status).toBe(503);
+    expect(fetcher).not.toHaveBeenCalled();
+    const recovered = await run(storage, '5.5.5.5', fetcher);
+    expect(recovered.status).toBe(200);
+    expect(recovered.headers['content-type']).toBe('image/webp');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
   it('superado el cupo responde 429 sin descargar ni cachear; otras IPs conservan su cupo', async () => {
     const storage = memoryStorage(), fetcher = vi.fn<Fetcher>(async () => { throw new Error('offline'); });
     for (let i = 0; i < AVATAR_RATE.max; i++) expect((await run(storage, '5.5.5.5', fetcher)).status).toBe(502);
