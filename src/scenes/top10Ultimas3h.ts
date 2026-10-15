@@ -6,7 +6,7 @@ import { topScene } from './top';
 export const top10Ultimas3hScene = (store: ZapStore, duration: number, hours = 3, now: () => number = Date.now): Scene =>
   topScene({
     name: 'top10Ultimas3h',
-    title: `Top 10 · últimas ${hours} horas`,
+    title: `Top 10 zaps · últimas ${hours} horas`,
     store,
     duration,
     since: () => Math.floor(now() / 1000) - hours * 3600,

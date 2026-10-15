@@ -21,7 +21,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
   it('apila todas las secciones, sin QR y sin ajuste de fuente de kiosko', () => {
     const root = document.createElement('div');
     renderMobile(root, store(), defaultConfig, new Announcement('Sorteo a las 18'));
-    expect([...root.querySelectorAll('h2')].map((h) => h.textContent)).toEqual(['📣 Anuncio', 'Posts', '⚡ Últimos zaps', 'Top 10 histórico', `Top 10 · últimas ${defaultConfig.topRecentHours} horas`]);
+    expect([...root.querySelectorAll('h2')].map((h) => h.textContent)).toEqual(['📣 Anuncio', 'Posts', '⚡ Últimos zaps', 'Top 10 zaps · histórico', `Top 10 zaps · últimas ${defaultConfig.topRecentHours} horas`]);
     expect(root.querySelector('.qr')).toBeNull();
     expect(root.querySelector('[data-fit]')).toBeNull();
     expect(root.textContent).toContain('Sorteo a las 18');

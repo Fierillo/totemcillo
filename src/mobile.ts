@@ -31,8 +31,8 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
       <section class="m-section"><h2>📣 Anuncio</h2>${ann.text ? `<p class="m-anuncio">${esc(ann.text)}</p>` : empty(EMPTY_ANUNCIO)}</section>
       <section class="m-section"><h2>Posts</h2>${posts || empty(EMPTY_POSTS)}</section>
       <section class="m-section"><h2>⚡ Últimos zaps</h2>${latest ? `<ul class="m-list">${latest}</ul>` : empty('Todavía no hay zaps')}</section>
-      <section class="m-section"><h2>Top 10 histórico</h2>${topAll ? `<ol class="m-list">${topAll}</ol>` : empty('Todavía no hay zaps en este período')}</section>
-      <section class="m-section"><h2>Top 10 · últimas ${cfg.topRecentHours} horas</h2>${topRecent ? `<ol class="m-list">${topRecent}</ol>` : empty('Todavía no hay zaps en este período')}</section>`;
+      <section class="m-section"><h2>Top 10 zaps · histórico</h2>${topAll ? `<ol class="m-list">${topAll}</ol>` : empty('Todavía no hay zaps en este período')}</section>
+      <section class="m-section"><h2>Top 10 zaps · últimas ${cfg.topRecentHours} horas</h2>${topRecent ? `<ol class="m-list">${topRecent}</ol>` : empty('Todavía no hay zaps en este período')}</section>`;
   };
   draw();
   const offs = [store.onChange(draw), ann.onChange(draw)];
