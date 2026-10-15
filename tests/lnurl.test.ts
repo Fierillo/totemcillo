@@ -24,6 +24,62 @@ describe('lnurlFromProfile', () => {
 });
 
 describe('LnurlResolver', () => {
+  it('no devuelve como autorizado un proveedor retirado mientras su consulta estaba en vuelo', async () => {
+    let providers = ['custom.example'];
+    let finish!: () => void;
+    const f = vi.fn(async () => {
+      await new Promise<void>((done) => { finish = done; });
+      return { ok: true, json: async () => ({ allowsNostr: true, nostrPubkey: NPK }) };
+    });
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@custom.example' }), f, undefined, () => providers);
+    const pending = resolver.resolve('pk');
+    const cached = resolver.resolve('pk');
+    await Promise.resolve();
+    expect(f).toHaveBeenCalledTimes(1);
+    providers = [];
+    finish();
+    expect(await pending).toBeNull();
+    expect(await cached).toBeNull();
+  });
+  it('el filtro también cubre lud06 y rechaza credenciales, puertos alternativos y dominios engañosos', async () => {
+    const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });
+    for (const url of ['https://getalby.com@evil.example/pay', 'https://user:pass@getalby.com/pay', 'https://getalby.com:8443/pay', 'http://getalby.com/pay']) {
+      const lud06 = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode(url)), 2000);
+      expect(await new LnurlResolver(async () => prof({ lud06 }), f).resolve('pk')).toBeNull();
+    }
+    expect(f).not.toHaveBeenCalled();
+    const lud06 = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode('https://Pay.GetAlby.com:443/pay')), 2000);
+    expect(await new LnurlResolver(async () => prof({ lud06 }), f).resolve('pk')).toBe(NPK);
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+  it('pide al navegador rechazar redirecciones para no contactar destinos fuera de la lista', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('redirect blocked'));
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }));
+    expect(await resolver.resolve('pk')).toBeNull();
+    expect(fetcher).toHaveBeenCalledWith('https://getalby.com/.well-known/lnurlp/a', expect.objectContaining({ redirect: 'error' }));
+  });
+  it('aplica cambios del panel sin esperar el vencimiento de caché ni reutilizar un proveedor retirado', async () => {
+    let providers: string[] = [];
+    const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@custom.example' }), f, undefined, () => providers);
+    expect(await resolver.resolve('pk')).toBeNull();
+    expect(f).not.toHaveBeenCalled();
+    providers = ['custom.example'];
+    expect(await resolver.resolve('pk')).toBe(NPK);
+    expect(f).toHaveBeenCalledTimes(1);
+    providers = [];
+    expect(await resolver.resolve('pk')).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+  it('rechaza dominios no autorizados antes de hacer cualquier petición LNURL', async () => {
+    const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });
+    for (const domain of ['untrusted.example', 'evilgetalby.com', 'getalby.com.evil.example']) {
+      const resolver = new LnurlResolver(async () => prof({ lud16: `a@${domain}` }), f);
+      expect(await resolver.resolve('pk')).toBeNull();
+    }
+    expect(f).not.toHaveBeenCalled();
+  });
   it('aborta una consulta lenta para liberar el cupo de validación', async () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -32,7 +88,7 @@ describe('LnurlResolver', () => {
       signal = init?.signal;
       signal?.addEventListener('abort', () => reject(new Error('timeout')), { once: true });
     }));
-    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@b.com' }));
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }));
     const pending = resolver.resolve('pk');
     await vi.advanceTimersByTimeAsync(5000);
     expect(signal?.aborted).toBe(true);
@@ -44,15 +100,15 @@ describe('LnurlResolver', () => {
     expect((await validateZapReceipt(z.receipt, resolver))?.domain).toBe('pay.getalby.com');
   });
   it('resuelve nostrPubkey si allowsNostr', async () => {
-    const load = vi.fn(async () => prof({ lud16: 'a@b.com' }));
+    const load = vi.fn(async () => prof({ lud16: 'a@getalby.com' }));
     const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });
     expect(await new LnurlResolver(load, f).resolve('pk')).toBe(NPK);
     expect(load).toHaveBeenCalledWith('pk');
-    expect(f).toHaveBeenCalledWith('https://b.com/.well-known/lnurlp/a');
+    expect(f).toHaveBeenCalledWith('https://getalby.com/.well-known/lnurlp/a');
   });
   it('null si no hay allowsNostr, pubkey inválido, error HTTP, sin perfil o sin lud', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const p = async () => prof({ lud16: 'a@b.com' });
+    const p = async () => prof({ lud16: 'a@getalby.com' });
     const cases: [() => Promise<any>, ReturnType<typeof okFetch>][] = [
       [p, okFetch({ allowsNostr: false, nostrPubkey: NPK })],
       [p, okFetch({ allowsNostr: true, nostrPubkey: 'zz' })],
@@ -65,10 +121,10 @@ describe('LnurlResolver', () => {
   it('falla de red/CORS -> null sin tirar', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const f = vi.fn(async (_u: string) => { throw new TypeError('Failed to fetch'); });
-    expect(await new LnurlResolver(async () => prof({ lud16: 'a@b.com' }), f).resolve('pk')).toBeNull();
+    expect(await new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }), f).resolve('pk')).toBeNull();
   });
   it('cachea por destinatario, incluso en paralelo', async () => {
-    const load = vi.fn(async () => prof({ lud16: 'a@b.com' }));
+    const load = vi.fn(async () => prof({ lud16: 'a@getalby.com' }));
     const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });
     const r = new LnurlResolver(load, f);
     await Promise.all([r.resolve('pk'), r.resolve('pk')]);
@@ -82,7 +138,7 @@ describe('LnurlResolver', () => {
     vi.setSystemTime(0);
     const f = vi.fn(async (_u: string) => ({ ok: true, json: async () => ({ allowsNostr: true, nostrPubkey: NPK }) }));
     f.mockRejectedValueOnce(new Error('caído'));
-    const r = new LnurlResolver(async () => prof({ lud16: 'a@b.com' }), f, 1000);
+    const r = new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }), f, 1000);
     expect(await r.resolve('pk')).toBeNull();
     expect(await r.resolve('pk')).toBeNull();
     vi.setSystemTime(1000);

@@ -53,6 +53,8 @@ Relay events are checked locally for the requested hashtags/post IDs, the start 
 
 There is one active zap subscription for the retained posts (500 by default), with four concurrent receipt validations and at most 128 queued receipts. LNURL HTTP requests time out after five seconds, including body reading. Under sustained overload, excess events are dropped rather than queued indefinitely; this feed is best-effort, not a lossless payment ledger. Scene, mobile and moderation redraws are coalesced to at most ten updates per second after the initial render.
 
+Before contacting an LNURL endpoint, the client checks its hostname against the current admin provider list (exact domain or subdomain). Only HTTPS on the standard port, without URL credentials, is accepted. All HTTP redirects are rejected, including between authorized providers; an LNURL endpoint that requires a redirect will not validate. Provider changes invalidate the resolver cache, and pending results are checked against the current list before being returned.
+
 These limits bound application work, not raw WebSocket traffic or the relay library's parsing/verification. They do not prevent valid spam/Sybil posts; moderation is still needed.
 
 ## How sync works

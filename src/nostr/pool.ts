@@ -4,6 +4,7 @@ import { LnurlResolver } from './lnurl';
 import type { ZapStore } from './store';
 import type { NostrEvent } from './types';
 import { isSigned, validateZapReceipt, type Resolver } from './verify';
+import { DEFAULT_ZAP_PROVIDERS } from '../../shared/settings';
 
 export interface PoolLike {
   subscribeMany(relays: string[], filter: any, params: { onevent: (ev: NostrEvent) => void }): { close(): void };
@@ -68,7 +69,7 @@ export function startNostr(
   store: ZapStore,
   pool: PoolLike = new SimplePool() as unknown as PoolLike,
   batchMs = 1500,
-  resolver: Resolver = new LnurlResolver(profileLoader(pool, cfg.relays)),
+  resolver: Resolver = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS),
   cutoff?: number,
 ) {
   let zapSub: { close(): void } | undefined;

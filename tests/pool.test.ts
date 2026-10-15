@@ -54,6 +54,31 @@ describe('followCutoff', () => {
 });
 
 describe('startNostr', () => {
+  it('usa los proveedores del store antes de consultar LNURL con el resolver real', async () => {
+    const z = makeZap({ postId: 'p1' });
+    const profile = sign(z.recipient.sk, { kind: 0, created_at: 1, tags: [], content: JSON.stringify({ lud16: 'a@getalby.com' }) });
+    const p = mockPool([profile]), store = new ZapStore(undefined, { zapProviders: [] });
+    store.addPost({ id: 'p1', pubkey: z.recipient.pk, content: 'post', created_at: 1 });
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ allowsNostr: true, nostrPubkey: z.server.pk }) } as Response);
+    const feed = startNostr(cfg, store, p);
+    try {
+      vi.advanceTimersByTime(1500);
+      p.subs[1].h.onevent(z.receipt);
+      await flush();
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(store.zaps.size).toBe(0);
+      store.setModeration({ hiddenPosts: [], bannedPubkeys: [], zapProviders: ['getalby.com'] });
+      p.subs[1].h.onevent(z.receipt);
+      await flush();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(store.zaps.has(z.receipt.id)).toBe(true);
+      store.setModeration({ hiddenPosts: [], bannedPubkeys: [], zapProviders: [] });
+      p.subs[1].h.onevent(sign(z.server.sk, { ...z.receipt, created_at: 101 }));
+      await flush();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(store.zaps.size).toBe(1);
+    } finally { feed.close(); fetcher.mockRestore(); }
+  });
   it('descarta el exceso de receipts sin superar el límite de cola ni el de concurrencia', async () => {
     const p = mockPool(), store = new ZapStore();
     store.addPost({ id: 'p1', pubkey: 'pk', content: 'x', created_at: 1 });

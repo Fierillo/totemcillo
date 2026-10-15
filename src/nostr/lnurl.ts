@@ -1,6 +1,8 @@
 import { bech32 } from '@scure/base';
 import type { NostrEvent } from './types';
 import type { LnurlInfo, Resolver } from './verify';
+import { DEFAULT_ZAP_PROVIDERS } from '../../shared/settings';
+import { providerAllowed } from './store';
 
 export type ProfileLoader = (pubkey: string) => Promise<NostrEvent | null>;
 export type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<any> }>;
@@ -10,7 +12,7 @@ const fetchLnurl: FetchLike = async (url) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal, redirect: 'error' });
     const data = res.ok ? await res.json() : null;
     return { ok: res.ok, json: async () => data };
   } finally { clearTimeout(timer); }
@@ -41,20 +43,27 @@ interface Entry { p: Promise<LnurlInfo | null>; at: number; failed: boolean }
 /** Resolves (and caches) the nostrPubkey that signs a recipient's zaps. */
 export class LnurlResolver implements Resolver {
   private cache = new Map<string, Entry>();
+  private cachePolicy = '';
 
-  constructor(private loadProfile: ProfileLoader, private fetchFn: FetchLike = fetchLnurl, private retryMs = 300_000) {}
+  constructor(private loadProfile: ProfileLoader, private fetchFn: FetchLike = fetchLnurl, private retryMs = 300_000,
+    private getProviders: () => string[] = () => DEFAULT_ZAP_PROVIDERS) {}
 
   resolve(pubkey: string): Promise<string | null> {
     return this.resolveInfo(pubkey).then((i) => i?.pubkey ?? null);
   }
 
-  resolveInfo(pubkey: string): Promise<LnurlInfo | null> {
-    const c = this.cache.get(pubkey);
-    if (c && !(c.failed && Date.now() - c.at >= this.retryMs)) return c.p;
-    const entry: Entry = { p: this.lookup(pubkey), at: Date.now(), failed: false };
-    entry.p.then((v) => { entry.failed = v === null; });
-    this.cache.set(pubkey, entry);
-    return entry.p;
+  async resolveInfo(pubkey: string): Promise<LnurlInfo | null> {
+    const policy = JSON.stringify(this.getProviders());
+    if (policy !== this.cachePolicy) { this.cache.clear(); this.cachePolicy = policy; }
+    let entry = this.cache.get(pubkey);
+    if (!entry || (entry.failed && Date.now() - entry.at >= this.retryMs)) {
+      const next: Entry = { p: this.lookup(pubkey), at: Date.now(), failed: false };
+      next.p.then((v) => { next.failed = v === null; });
+      this.cache.set(pubkey, next);
+      entry = next;
+    }
+    const info = await entry.p;
+    return info && providerAllowed(info.domain, this.getProviders()) ? info : null;
   }
 
   private async lookup(pubkey: string): Promise<LnurlInfo | null> {
@@ -62,11 +71,15 @@ export class LnurlResolver implements Resolver {
       const profile = await this.loadProfile(pubkey);
       const url = profile && lnurlFromProfile(profile.content);
       if (!url) return null;
+      const endpoint = new URL(url);
+      if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.port) return null;
+      const domain = endpoint.hostname.toLowerCase();
+      if (!providerAllowed(domain, this.getProviders())) return null;
       const res = await this.fetchFn(url);
       if (!res.ok) return null;
       const j = await res.json();
       const ok = j?.allowsNostr === true && typeof j.nostrPubkey === 'string' && /^[0-9a-f]{64}$/.test(j.nostrPubkey);
-      return ok ? { pubkey: j.nostrPubkey, domain: new URL(url).hostname.toLowerCase() } : null;
+      return ok ? { pubkey: j.nostrPubkey, domain } : null;
     } catch (e) {
       console.warn('LNURL not verifiable (CORS?), zap not counted', pubkey, e);
       return null;
