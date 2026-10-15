@@ -1,86 +1,61 @@
 # totemcillo
 
-Pantalla tótem para el stand de **La Crypta** en **LABITCONF** (estilo pubpay.me).
-Escucha notas Nostr (kind 1) con `#lacrypta` y `#labitconf`, y los zap receipts (kind 9735) que las referencian, y rota escenas automáticamente.
+Tótem de **La Crypta** para **LABITCONF**: muestra en vivo las notas Nostr con `#lacrypta` y `#labitconf` y los zaps que reciben.
 
-Stack: pnpm + Vite + TypeScript (vanilla) + nostr-tools. Sitio estático + Vercel Functions en `/api` para el panel de admin (Upstash Redis).
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![nostr-tools](https://img.shields.io/badge/nostr--tools-8E44AD?logo=nostr&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
+![Upstash Redis](https://img.shields.io/badge/Upstash_Redis-00E9A3?logo=upstash&logoColor=black)
+![pnpm](https://img.shields.io/badge/pnpm-F69220?logo=pnpm&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white)
 
-## Correrlo local
+## Qué hace
+
+- **Escenas** en rotación: posts recientes, últimos zaps, Top 10 histórico, Top 10 de las últimas horas, anuncio y video.
+- **Animaciones en vivo** cuando llega un post o un zap (también en el celular).
+- **Perfiles Nostr**: alias y avatar en lugar del npub.
+- **QR** a la app en posts, tops y anuncio.
+- **Vista móvil** en la misma URL, con botón ⚡ Zapear.
+- **Admin** (`/admin`, con clave): anuncio, duraciones, modo de video y flechas ← →.
+- Zaps validados según NIP-57; sólo se muestran posts desde `startLine` (`public/config.json`).
+
+## Correrlo
 
 ```bash
 pnpm install
-pnpm dev          # abrí http://localhost:5173 (tótem) y http://localhost:5173/admin
-pnpm test        # tests con vitest
-pnpm vitest run --coverage   # cobertura
-pnpm build        # genera dist/
-pnpm preview      # sirve el build
+pnpm dev      # http://localhost:5173 y /admin
+pnpm test     # vitest
+pnpm build    # dist/
 ```
 
-Hacé doble click en la pantalla para pasar a fullscreen (o usá el modo kiosko del navegador: `chromium --kiosk http://localhost:5173`).
-
-## Configuración
-
-Editá `public/config.json`: relays, hashtags, duración de escenas (ms), lista de charlas, texto de anuncio inicial, `publicUrl` (URL del QR; vacío = la URL donde está abierta la página) , `settingsPollMs` (cada cuánto el tótem consulta `/api/settings`) y `startLine` (línea de largada fija, ISO con offset, ej. `2026-10-13T21:00:00-03:00`: sólo se piden y muestran posts desde ese instante; no se podan con el paso del tiempo). No hace falta recompilar si lo cambiás en el deploy.
-
-El historial de posts y zaps se guarda en `localStorage` del navegador.
-
-## Escenas
-
-- ✅ Posts: lista de los 6 más nuevos (más nuevo arriba, siempre igual para los mismos datos): cada fila muestra autor, hace cuánto, el mensaje y el total de sats acumulados (sin los mensajes de los zaps). Al costado (abajo en vertical) **un único QR** con la URL de la app para abrirla en el celu.
-- ✅ Últimos zaps
-- ✅ Top 10 histórico y Top 10 últimas 3 h
-- ✅ Anuncio: lo edita el admin; siempre está en la rotación (sin texto muestra "Sin anuncios por ahora")
-- ✅ Video: `videoSrc` de `public/config.json` (por defecto `/video/totem-video.webm`, VP9), a pantalla completa y mudo. Arranca siempre desde 0 y la escena dura lo que dura el video (sin timer ni duración en /admin); las flechas y el control remoto lo pueden saltear. La rotación automática lo muestra una de cada `videoEveryCycles` vueltas (por defecto 2, editable desde /admin entre 1 y 10); con las flechas o el control remoto siempre llegás a él. `videoMode` (por defecto `full`): `full` lo pasa entero desde 0; `clip` pasa `videoClipSeconds` segundos (por defecto 21) desde un punto al azar, sin quedarse nunca corto; si el video dura eso o menos, va entero desde 0. Los tres se editan desde /admin. Si el video falla o no arranca, sigue solo a los pocos segundos. Los videos de `public/video/` no van a git (copialos a mano o usá una URL externa).
-- 🚧 Próximas charlas
-
-## Celular
-
-Misma ruta `/`. Con pantalla angosta (≤ 700 px) no rota: muestra todo apilado y scrolleable (anuncio, posts, últimos zaps, tops), sin QR, y cada post tiene un botón **⚡ Zapear** (`nostr:nevent…`, abre tu cliente Nostr) y el link alternativo a njump.me.
-
-## Admin (`/admin`)
-
-Panel con clave para editar el anuncio (máx. 280), la duración de cada escena (3 a 120 s) y botones ← → para cambiar la escena del tótem a distancia. El tótem consulta `/api/settings` cada `settingsPollMs` y aplica los cambios en vivo.
-
-- `POST /api/login` compara la clave con `ADMIN_PASSWORD` en tiempo constante y devuelve una cookie de sesión `HttpOnly; SameSite=Strict` (y `Secure` en HTTPS) firmada con HMAC (`SESSION_SECRET`), válida 1 hora. Máximo 10 intentos cada 10 minutos por IP.
-- `GET /api/settings` es público (anuncio, duraciones y último comando). `PUT /api/settings` requiere sesión y JSON.
-- La página `/admin` en sí es pública (HTML estático): lo que protege es la API.
-
-### Variables de entorno en Vercel
+Variables de entorno (en Vercel; en local, opcionales):
 
 | Variable | Para qué |
 | --- | --- |
-| `ADMIN_PASSWORD` | Clave del panel (usá una larga). |
-| `SESSION_SECRET` | Secreto para firmar la sesión, **mínimo 32 caracteres** (`openssl rand -hex 32`). |
-| `UPSTASH_REDIS_REST_URL` | URL REST de tu base Upstash Redis. |
-| `UPSTASH_REDIS_REST_TOKEN` | Token REST de Upstash. |
+| `ADMIN_PASSWORD` | Clave del panel (en local, `admin` por defecto). |
+| `SESSION_SECRET` | Firma de la sesión, mínimo 32 caracteres. |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Persistencia de la configuración (sin ellas, memoria). |
 
-Sin `ADMIN_PASSWORD`/`SESSION_SECRET` el login responde 503 (falla cerrado). Sin Upstash usa memoria, que en Vercel **no persiste** entre invocaciones: configuralo. La forma más fácil: Vercel → Storage → Marketplace → Upstash Redis (crea y conecta las variables solo).
+En local, `ADMIN_PASSWORD=otra pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
-### Local
+## Cómo se sincroniza
 
-`pnpm dev` y `pnpm preview` montan los mismos handlers de `/api` con almacenamiento en memoria (plugin de Vite en `server/vite-plugin.ts`). La clave por defecto es `admin`; cambiala con `ADMIN_PASSWORD=otra pnpm dev`. Para probar las Functions tal cual corren en Vercel: `pnpm dlx vercel dev`.
+El **reloj del servidor** es la única fuente de verdad. A partir de un `epoch` guardado y las duraciones, el servidor calcula qué escena va (y, si es video, en qué segundo). Los tótems sólo leen:
 
-## Deploy en Vercel
+- `GET /api/kiosk` devuelve la agenda; `GET /api/time` corrige el desfase del reloj local.
+- Cada **21 s** (`settingsPollMs`) chequean `GET /api/version` y recargan la agenda sólo si cambió (ya no se consulta cada 4 s).
+- Las flechas del admin y los cambios de duración reanclan la agenda; todas las pantallas muestran lo mismo.
 
-Importá el repo en Vercel (detecta Vite) o usá la CLI:
+## Roadmap
 
-```bash
-pnpm dlx vercel        # preview
-pnpm dlx vercel --prod
-```
-
-`vercel.json` ya define `pnpm install --frozen-lockfile`, `pnpm build` y salida en `dist`.
-
-## Desarrollo
-
-Todo se desarrolla con TDD estricto: primero un test que falla (commit `test: ... (rojo)`), después el código mínimo para pasarlo (`feat: ... (verde)`) y por último el refactor.
-
-## Seguridad
-
-- **Zaps (NIP-57):** sólo se cuentan los receipts con firma válida, con zap request 9734 firmada cuyo `p`/`e` coinciden con los del receipt, cuyo monto del bolt11 coincide con el `amount` (si está), y que vienen firmados por el `nostrPubkey` del LNURL del destinatario (se resuelve desde el lud16/lud06 de su kind 0 y se cachea).
-- **Ojo con CORS:** el chequeo del LNURL se hace desde el navegador. Si el endpoint del destinatario no manda `Access-Control-Allow-Origin`, el zap queda sin verificar y **no se cuenta** (se reintenta cada 5 min).
-- Las notas kind 1 también se verifican por firma. El historial de `localStorage` se valida al cargar, hay tope de posts/zaps en memoria y el contenido largo se trunca.
-
-## QR
-
-El QR del tótem lleva a la misma app (`publicUrl` o la URL actual). En el celu cada post tiene su botón Zapear.
+- [x] Escenas, vista móvil y panel de admin
+- [x] Corte fijo de posts por `startLine`
+- [x] Agenda determinística en el servidor (`/api/kiosk`, `/api/time`, `/api/version`)
+- [x] Video completo o por clips sincronizados
+- [x] Animaciones en vivo de posts y zaps
+- [x] Alias y avatar de perfiles Nostr
+- [x] QR en todas las escenas
+- [ ] Alejar el rayo del texto "hace X"
+- [ ] Campo `videoDurationSec` en el admin
+- [ ] Zap anónimo opcional con invoice desde la wallet
