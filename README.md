@@ -47,6 +47,8 @@ Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
 ## How sync works
 
+Settings and moderation saves use an atomic Redis version check. Concurrent changes are reapplied to the latest settings instead of overwriting each other. Retries are bounded; persistent contention returns 503 without saving a stale copy. Existing stored settings need no migration.
+
 `public/config.json` contains static client configuration: relays, hashtags, post length, recent ranking window, public URL, polling interval and video asset. Announcement, start line, scene durations and video scheduling are managed by `/admin`, persisted by the server, with defaults in `shared/settings.ts`.
 
 The **server clock** is the single source of truth. From a stored `epoch` and the scene durations, the server computes which scene is on (and, for video, at which second). Screens only read:

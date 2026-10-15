@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { passwordMatches, signSession, verifySession, parseCookies, readSession } from '../server/auth';
-import { memoryStorage } from '../server/storage';
+import { memoryStorage, upstashStorage } from '../server/storage';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 
 describe('passwordMatches (comparación en tiempo constante)', () => {
@@ -40,6 +40,17 @@ describe('sesión firmada con HMAC', () => {
 });
 
 describe('memoryStorage', () => {
+  it('solo guarda si coincide la versión, incluyendo datos antiguos sin versión', async () => {
+    const s = memoryStorage();
+    expect(await s.compareAndSet('k', null, { version: 1 })).toBe(true);
+    expect(await s.compareAndSet('k', null, { version: 2 })).toBe(false);
+    expect(await s.compareAndSet('k', 0, { version: 2 })).toBe(false);
+    expect(await s.compareAndSet('k', 1, { version: 2 })).toBe(true);
+    expect(await s.get('k')).toEqual({ version: 2 });
+    await s.set('legacy', { announcement: 'anterior' });
+    expect(await s.compareAndSet('legacy', 0, { version: 1, announcement: 'nuevo' })).toBe(true);
+    expect(await s.get('legacy')).toEqual({ version: 1, announcement: 'nuevo' });
+  });
   it('guarda JSON y cuenta con vencimiento', async () => {
     let now = 0;
     const s = memoryStorage(() => now);
@@ -59,6 +70,23 @@ describe('memoryStorage', () => {
     now = 10_001;
     expect(await s.get('k')).toBeNull();
   });
+});
+
+it('Upstash usa un único script atómico y distingue conflicto de guardado exitoso', async () => {
+  const evaluate = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+  vi.doMock('@upstash/redis', () => ({ Redis: class { eval = evaluate; } }));
+  try {
+    const s = upstashStorage('https://redis.example.invalid', 'test-token');
+    const next = { version: 1, hiddenPosts: ['a'.repeat(64)] };
+    expect(await s.compareAndSet('totem:settings', null, next)).toBe(true);
+    expect(await s.compareAndSet('totem:settings', 0, next)).toBe(false);
+    expect(await s.compareAndSet('totem:settings', 2, { ...next, version: 3 })).toBe(true);
+    expect(evaluate.mock.calls.map(([, keys, args]) => [keys, args])).toEqual([
+      [['totem:settings'], [-1, JSON.stringify(next)]],
+      [['totem:settings'], [0, JSON.stringify(next)]],
+      [['totem:settings'], [2, JSON.stringify({ ...next, version: 3 })]],
+    ]);
+  } finally { vi.doUnmock('@upstash/redis'); }
 });
 
 describe('sesiones revocables', () => {

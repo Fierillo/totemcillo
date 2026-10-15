@@ -20,6 +20,56 @@ const login = async (d: Deps) => String((await handle(req('POST', '/api/login', 
 const mod = async (d: Deps, cookie: string, body: unknown) => handle(req('POST', '/api/moderation', body, { cookie }), d);
 
 describe('POST /api/moderation (admin)', () => {
+  it('conserva dos borrados simultáneos y cuenta ambas versiones', async () => {
+    const d = deps(), cookie = await login(d);
+    const responses = await Promise.all([
+      mod(d, cookie, { action: 'hide', id: H('a') }),
+      mod(d, cookie, { action: 'hide', id: H('b') }),
+    ]);
+    expect(responses.map((r) => r.status)).toEqual([200, 200]);
+    const settings = (await handle(req('GET', '/api/settings'), d)).body as any;
+    expect(settings.hiddenPosts).toEqual(expect.arrayContaining([H('a'), H('b')]));
+    expect(settings.version).toBe(2);
+  });
+  it('conserva borrado, baneo y ajustes cuando se guardan simultáneamente', async () => {
+    const d = deps(), cookie = await login(d);
+    const responses = await Promise.all([
+      mod(d, cookie, { action: 'hide', id: H('a') }),
+      mod(d, cookie, { action: 'ban', id: H('b') }),
+      handle(req('PUT', '/api/settings', { announcement: 'nuevo anuncio' }, { cookie }), d),
+    ]);
+    expect(responses.map((r) => r.status)).toEqual([200, 200, 200]);
+    expect((await handle(req('GET', '/api/settings'), d)).body).toMatchObject({
+      hiddenPosts: [H('a')], bannedPubkeys: [H('b')], announcement: 'nuevo anuncio', version: 3,
+    });
+  });
+  it('ante colisiones persistentes falla sin sobrescribir datos ni reintentar indefinidamente', async () => {
+    const d = deps(), cookie = await login(d);
+    await mod(d, cookie, { action: 'hide', id: H('a') });
+    const before = await d.storage.get('totem:settings');
+    const save = vi.spyOn(d.storage, 'compareAndSet').mockResolvedValue(false);
+    const response = await mod(d, cookie, { action: 'hide', id: H('b') });
+    expect(response.status).toBe(503);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(save.mock.calls.length).toBeGreaterThan(1);
+    expect(save.mock.calls.length).toBeLessThanOrEqual(10);
+    expect(await d.storage.get('totem:settings')).toEqual(before);
+  });
+  it('revalida el límite de baneos tras una colisión sin perder datos antiguos', async () => {
+    const d = deps(), cookie = await login(d);
+    const full = Array.from({ length: LIMITS.maxModeration - 1 }, (_, i) => i.toString(16).padStart(64, '0'));
+    await d.storage.set('totem:settings', { announcement: 'anterior', bannedPubkeys: full });
+    const responses = await Promise.all([
+      mod(d, cookie, { action: 'ban', id: H('a') }),
+      mod(d, cookie, { action: 'ban', id: H('b') }),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 400]);
+    const saved = await d.storage.get<any>('totem:settings');
+    expect(saved.bannedPubkeys).toHaveLength(LIMITS.maxModeration);
+    expect(saved.bannedPubkeys).toEqual(expect.arrayContaining(full));
+    expect(saved.announcement).toBe('anterior');
+    expect(saved.version).toBe(1);
+  });
   it('sin sesión → 401; sin JSON → 415; GET → 405', async () => {
     const d = deps();
     expect((await mod(d, '', { action: 'hide', id: H('a') })).status).toBe(401);

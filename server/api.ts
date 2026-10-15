@@ -35,12 +35,27 @@ async function authed(req: ApiRequest, d: Deps): Promise<boolean> {
   return !!s && !(await d.storage.get(REVOKED(s.jti)));
 }
 
-async function readSettings(d: Deps): Promise<Settings> {
-  const s = await d.storage.get<Settings & { command?: unknown }>(KEY);
+function settingsWithDefaults(s: (Settings & { command?: unknown }) | null): Settings {
   if (!s) return DEFAULT_SETTINGS;
   // Discard the old rotator's persisted command without resetting any settings.
   const { command, ...settings } = s;
   return { ...DEFAULT_SETTINGS, ...settings };
+}
+
+async function readSettings(d: Deps): Promise<Settings> {
+  return settingsWithDefaults(await d.storage.get<Settings>(KEY));
+}
+
+async function updateSettings(d: Deps, change: (cur: Settings) => { ok: true; settings: Settings } | { ok: false; error: string }): Promise<ApiResponse> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const stored = await d.storage.get<Settings>(KEY);
+    const cur = settingsWithDefaults(stored);
+    const result = change(cur);
+    if (!result.ok) return json(400, { error: result.error });
+    const next = { ...result.settings, version: (cur.version ?? 0) + 1 };
+    if (await d.storage.compareAndSet(KEY, stored ? (stored.version ?? 0) : null, next)) return json(200, next);
+  }
+  return json(503, { error: 'cambios concurrentes, probá de nuevo' });
 }
 
 function cookieFlags(req: ApiRequest, maxAge: number): string {
@@ -66,25 +81,19 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
       const v = validatePatch(req.body, d.now());
       if (!v.ok) return json(400, { error: v.error });
-      const cur = await readSettings(d);
-      const now = d.now();
-      let next = applyPatch(cur, v.patch);
-      const { announcement, command, zapProviders, startLine, ...sched } = v.patch;
-      if (Object.keys(sched).length) next = reanchor(cur, next, now);
-      if (command) next = shiftSchedule(next, now, command);
-      next = { ...next, version: (cur.version ?? 0) + 1 };
-      await d.storage.set(KEY, next);
-      return json(200, next);
+      return updateSettings(d, (cur) => {
+        const now = d.now();
+        let next = applyPatch(cur, v.patch);
+        const { announcement, command, zapProviders, startLine, ...sched } = v.patch;
+        if (Object.keys(sched).length) next = reanchor(cur, next, now);
+        if (command) next = shiftSchedule(next, now, command);
+        return { ok: true, settings: next };
+      });
     }
     case 'POST /api/moderation': {
       if (!(await authed(req, d))) return json(401, { error: 'no autorizado' });
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
-      const cur = await readSettings(d);
-      const m = applyModeration(cur, req.body);
-      if (!m.ok) return json(400, { error: m.error });
-      const next = { ...m.settings, version: (cur.version ?? 0) + 1 };
-      await d.storage.set(KEY, next);
-      return json(200, next);
+      return updateSettings(d, (cur) => applyModeration(cur, req.body));
     }
     case 'GET /api/kiosk': {
       // Public, read-only: schedule inputs; the totem computes the scenes locally.
