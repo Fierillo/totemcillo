@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { ProfileCache, profiles, authorHtml, installAvatarFallback, PLACEHOLDER_CLASS } from '../src/nostr/profiles';
+import { ProfileCache, profiles, configureProfiles, authorHtml, installAvatarFallback, PLACEHOLDER_CLASS } from '../src/nostr/profiles';
 import { ZapStore } from '../src/nostr/store';
 import { postScene } from '../src/scenes/post';
 import { latestZapsScene } from '../src/scenes/latestZaps';
@@ -15,7 +14,7 @@ const meta = (sk: Uint8Array, content: object, created_at = 10) => sign(sk, { ki
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => { vi.useRealTimers(); profiles.configure({ query: undefined, storage: undefined }); profiles.clear(); });
+afterEach(() => { profiles.clear(); profiles.configure({ query: undefined, subscribe: undefined, storage: undefined }); vi.useRealTimers(); });
 
 describe('ProfileCache: kind 0 desde relays, en lotes y con caché', () => {
   it('agrupa pedidos en un solo query y usa display_name, si no name; picture sólo https', async () => {
@@ -124,29 +123,99 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
   it('post, top, últimos zaps y móvil', async () => {
     const { store } = setup();
     const roots = [document.createElement('div'), document.createElement('div'), document.createElement('div'), document.createElement('div')];
-    postScene(store, { publicUrl: 'https://x/' }).render(roots[0]);
-    topScene({ name: 'top10Historico', title: 'T', store, since: () => 0 }).render(roots[1]);
-    latestZapsScene(store).render(roots[2]);
-    renderMobile(roots[3], store, defaultConfig, new Announcement(''));
-    for (const r of roots) expect(r.querySelector(`.${PLACEHOLDER_CLASS}`), r.innerHTML.slice(0, 80)).not.toBeNull();
-    await vi.advanceTimersByTimeAsync(1000);
-    for (const r of [roots[0], roots[1], roots[3]]) {
-      expect([...r.querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Autora');
-      expect(r.querySelector('img.avatar')).not.toBeNull();
-    }
-    expect([...roots[2].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
-    expect([...roots[3].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
+    const cleanups = [
+      postScene(store, { publicUrl: 'https://x/' }).render(roots[0]),
+      topScene({ name: 'top10Historico', title: 'T', store, since: () => 0 }).render(roots[1]),
+      latestZapsScene(store).render(roots[2]),
+      renderMobile(roots[3], store, defaultConfig, new Announcement('')),
+    ];
+    try {
+      for (const r of roots) expect(r.querySelector(`.${PLACEHOLDER_CLASS}`), r.innerHTML.slice(0, 80)).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(1000);
+      for (const r of [roots[0], roots[1], roots[3]]) {
+        expect([...r.querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Autora');
+        expect(r.querySelector('img.avatar')).not.toBeNull();
+      }
+      expect([...roots[2].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
+      expect([...roots[3].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
+    } finally { cleanups.forEach((cleanup) => cleanup?.()); }
   });
 });
 
-describe('CSS: avatar redondo chico y alias truncado sin solapes', () => {
-  it('reglas', () => {
-    const css = readFileSync(`${process.cwd()}/src/style.css`, 'utf8');
-    expect(css).toMatch(/\.avatar\s*\{[^}]*border-radius:\s*50%[^}]*flex:\s*0 0 auto/);
-    expect(css).toMatch(/\.alias\s*\{[^}]*min-width:\s*0[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis/);
-    expect(css).toMatch(/\.author\s*\{[^}]*display:\s*inline-flex[^}]*max-width:\s*100%/);
-    // mobile: the alias yields space and the time doesn't wrap onto two lines
-    expect(css).toMatch(/\.m-meta > \.author\s*\{[^}]*flex:\s*0 1 auto/);
-    expect(css).toMatch(/\.m-meta > \.muted\s*\{[^}]*flex:\s*0 0 auto[^}]*white-space:\s*nowrap/);
+describe('perfiles en vivo', () => {
+  const fakeSub = () => {
+    const subs: { authors: string[]; onevent: (event: any) => void; closed: boolean }[] = [];
+    const subscribe = vi.fn((authors: string[], onevent: (event: any) => void) => {
+      const sub = { authors: [...authors], onevent, closed: false }; subs.push(sub);
+      return { close: () => { sub.closed = true; } };
+    });
+    return { subs, subscribe };
+  };
+  it('agrupa autores en una suscripción y la reabre solo si aparecen nuevos', async () => {
+    const a = keys(), b = keys(), c = keys(), { subs, subscribe } = fakeSub();
+    const pc = new ProfileCache({ query: async () => [], subscribe, subscribeDebounceMs: 3000 });
+    pc.get(a.pk); pc.get(b.pk);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(subscribe).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(subs).toHaveLength(1);
+    expect(subs[0].authors.sort()).toEqual([a.pk, b.pk].sort());
+    pc.get(a.pk); await vi.advanceTimersByTimeAsync(3100);
+    expect(subs).toHaveLength(1);
+    pc.get(c.pk); await vi.advanceTimersByTimeAsync(3100);
+    expect(subs).toHaveLength(2);
+    expect(subs[0].closed).toBe(true);
+    expect(subs[1].closed).toBe(false);
+    expect(subs[1].authors.sort()).toEqual([a.pk, b.pk, c.pk].sort());
+  });
+  it('actualiza y persiste eventos nuevos; ignora antiguos, ajenos, repetidos o falsificados', async () => {
+    const a = keys(), x = keys(), storage = mem(), { subs, subscribe } = fakeSub();
+    const pc = new ProfileCache({ query: async () => [meta(a.sk, { name: 'Ana' }, 100)], subscribe, storage, batchMs: 10, subscribeDebounceMs: 100 });
+    const fn = vi.fn(); pc.onChange(fn); pc.get(a.pk);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(pc.get(a.pk)).toEqual({ name: 'Ana' });
+    fn.mockClear();
+    const push = subs[0].onevent;
+    push(meta(a.sk, { name: 'Vieja' }, 50));
+    push(meta(x.sk, { name: 'Intrusa' }, 500));
+    push({ ...meta(a.sk, { name: 'Falsa' }, 600), content: '{"name":"Cambiada"}' });
+    expect(pc.get(a.pk)).toEqual({ name: 'Ana' });
+    expect(fn).not.toHaveBeenCalled();
+    const fresh = meta(a.sk, { name: 'Ana Nueva', picture: 'https://img/n.png' }, 200);
+    push(fresh); push(fresh);
+    expect(pc.get(a.pk)).toEqual({ name: 'Ana Nueva', picture: 'https://img/n.png' });
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(storage.m.get('totemcillo:profiles:v1')!)[a.pk]).toMatchObject({ name: 'Ana Nueva', picture: 'https://img/n.png' });
+  });
+  it('recargar conserva el timestamp y no permite reemplazar por un perfil viejo', async () => {
+    const a = keys(), storage = mem(), { subs, subscribe } = fakeSub();
+    const pc1 = new ProfileCache({ query: async () => [meta(a.sk, { name: 'Ana' }, 100)], storage, batchMs: 10 });
+    pc1.get(a.pk); await vi.advanceTimersByTimeAsync(50);
+    const pc2 = new ProfileCache({ storage, subscribe, subscribeDebounceMs: 10 });
+    expect(pc2.get(a.pk)).toEqual({ name: 'Ana' });
+    await vi.advanceTimersByTimeAsync(50);
+    subs[0].onevent(meta(a.sk, { name: 'Vieja' }, 90));
+    expect(pc2.get(a.pk)).toEqual({ name: 'Ana' });
+  });
+  it.each(['older', 'empty'])('una consulta %s que termina después de un evento en vivo no lo pisa', async (result) => {
+    const a = keys();
+    let resolve!: (events: ReturnType<typeof meta>[]) => void;
+    const query = vi.fn(() => new Promise<ReturnType<typeof meta>[]>((done) => { resolve = done; }));
+    const pc = new ProfileCache({ query, batchMs: 10 });
+    pc.get(a.pk); await vi.advanceTimersByTimeAsync(20);
+    expect(query).toHaveBeenCalledOnce();
+    expect(pc.ingest(meta(a.sk, { name: 'Live' }, 200))).toBe(true);
+    resolve(result === 'older' ? [meta(a.sk, { name: 'Old' }, 100)] : []);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(pc.get(a.pk)).toEqual({ name: 'Live' });
+  });
+  it('la configuración compartida consulta y suscribe usando el mismo pool y relays', async () => {
+    const a = keys(), event = meta(a.sk, { name: 'Initial' });
+    const pool = { querySync: vi.fn(async () => [event]), subscribeMany: vi.fn(() => ({ close: vi.fn() })) };
+    configureProfiles(pool, ['wss://example.com'], mem(), document);
+    profiles.get(a.pk); await vi.advanceTimersByTimeAsync(3100);
+    expect(pool.querySync).toHaveBeenCalledWith(['wss://example.com'], { kinds: [0], authors: [a.pk] }, { maxWait: 4000 });
+    expect(pool.subscribeMany).toHaveBeenCalledWith(['wss://example.com'], { kinds: [0], authors: [a.pk] }, { onevent: expect.any(Function) });
+    expect(profiles.get(a.pk)).toEqual({ name: 'Initial' });
   });
 });

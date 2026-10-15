@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
+import { createPool, followCutoff, RELAY_CONNECT_TIMEOUT_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
 import { ZapStore } from '../src/nostr/store';
 import { defaultConfig } from '../src/config';
 import { keys, makeZap, sign } from './helpers';
@@ -23,12 +23,33 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe('filtros', () => {
+  it('permite conectar relays lentos', () => {
+    expect(RELAY_CONNECT_TIMEOUT_MS).toBeGreaterThanOrEqual(10_000);
+    expect((createPool() as any).maxWaitForConnection).toBe(RELAY_CONNECT_TIMEOUT_MS);
+  });
   it('notas por hashtag y zaps por ids', () => {
     expect(notesFilter(['lacrypta'])).toEqual({ kinds: [1], '#t': ['lacrypta', 'Lacrypta', 'LACRYPTA'] });
     expect(zapsFilter(['a'])).toEqual({ kinds: [9735], '#e': ['a'] });
   });
   it('incluye minúscula, original, Capitalizada y MAYÚSCULA sin duplicados', () => {
     expect(notesFilter(['LaCrypta', 'labitconf'])['#t']).toEqual(['lacrypta', 'LaCrypta', 'Lacrypta', 'LACRYPTA', 'labitconf', 'Labitconf', 'LABITCONF']);
+  });
+});
+
+describe('followCutoff', () => {
+  it('reinicia solo al mover el inicio antes de lo cargado y conserva las conexiones', () => {
+    const handles: { close: ReturnType<typeof vi.fn> }[] = [];
+    const start = vi.fn((_cutoff?: number) => { const h = { close: vi.fn() }; handles.push(h); return h; });
+    const f = followCutoff(start, 100);
+    expect(start).toHaveBeenLastCalledWith(100);
+    f.setCutoff(200);
+    expect(start).toHaveBeenCalledTimes(1);
+    f.setCutoff(50);
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(start).toHaveBeenLastCalledWith(50);
+    expect(handles[0].close).toHaveBeenCalledWith(true);
+    f.setCutoff(70);
+    expect(start).toHaveBeenCalledTimes(2);
   });
 });
 

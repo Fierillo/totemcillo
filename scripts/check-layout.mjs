@@ -136,6 +136,20 @@ function checkEmpty([scene, expected]) {
   return P;
 }
 
+// Check rendered geometry and loaded assets, not the spelling/order of CSS declarations.
+function checkHeader() {
+  const problems = [], header = document.querySelector('.topbar');
+  const logo = header?.querySelector('img'), cta = header?.querySelector('.cta');
+  if (!header || !logo || !cta) return ['falta header, logo o invitación a publicar'];
+  if (!logo.complete || !logo.naturalWidth || logo.alt !== 'La Crypta') problems.push('logo sin cargar o sin texto alternativo');
+  if (!/Nostr/.test(cta.textContent) || !['#lacrypta', '#labitconf'].every((tag) => cta.textContent.includes(tag))) problems.push('faltan instrucciones de publicación');
+  const h = header.getBoundingClientRect(), l = logo.getBoundingClientRect(), c = cta.getBoundingClientRect();
+  for (const r of [l, c]) if (r.left < h.left - 1 || r.right > h.right + 1 || r.top < h.top - 1 || r.bottom > h.bottom + 1) problems.push('contenido fuera del header');
+  if (l.right > c.left + 1 && l.bottom > c.top + 1 && l.top < c.bottom - 1) problems.push('logo e instrucciones superpuestos');
+  if (logo.naturalHeight && Math.abs(l.width / l.height - logo.naturalWidth / logo.naturalHeight) > 0.1) problems.push('logo deformado');
+  return problems;
+}
+
 const problems = [];
 const viewports = [[1280, 720], [1920, 1080], [1080, 1920]];
 try {
@@ -149,6 +163,7 @@ try {
       await k.show(scene);
       await page.waitForTimeout(1200);
       problems.push(...(await page.evaluate(check, scene)).map((p) => `${w}x${h} ${scene}: ${p}`));
+      if (scene === 'post') problems.push(...(await page.evaluate(checkHeader)).map((p) => `${w}x${h} header: ${p}`));
       await page.screenshot({ path: `${out}/${w}x${h}-${scene}.png` });
     }
     await page.close();
@@ -248,7 +263,18 @@ try {
     if (m.alts.length < 3 || m.alts.some((h) => !h?.startsWith('https://njump.me/'))) problems.push('móvil: faltan links njump');
     if (!m.scroll) problems.push('móvil: la página no scrollea');
     if (m.rotator) problems.push('móvil: sigue rotando escenas de kiosko');
+    problems.push(...(await page.evaluate(checkHeader)).map((p) => `móvil header: ${p}`));
     await page.screenshot({ path: `${out}/390x844-mobile.png`, fullPage: true });
+    // Reduced motion must suppress movement, even if decorative glow remains.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const movement = await page.evaluate(async () => {
+      const card = document.querySelector('.m-post');
+      card.classList.add('is-new', 'is-zapped');
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const animations = card.getAnimations({ subtree: true });
+      return animations.some((animation) => animation.effect?.getKeyframes().some((frame) => frame.transform && frame.transform !== 'none'));
+    });
+    if (movement) problems.push('móvil: reduced motion todavía desplaza o escala contenido');
     await page.close();
   }
 
@@ -351,6 +377,11 @@ try {
     await page.fill('input[type="password"]', 'admin');
     await page.click('button[type="submit"]');
     await page.waitForSelector('textarea[name="announcement"]', { timeout: 5000 });
+    const startValue = new Date((now - 86400) * 1000 - 3 * 3600_000).toISOString().slice(0, 16);
+    await page.fill('input[name="startLine"]', startValue);
+    await page.fill('input[name="prov-new"]', 'wallet.example');
+    await page.click('form.prov-add button[type="submit"]');
+    await page.waitForSelector('.prov-item[data-domain="wallet.example"]');
     await page.fill('textarea[name="announcement"]', '¡Sorteo desde e2e!');
     if (await page.$('input[name="dur-video"]')) problems.push('admin: no debe haber duración para el video');
     await page.fill('input[name="dur-post"]', '20');
@@ -369,6 +400,8 @@ try {
     if (status !== 'Guardado') problems.push(`admin: Guardar respondió "${status}"`);
     const saved = await page.evaluate(async () => (await fetch('/api/settings')).json());
     if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000 || saved.videoEveryCycles !== 3 || saved.videoMode !== 'clip' || saved.videoClipSeconds !== 30) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
+    if (Date.parse(saved.startLine) !== Date.parse(`${startValue}:00-03:00`)) problems.push('admin: inicio no guardado con hora de Argentina');
+    if (!saved.zapProviders?.includes('wallet.example')) problems.push('admin: proveedor no guardado');
     // full mode: hidden live, saving keeps videoClipSeconds, and still hidden after reload; with clip it shows again
     const saveAndReload = async () => {
       await page.evaluate(() => { document.querySelector('.status').textContent = ''; });
@@ -402,6 +435,7 @@ try {
       }));
     };
     const wide = await cardsAt(1920, 1080);
+    if (await page.isVisible('nav.tabs')) problems.push('admin escritorio: pestañas móviles visibles');
     if (wide.cards.length < 4) problems.push(`admin 1920: faltan tarjetas (.card: ${wide.cards.length})`);
     else {
       if (wide.pw < wide.vw * 0.5) problems.push(`admin 1920: no aprovecha el ancho (panel ${wide.pw}px de ${wide.vw}px)`);
@@ -409,6 +443,13 @@ try {
     }
     await page.screenshot({ path: `${out}/admin-panel.png`, fullPage: true });
     const narrow = await cardsAt(390, 844);
+    if (!(await page.isVisible('nav.tabs'))) problems.push('admin móvil: faltan pestañas');
+    await page.evaluate(() => window.scrollTo(0, 250));
+    await page.waitForFunction(() => Math.abs(document.querySelector('nav.tabs').getBoundingClientRect().top) <= 1, null, { timeout: 2000 }).catch(() => problems.push('admin móvil: pestañas no permanecen visibles al desplazar'));
+    await page.click('[data-tab="mod"]');
+    if (await page.isVisible('[data-pane="config"]') || !(await page.isVisible('[data-pane="mod"]'))) problems.push('admin móvil: pestaña Mensajes no cambia el contenido');
+    await page.click('[data-tab="config"]');
+    if (!(await page.isVisible('[data-pane="config"]')) || await page.isVisible('[data-pane="mod"]')) problems.push('admin móvil: pestaña Config no cambia el contenido');
     if (narrow.cards.length < 4 || new Set(narrow.cards.map((c) => c.l)).size !== 1) problems.push(`admin 390: no es una sola columna (${JSON.stringify(narrow.cards)})`);
     if (narrow.sw > narrow.vw || narrow.cards.some((c) => c.r > narrow.vw || c.sw > c.cw + 1)) problems.push(`admin 390: algo desborda (${JSON.stringify(narrow)})`);
     await page.screenshot({ path: `${out}/admin-panel-390.png`, fullPage: true });
@@ -435,9 +476,16 @@ try {
     await totem.waitForTimeout(2000);
     const after = await totem.evaluate(() => document.getElementById('scene')?.className);
     if (before === after) problems.push(`admin: flecha remota no cambió la escena (${before})`);
+    await page.click('button.logout');
+    await page.waitForURL('http://localhost:4179/');
+    const session = await page.evaluate(async () => (await fetch('/api/session')).json());
+    if (session.authed) problems.push('admin: la sesión sigue activa después de salir');
     await page.close();
     await totem.close();
   }
+
+  const invalidAvatar = await fetch('http://localhost:4179/api/avatar?url=http%3A%2F%2Flocalhost');
+  if (invalidAvatar.status !== 400) problems.push(`avatar: la ruta no rechaza URL insegura (${invalidAvatar.status})`);
 
 } finally {
   await browser.close();

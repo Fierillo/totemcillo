@@ -1,5 +1,4 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
@@ -10,6 +9,7 @@ import { Follower } from '../src/follow';
 import { createRemote } from '../src/remote';
 import { Announcement } from '../src/announcement';
 import { renderModeration } from '../src/moderation';
+import { renderProviders } from '../src/providers';
 
 const PASS = 'clave-de-prueba';
 const H = (c: string) => c.repeat(64);
@@ -59,9 +59,6 @@ describe('POST /api/moderation (admin)', () => {
     await handle(req('PUT', '/api/settings', { announcement: 'hola', command: 'next' }, { cookie: c }), d);
     const k = (await handle(req('GET', '/api/kiosk'), d)).body as any;
     expect(k).toMatchObject({ hiddenPosts: [H('a')], bannedPubkeys: [H('b')] });
-  });
-  it('existe la Function de Vercel', () => {
-    expect(readFileSync('api/moderation.ts', 'utf8')).toContain("from '../server/node.js'");
   });
 });
 
@@ -120,7 +117,6 @@ describe('las listas llegan al tótem y al celular por el flujo existente', () =
     const res = [{ announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, hiddenPosts: ['h'], bannedPubkeys: ['b'] }, { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } }];
     const fetchFn = vi.fn(async () => ({ ok: true, json: async () => res.shift() }));
     const onModeration = vi.fn();
-    const nav = { next() {}, prev() {}, setDuration() {}, setEveryCycles() {}, setVideoMode() {}, setClipSeconds() {} };
     const r = createRemote({ fetchFn: fetchFn as any, announcement: new Announcement(''), onModeration });
     await r.poll();
     expect(onModeration).toHaveBeenLastCalledWith(expect.objectContaining({ hiddenPosts: ['h'], bannedPubkeys: ['b'] }));
@@ -174,11 +170,24 @@ describe('panel de moderación en /admin', () => {
   });
 });
 
-describe('estilos de /admin', () => {
-  const css = readFileSync('src/admin.css', 'utf8');
-  it('pestañas pegajosas en celular y ocultas en escritorio', () => {
-    expect(css).toMatch(/\.tabs\s*\{[^}]*position:\s*sticky/);
-    expect(css).toMatch(/\.tabs\s*\{[^}]*top:\s*0/);
-    expect(css).toMatch(/@media \(min-width: 701px\)[^@]*\.tabs\s*\{[^}]*display:\s*none/);
+describe('panel de proveedores', () => {
+  it('lista, agrega y quita dominios guardando la lista completa', async () => {
+    const root = document.createElement('div'), save = vi.fn(async (list: string[]) => list);
+    renderProviders(root, { list: ['getalby.com', 'primal.net'], save });
+    expect([...root.querySelectorAll('.prov-item')].map((li) => li.getAttribute('data-domain'))).toEqual(['getalby.com', 'primal.net']);
+    (root.querySelector('[data-domain="primal.net"] button.prov-del') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(save).toHaveBeenLastCalledWith(['getalby.com']));
+    await vi.waitFor(() => expect(root.querySelectorAll('.prov-item').length).toBe(1));
+    (root.querySelector('input[name="prov-new"]') as HTMLInputElement).value = 'Blink.sv';
+    root.querySelector('form.prov-add')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await vi.waitFor(() => expect(save).toHaveBeenLastCalledWith(['getalby.com', 'blink.sv']));
+  });
+  it('si guardar falla muestra el error y conserva la lista', async () => {
+    const root = document.createElement('div');
+    renderProviders(root, { list: ['getalby.com'], save: async () => { throw new Error('dominio inválido'); } });
+    (root.querySelector('input[name="prov-new"]') as HTMLInputElement).value = 'nop';
+    root.querySelector('form.prov-add')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await vi.waitFor(() => expect(root.querySelector('.prov-err')!.textContent).toContain('dominio inválido'));
+    expect(root.querySelectorAll('.prov-item')).toHaveLength(1);
   });
 });

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bech32 } from '@scure/base';
 import { LnurlResolver, lnurlFromProfile } from '../src/nostr/lnurl';
+import { validateZapReceipt } from '../src/nostr/verify';
+import { makeZap } from './helpers';
 
 const NPK = 'f'.repeat(64);
 const prof = (c: object) => ({ id: 'x', pubkey: 'p', created_at: 1, kind: 0, tags: [], content: JSON.stringify(c) });
@@ -22,6 +24,11 @@ describe('lnurlFromProfile', () => {
 });
 
 describe('LnurlResolver', () => {
+  it('guarda en el zap el dominio normalizado del LNURL que lo firmó', async () => {
+    const z = makeZap();
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'yo@Pay.GetAlby.com' }), async () => ({ ok: true, json: async () => ({ allowsNostr: true, nostrPubkey: z.server.pk }) }));
+    expect((await validateZapReceipt(z.receipt, resolver))?.domain).toBe('pay.getalby.com');
+  });
   it('resuelve nostrPubkey si allowsNostr', async () => {
     const load = vi.fn(async () => prof({ lud16: 'a@b.com' }));
     const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });

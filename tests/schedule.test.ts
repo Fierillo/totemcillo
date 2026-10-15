@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { positionAt, shiftSchedule, reanchor } from '../shared/schedule';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, SCHEDULE_DEFAULTS, type Settings } from '../shared/settings';
+import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, SCHEDULE_DEFAULTS, validatePatch, type Settings } from '../shared/settings';
 import { Follower } from '../src/follow';
 import { Announcement } from '../src/announcement';
 import type { Scene } from '../src/scenes/types';
@@ -83,14 +83,7 @@ describe('/api/kiosk (sólo lectura)', () => {
     expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [], zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE });
     expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
   });
-  it('GET /api/time: hora del servidor, nunca cacheada y sin tocar el storage', async () => {
-    const storage = { get: vi.fn(), set: vi.fn(), incr: vi.fn() };
-    const r = await handle(req('GET', '/api/time'), deps({ storage: storage as any }));
-    expect(r.body).toEqual({ now: 1_000_000 });
-    expect(r.headers['cache-control']).toBe('no-store');
-    expect(storage.get).not.toHaveBeenCalled();
-  });
-  it('endpoints de admin nunca se cachean (el GET público de settings: ver cache-hardening)', async () => {
+  it('endpoints de admin nunca se cachean (GET público de settings: ver api.test.ts)', async () => {
     for (const [m, path] of [['GET', '/api/session'], ['POST', '/api/login'], ['POST', '/api/logout'], ['PUT', '/api/settings']])
       expect((await handle(req(m, path, {}), deps())).headers['cache-control'], path).toBe('no-store');
   });
@@ -168,8 +161,8 @@ describe('Follower: agenda local, el servidor manda', () => {
     return { f, st };
   };
   const urls = (f: any) => f.mock.calls.map((c: any[]) => c[0]);
-  const LOAD = (v: number) => ['/api/version', '/api/kiosk', '/api/time'];
-  it('un solo fetch al cargar; las escenas avanzan localmente sin más pedidos', async () => {
+  const LOAD = ['/api/version', '/api/kiosk', '/api/time'];
+  it('carga la agenda y avanza localmente sin más pedidos', async () => {
     const { f } = api(inputs());
     const ann = new Announcement('');
     const fol = new Follower(root, scenes(), { fetchFn: f as any, clock: () => Date.now() - T0 + 500, announcement: ann, pollMs: 30_000 });
@@ -180,7 +173,7 @@ describe('Follower: agenda local, el servidor manda', () => {
     expect(root.textContent).toBe('latestZaps');
     await vi.advanceTimersByTimeAsync(4000);
     expect(root.textContent).toBe('anuncio');
-    expect(urls(f)).toEqual(LOAD(1));
+    expect(urls(f)).toEqual(LOAD);
   });
   it('corrige el desfase de reloj con serverNow', async () => {
     const { f } = api(inputs({ serverNow: 101_500 }));
@@ -194,11 +187,11 @@ describe('Follower: agenda local, el servidor manda', () => {
     const fol = new Follower(root, scenes(), { fetchFn: f as any, clock: () => Date.now() - T0 + 500, pollMs: 30_000 });
     await fol.start();
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version']); // clock re-sync on every check
+    expect(urls(f)).toEqual([...LOAD, '/api/time', '/api/version']); // clock re-sync on every check
     st.version = { version: 2 };
     st.k = inputs({ version: 2, epoch: 30_500 + 1000 - 6000, serverNow: 60_500 }); // admin moved the schedule
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version', '/api/time', '/api/version', '/api/kiosk']);
+    expect(urls(f)).toEqual([...LOAD, '/api/time', '/api/version', '/api/time', '/api/version', '/api/kiosk']);
     expect(root.className).toBe(`scene scene-${positionAt(st.k as any, 60_500).scene}`);
   });
   it('caché viejo de /api/kiosk (versión menor que la anunciada) no rompe: se vuelve a pedir a los ~3 s', async () => {
@@ -207,7 +200,7 @@ describe('Follower: agenda local, el servidor manda', () => {
     st.k = inputs({ version: 2 });
     await vi.advanceTimersByTimeAsync(3_100);
     // the stale copy is re-requested ~3 s later, without waiting for the next poll
-    expect(urls(f)).toEqual([...LOAD(2), '/api/kiosk']);
+    expect(urls(f)).toEqual([...LOAD, '/api/kiosk']);
   });
   it('video: arranca en videoOffset + transcurrido', async () => {
     const { f } = api(inputs({ videoMode: 'clip', videoClipSeconds: 4, serverNow: 7000 }));

@@ -4,6 +4,9 @@ import { renderMobile, isMobileViewport } from '../src/mobile';
 import { ZapStore } from '../src/nostr/store';
 import { Announcement } from '../src/announcement';
 import { defaultConfig } from '../src/config';
+import { feedFor } from '../src/livefeed';
+import { decode } from 'nostr-tools/nip19';
+import { noteUri } from '../src/nostr/link';
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');
 const store = () => {
@@ -64,5 +67,71 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     renderMobile(root, new ZapStore(), defaultConfig, new Announcement(''));
     expect(root.textContent).toContain('Todavía no hay posts con #lacrypta / #labitconf');
     expect(root.textContent).toContain('Todavía no hay zaps');
+  });
+});
+
+describe('enlaces Nostr', () => {
+  const post = { id: 'd'.repeat(64), pubkey: 'e'.repeat(64), content: 'x', created_at: 1 };
+  const relays = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+  const nevent = (uri: string) => uri.match(/nevent1[02-9ac-hj-np-z]+/)![0];
+  it('incluye id, autor, kind y dos hints; admite nostr y njump', () => {
+    const uri = noteUri(post, relays, 'nostr:{nevent}')!;
+    expect(uri).toMatch(/^nostr:nevent1/);
+    const decoded = decode(nevent(uri));
+    expect(decoded.type).toBe('nevent');
+    expect(decoded.data).toMatchObject({ id: post.id, author: post.pubkey, kind: 1, relays: relays.slice(0, 2) });
+    expect(noteUri(post, relays, 'https://njump.me/{nevent}')).toMatch(/^https:\/\/njump\.me\/nevent1[a-z0-9]+$/);
+  });
+  it('omite autores inválidos y rechaza ids inválidos', () => {
+    const decoded = decode(nevent(noteUri({ ...post, pubkey: '<img>' }, [], 'nostr:{nevent}')!));
+    expect((decoded.data as any).author).toBeUndefined();
+    expect(noteUri({ ...post, id: 'zz' }, relays, 'nostr:{nevent}')).toBeNull();
+  });
+});
+
+describe('animaciones móviles', () => {
+  const NOW = 1_800_000_000;
+  const post = (n: number, created_at = NOW - 3600) => ({ id: hex(n), pubkey: 'a'.repeat(64), content: `post ${n}`, created_at });
+  const zap = (created_at = NOW) => ({ id: hex(1001), postId: hex(1), sender: 'b'.repeat(64), msats: 210_000, comment: '', created_at });
+  const setup = () => {
+    const s = new ZapStore(undefined, { clock: () => NOW }); s.addPost(post(1)); s.addPost(post(2));
+    const root = document.createElement('div'), off = renderMobile(root, s, defaultConfig, new Announcement(''));
+    return { s, root, off };
+  };
+  it('anima posts recientes una vez, nunca historial', () => {
+    const { s, root, off } = setup();
+    try {
+      expect(root.querySelector('.is-new')).toBeNull();
+      s.addPost(post(3, NOW - 5));
+      expect(root.querySelector(`.m-post[data-id="${hex(3)}"]`)!.classList.contains('is-new')).toBe(true);
+      expect(root.querySelectorAll('.is-new')).toHaveLength(1);
+      s.addPost(post(4));
+      expect(root.querySelector('.is-new')).toBeNull();
+    } finally { off(); }
+  });
+  it('marca el post zapeado y actualiza el total con un rayo', () => {
+    const { s, root, off } = setup();
+    try {
+      s.addZap(zap());
+      const card = root.querySelector(`.m-post[data-id="${hex(1)}"]`)!;
+      expect(card.classList.contains('is-zapped')).toBe(true);
+      expect(card.querySelector('.m-total svg.bolt')).not.toBeNull();
+      expect(card.querySelector('.m-total')!.textContent).toContain('210');
+      expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
+    } finally { off(); }
+  });
+  it('no anima zaps históricos', () => {
+    const { s, root, off } = setup();
+    try { s.addZap(zap(NOW - 3600)); expect(root.querySelector('.is-zapped')).toBeNull(); }
+    finally { off(); }
+  });
+  it('consume eventos visibles sin pendientes y deja de consumirlos al cerrar', () => {
+    const { s, off } = setup();
+    let indicators = 0; feedFor(s).setIndicator(() => indicators++);
+    s.addZap(zap()); s.addPost(post(9, NOW - 1));
+    expect(indicators).toBe(0);
+    expect(feedFor(s).pending).toHaveLength(0);
+    off(); s.addZap({ ...zap(), id: hex(1002) });
+    expect(indicators).toBe(1);
   });
 });

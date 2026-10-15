@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_SETTINGS, LIMITS } from '../shared/settings';
+import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, LIMITS } from '../shared/settings';
+import { clientIp, nodeHandler } from '../server/node';
 
 const PASS = 'clave-de-prueba';
 const deps = (over: Partial<Deps> = {}): Deps => ({
@@ -100,7 +101,6 @@ describe('PUT /api/settings (requiere sesión)', () => {
   it('valida: anuncio ≤ 280, duraciones entre 3 y 120 s, escenas conocidas', async () => {
     const d = deps();
     const { cookie } = await login(d);
-    expect(LIMITS).toEqual({ maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365 });
     for (const bad of [{ announcement: 'x'.repeat(281) }, { announcement: 5 }, { sceneDurations: { post: 2999 } }, { sceneDurations: { post: 120001 } },
       { sceneDurations: { post: '10000' } }, { sceneDurations: { hackeo: 5000 } }, { sceneDurations: { video: 30000 } }, { command: 'reboot' }, [], null])
       expect((await handle(req('PUT', '/api/settings', bad, { cookie }), d)).status, JSON.stringify(bad)).toBe(400);
@@ -144,13 +144,118 @@ describe('PUT /api/settings (requiere sesión)', () => {
     expect(next.body).not.toHaveProperty('command');
     expect((next.body as { epoch: number }).epoch).not.toBe(before.epoch);
     await handle(req('PUT', '/api/settings', { command: 'prev' }, { cookie }), d);
-    const g = (await handle(req('GET', '/api/settings'), d)).body as typeof DEFAULT_SETTINGS;
-    expect(g).not.toHaveProperty('command');
-    expect(g.epoch).toEqual(expect.any(Number));
     expect(await d.storage.get('totem:settings')).not.toHaveProperty('command');
   });
 });
 
 it('ruta desconocida → 404', async () => {
   expect((await handle(req('GET', '/api/nada'), deps())).status).toBe(404);
+});
+
+describe('ajustes de inicio y proveedores', () => {
+  it('settings y kiosk comparten los defaults', async () => {
+    const d = deps();
+    expect(Number.isFinite(Date.parse(DEFAULT_START_LINE))).toBe(true);
+    for (const path of ['/api/settings', '/api/kiosk']) {
+      expect((await handle(req('GET', path), d)).body).toMatchObject({ startLine: DEFAULT_START_LINE, zapProviders: DEFAULT_ZAP_PROVIDERS });
+    }
+  });
+  it('valida y guarda inicio ISO con zona, incrementando versión sin mover la agenda', async () => {
+    const d = deps({ now: () => Date.parse('2026-10-15T05:00:00Z') }), { cookie } = await login(d);
+    const put = (startLine: unknown) => handle(req('PUT', '/api/settings', { startLine }, { cookie }), d);
+    const startLine = '2026-10-14T21:30:00-03:00', r = await put(startLine);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ startLine, version: 1 });
+    expect(r.body).not.toHaveProperty('epoch');
+    expect((await handle(req('GET', '/api/kiosk'), d)).body).toMatchObject({ startLine });
+    expect((await put('2026-10-14T21:30:00Z')).status).toBe(200);
+    for (const bad of [5, '', 'mañana', '2026-10-13', '2026-10-13T21:00', '2026-13-40T99:00:00-03:00', '2027-12-01T00:00:00-03:00', '2019-01-01T00:00:00Z']) {
+      expect((await put(bad)).status, String(bad)).toBe(400);
+    }
+  });
+  it('normaliza y deduplica hostnames, valida el límite y acepta una lista vacía', async () => {
+    const d = deps(), { cookie } = await login(d);
+    const put = (zapProviders: unknown) => handle(req('PUT', '/api/settings', { zapProviders }, { cookie }), d);
+    const r = await put(['GetAlby.com', 'getalby.com', ' mi.wallet.ar ']);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ zapProviders: ['getalby.com', 'mi.wallet.ar'], version: 1 });
+    expect(r.body).not.toHaveProperty('epoch');
+    for (const bad of ['getalby.com', [1], ['https://x.com'], ['a@b.com'], ['sin-punto'], ['-x.com'], ['x..com'], ['a'.repeat(64) + '.com'], Array.from({ length: LIMITS.maxZapProviders + 1 }, (_, i) => `p${i}.com`)]) {
+      expect((await put(bad)).status).toBe(400);
+    }
+    expect((await put([])).body).toMatchObject({ zapProviders: [] });
+    expect((await handle(req('GET', '/api/kiosk'), d)).body).toMatchObject({ zapProviders: [] });
+  });
+});
+
+describe('caché pública y lecturas privadas', () => {
+  const observed = () => {
+    const d = deps(), get = vi.spyOn(d.storage, 'get');
+    return { d, get };
+  };
+  it.each(['/api/kiosk', '/api/version', '/api/settings'])('%s canoniza cualquier query sin leer almacenamiento', async (path) => {
+    const { d, get } = observed();
+    for (const query of ['v=123', 'x=1&y=2', '?']) {
+      const r = await handle({ ...req('GET', path), query }, d);
+      expect(r.status).toBe(308);
+      expect(r.headers.location).toBe(path);
+      expect(r.headers['cache-control']).toMatch(/public/);
+      expect(r.headers['cache-control']).toMatch(/s-maxage=\d{4,}/);
+    }
+    expect(get).not.toHaveBeenCalled();
+  });
+  it.each(['/api/kiosk', '/api/version', '/api/settings'])('%s sin query usa caché CDN corta sin Vary: Cookie', async (path) => {
+    const r = await handle(req('GET', path), deps());
+    expect(r.status).toBe(200);
+    expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
+    expect(r.headers.vary ?? '').not.toMatch(/cookie/i);
+  });
+  it('/api/time nunca lee almacenamiento ni usa caché, con o sin query', async () => {
+    const { d, get } = observed();
+    for (const query of [undefined, 'v=1']) {
+      const r = await handle({ ...req('GET', '/api/time'), query }, d);
+      expect(r.status).toBe(200);
+      expect(r.body).toEqual({ now: d.now() });
+      expect(r.headers['cache-control']).toBe('no-store');
+    }
+    expect(get).not.toHaveBeenCalled();
+  });
+  it('el adaptador HTTP conserva la query y devuelve la redirección', async () => {
+    const headers: Record<string, string> = {};
+    const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
+    await nodeHandler({ method: 'GET', url: '/api/kiosk?v=9', headers: {}, socket: {}, body: null } as any, res, deps());
+    expect(res.statusCode).toBe(308);
+    expect(headers.location).toBe('/api/kiosk');
+  });
+  it('settings autenticados y la sesión usan lecturas privadas y frescas', async () => {
+    const d = deps(), { cookie } = await login(d);
+    expect((await handle(req('GET', '/api/settings', undefined, { cookie }), d)).headers['cache-control']).toBe('private, no-store');
+    const r = await handle(req('GET', '/api/session', undefined, { cookie }), d);
+    expect(r.body).toMatchObject({ authed: true, settings: { announcement: expect.any(String) } });
+    expect(r.headers['cache-control']).toBe('private, no-store');
+    const anon = await handle(req('GET', '/api/session'), d);
+    expect(anon.body).toEqual({ authed: false });
+    expect(anon.headers['cache-control']).toMatch(/no-store/);
+  });
+  it('ninguna respuesta con Set-Cookie es cacheable públicamente', async () => {
+    const d = deps();
+    for (const r of [await handle(req('POST', '/api/login', { password: PASS }), d), await handle(req('POST', '/api/logout'), d)]) {
+      expect(r.headers['set-cookie']).toBeDefined();
+      expect(r.headers['cache-control']).toMatch(/no-store/);
+      expect(r.headers['cache-control']).not.toMatch(/public|s-maxage/);
+    }
+  });
+});
+
+it('identifica la IP del cliente usando cabeceras de plataforma, proxy y socket en orden', () => {
+  expect(clientIp({ 'x-vercel-forwarded-for': '9.9.9.9', 'x-real-ip': '8.8.8.8', 'x-forwarded-for': '7.7.7.7' }, '1.1.1.1')).toBe('9.9.9.9');
+  expect(clientIp({ 'x-real-ip': '8.8.8.8', 'x-forwarded-for': '7.7.7.7, 6.6.6.6' }, '1.1.1.1')).toBe('8.8.8.8');
+  expect(clientIp({ 'x-forwarded-for': '7.7.7.7, 6.6.6.6' }, '1.1.1.1')).toBe('7.7.7.7');
+  expect(clientIp({}, '1.1.1.1')).toBe('1.1.1.1');
+  expect(clientIp({}, undefined)).toBe('desconocida');
+});
+
+it.each(['time', 'kiosk', 'version', 'settings', 'login', 'logout', 'session', 'moderation', 'avatar'])('la Function /api/%s exporta un handler ejecutable', async (route) => {
+  const entry = await import(`../api/${route}.ts`);
+  expect(typeof entry.default).toBe('function');
 });

@@ -1,7 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
 import sharp from 'sharp';
-import { describe, expect, it } from 'vitest';
-import { fetchAvatar, isBlockedIp, parseAvatarUrl, readLimited, renderAvatar, safeLookup, type Fetcher } from '../server/avatar';
+import { describe, expect, it, vi } from 'vitest';
+import { avatarHandler, AVATAR_RATE, fetchAvatar, isBlockedIp, parseAvatarUrl, readLimited, renderAvatar, safeLookup, type Fetcher } from '../server/avatar';
+import { memoryStorage } from '../server/storage';
 
 const png = (w: number, h: number) => sharp({ create: { width: w, height: h, channels: 3, background: '#f00' } }).png().toBuffer();
 async function* chunks(...bs: Uint8Array[]) { for (const b of bs) yield b; }
@@ -92,9 +92,27 @@ describe('renderAvatar', () => {
   });
 });
 
-describe('Function /api/avatar', () => {
-  it('existe api/avatar.ts y el dev server la enruta', () => {
-    expect(existsSync('api/avatar.ts')).toBe(true);
-    expect(readFileSync('server/vite-plugin.ts', 'utf8')).toContain('/api/avatar');
+describe('límite de descargas por IP', () => {
+  const run = async (storage: ReturnType<typeof memoryStorage>, ip: string, fetcher: Fetcher) => {
+    const headers: Record<string, string> = {};
+    const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
+    await avatarHandler({ method: 'GET', url: '/api/avatar?url=' + encodeURIComponent('https://img.example/a.png'), headers: { 'x-vercel-forwarded-for': ip }, socket: {} } as any, res, { fetcher, storage });
+    return { status: res.statusCode, headers };
+  };
+  it('superado el cupo responde 429 sin descargar ni cachear; otras IPs conservan su cupo', async () => {
+    const storage = memoryStorage(), fetcher = vi.fn<Fetcher>(async () => { throw new Error('offline'); });
+    for (let i = 0; i < AVATAR_RATE.max; i++) expect((await run(storage, '5.5.5.5', fetcher)).status).toBe(502);
+    const over = await run(storage, '5.5.5.5', fetcher);
+    expect(over.status).toBe(429);
+    expect(over.headers['cache-control']).toBe('no-store');
+    expect(fetcher).toHaveBeenCalledTimes(AVATAR_RATE.max);
+    expect((await run(storage, '6.6.6.6', fetcher)).status).toBe(502);
+  });
+  it('URLs inválidas no gastan cupo ni tocan almacenamiento', async () => {
+    const storage = { ...memoryStorage(), incr: vi.fn() };
+    const res: any = { statusCode: 0, setHeader() {}, end() {} };
+    await avatarHandler({ method: 'GET', url: '/api/avatar?url=http%3A%2F%2Fx', headers: {}, socket: {} } as any, res, { storage });
+    expect(res.statusCode).toBe(400);
+    expect(storage.incr).not.toHaveBeenCalled();
   });
 });

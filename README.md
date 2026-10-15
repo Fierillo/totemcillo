@@ -39,6 +39,12 @@ Environment variables (on Vercel; optional locally):
 
 Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
+## Tests
+
+`pnpm test` runs behavior tests grouped by responsibility in `tests/`. Keep security, money validation and synchronization edge cases here; avoid assertions on source-code text or CSS declarations.
+
+`pnpm test:e2e` checks rendered layout, header, mobile/reduced-motion behavior, video and admin flows in Chrome. Screenshots go to `shots/` (override with `SHOTS`; set `CHROME` for a different executable).
+
 ## How sync works
 
 `public/config.json` contains static client configuration: relays, hashtags, post length, recent ranking window, public URL, polling interval and video asset. Announcement, start line, scene durations and video scheduling are managed by `/admin`, persisted by the server, with defaults in `shared/settings.ts`.
