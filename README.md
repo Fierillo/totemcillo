@@ -1,6 +1,6 @@
 # totemcillo
 
-Tótem de **La Crypta** para **LABITCONF**: muestra en vivo las notas Nostr con `#lacrypta` y `#labitconf` y los zaps que reciben.
+**La Crypta**'s totem screen for **LABITCONF**: shows Nostr notes tagged `#lacrypta` and `#labitconf` live, along with the zaps they receive.
 
 ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
@@ -10,52 +10,52 @@ Tótem de **La Crypta** para **LABITCONF**: muestra en vivo las notas Nostr con 
 ![pnpm](https://img.shields.io/badge/pnpm-F69220?logo=pnpm&logoColor=white)
 ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white)
 
-## Qué hace
+## Features
 
-- **Escenas** en rotación: posts recientes, últimos zaps, Top 10 histórico, Top 10 de las últimas horas, anuncio y video.
-- **Animaciones en vivo** cuando llega un post o un zap (también en el celular).
-- **Perfiles Nostr**: alias y avatar en lugar del npub.
-- **QR** a la app en posts, tops y anuncio.
-- **Vista móvil** en la misma URL, con botón ⚡ Zapear.
-- **Admin** (`/admin`, con clave): anuncio, duraciones, modo de video y flechas ← →.
-- Zaps validados según NIP-57; sólo se muestran posts desde `startLine` (`public/config.json`).
+- **Rotating scenes**: recent posts, latest zaps, all-time Top 10, recent-hours Top 10, announcement and video.
+- **Live animations** when a post or zap arrives (on mobile too).
+- **Nostr profiles**: alias and avatar instead of npub.
+- **QR** to the app on posts, tops and announcement.
+- **Mobile view** on the same URL, with a ⚡ Zap button.
+- **Admin** (`/admin`, password protected): announcement, durations, video mode and ← → arrows.
+- Zaps validated per NIP-57; only posts since `startLine` (`public/config.json`) are shown.
 
-## Correrlo
+## Running
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:5173 y /admin
+pnpm dev      # http://localhost:5173 and /admin
 pnpm test     # vitest
 pnpm build    # dist/
 ```
 
-Variables de entorno (en Vercel; en local, opcionales):
+Environment variables (on Vercel; optional locally):
 
-| Variable | Para qué |
+| Variable | Purpose |
 | --- | --- |
-| `ADMIN_PASSWORD` | Clave del panel (en local, `admin` por defecto). |
-| `SESSION_SECRET` | Firma de la sesión, mínimo 32 caracteres. |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Persistencia de la configuración (sin ellas, memoria). |
+| `ADMIN_PASSWORD` | Admin panel password (defaults to `admin` locally). |
+| `SESSION_SECRET` | Session signing key, at least 32 characters. |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Config persistence (in-memory without them). |
 
-En local, `ADMIN_PASSWORD=otra pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
+Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
-## Cómo se sincroniza
+## How sync works
 
-El **reloj del servidor** es la única fuente de verdad. A partir de un `epoch` guardado y las duraciones, el servidor calcula qué escena va (y, si es video, en qué segundo). Los tótems sólo leen:
+The **server clock** is the single source of truth. From a stored `epoch` and the scene durations, the server computes which scene is on (and, for video, at which second). Screens only read:
 
-- `GET /api/kiosk` devuelve la agenda; `GET /api/time` corrige el desfase del reloj local.
-- Cada **21 s** (`settingsPollMs`) chequean `GET /api/version` y recargan la agenda sólo si cambió (ya no se consulta cada 4 s).
-- Las flechas del admin y los cambios de duración reanclan la agenda; todas las pantallas muestran lo mismo.
+- `GET /api/kiosk` returns the schedule; `GET /api/time` corrects local clock drift.
+- Every **21 s** (`settingsPollMs`) they check `GET /api/version` and reload the schedule only if it changed.
+- Admin arrows and duration changes re-anchor the schedule; every screen shows the same thing.
 
 ## Roadmap
 
-- [x] Escenas, vista móvil y panel de admin
-- [x] Corte fijo de posts por `startLine`
-- [x] Agenda determinística en el servidor (`/api/kiosk`, `/api/time`, `/api/version`)
-- [x] Video completo o por clips sincronizados
-- [x] Animaciones en vivo de posts y zaps
-- [x] Alias y avatar de perfiles Nostr
-- [x] QR en todas las escenas
-- [ ] Alejar el rayo del texto "hace X"
-- [ ] Campo `videoDurationSec` en el admin
-- [ ] Zap anónimo opcional con invoice desde la wallet
+- [x] Scenes, mobile view and admin panel
+- [x] Fixed post cutoff via `startLine`
+- [x] Deterministic server schedule (`/api/kiosk`, `/api/time`, `/api/version`)
+- [x] Full video or synced clips
+- [x] Live post and zap animations
+- [x] Nostr profile alias and avatar
+- [x] QR on every scene
+- [ ] Move the bolt away from the "time ago" text
+- [ ] `videoDurationSec` field in admin
+- [ ] Optional anonymous zap via wallet invoice
