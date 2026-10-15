@@ -10,8 +10,13 @@ export interface Scene {
   videoMode?: 'full' | 'clip';
   clipSeconds?: number;
   /** Dibuja la escena (incluido su estado vacío); devuelve la limpieza. */
-  render: (root: HTMLElement, done?: () => void) => void | (() => void);
+  render: (root: HTMLElement, done?: () => void, ctx?: RenderContext) => void | (() => void);
 }
+
+/** Datos para arrancar una escena a mitad (video: segundos ya transcurridos). */
+export interface RenderContext { elapsedMs?: number; clipStart?: number; onClipStart?: (sec: number) => void;
+  /** Posición (s) en que debería estar el video según el reloj del servidor; activa la corrección de deriva. */
+  expectedSec?: () => number }
 
 /** Rota por todas las escenas, en orden, sin saltear ninguna. */
 export class Rotator {

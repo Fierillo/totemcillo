@@ -2,9 +2,8 @@ import './style.css';
 import { loadConfig, postCutoff } from './config';
 import { ZapStore } from './nostr/store';
 import { startNostr } from './nostr/pool';
-import { Rotator } from './rotator';
+import { Follower } from './follow';
 import { buildScenes, DEFAULT_DURATIONS } from './scenes';
-import { bindKeyboard } from './keyboard';
 import { Announcement } from './announcement';
 import { createRemote } from './remote';
 import { isMobileViewport, renderMobile } from './mobile';
@@ -18,17 +17,18 @@ const announcement = new Announcement(cfg.announcement);
 const scene = document.getElementById('scene')!;
 const app = document.getElementById('app')!;
 
+const noNav = { next() {}, prev() {}, setDuration() {}, setEveryCycles() {}, setVideoMode() {}, setClipSeconds() {} };
+
 if (isMobileViewport()) {
   app.classList.add('is-mobile');
   document.documentElement.classList.add('is-mobile');
   scene.className = 'mobile';
   renderMobile(scene, store, cfg, announcement);
-  createRemote({ nav: { next() {}, prev() {}, setDuration() {}, setEveryCycles() {}, setVideoMode() {}, setClipSeconds() {} }, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds }).start(cfg.settingsPollMs);
+  createRemote({ nav: noNav, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds }).start(cfg.settingsPollMs);
 } else {
-  const rotator = new Rotator(scene, buildScenes(cfg, store, announcement, window.location.origin));
-  rotator.start();
-  if (cfg.keyboardNav) bindKeyboard(rotator);
-  createRemote({ nav: rotator, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds }).start(cfg.settingsPollMs);
+  // El servidor es la fuente de verdad: el tótem calcula la agenda que éste define. Flechas: /admin.
+  // Una carga de la agenda + chequeo de versión cada settingsPollMs (incluye el anuncio).
+  void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs }).start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
 

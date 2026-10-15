@@ -19,6 +19,6 @@ describe('buildScenes', () => {
   });
   it('config: publicUrl vacío (= origin) y polling de settings cada 4 s', () => {
     expect(defaultConfig.publicUrl).toBe('');
-    expect(defaultConfig.settingsPollMs).toBe(4000);
+    expect(defaultConfig.settingsPollMs).toBe(21000);
   });
 });

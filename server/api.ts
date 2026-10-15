@@ -1,5 +1,6 @@
 import { parseCookies, passwordMatches, signSession, verifySession } from './auth.js';
 import type { Storage } from './storage.js';
+import { reanchor, scheduleInputs, shiftSchedule } from '../shared/schedule.js';
 import { applyPatch, DEFAULT_SETTINGS, validatePatch, type Settings } from './settings.js';
 
 export interface ApiRequest { method: string; path: string; headers: Record<string, string | undefined>; body: unknown; ip: string }
@@ -9,6 +10,8 @@ export interface Deps { storage: Storage; env: Env; now: () => number }
 
 export const COOKIE = 'totem_session';
 const SESSION_TTL = 3600;
+/** Caché de CDN (Vercel) para los GET públicos del tótem; el navegador no cachea (max-age=0). */
+const CDN = 'public, max-age=0, s-maxage=5, stale-while-revalidate=5';
 const RATE = { max: 10, windowSec: 600 };
 const KEY = 'totem:settings';
 
@@ -40,10 +43,28 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
       const v = validatePatch(req.body);
       if (!v.ok) return json(400, { error: v.error });
-      const next = applyPatch(await readSettings(d), v.patch);
+      const cur = await readSettings(d);
+      const now = d.now();
+      let next = applyPatch(cur, v.patch);
+      const { announcement, command, ...sched } = v.patch;
+      if (Object.keys(sched).length) next = reanchor(cur, next, now);
+      if (command) next = shiftSchedule(next, now, command);
+      next = { ...next, version: (cur.version ?? 0) + 1 };
       await d.storage.set(KEY, next);
       return json(200, next);
     }
+    case 'GET /api/kiosk': {
+      // Público, de sólo lectura: entradas de la agenda; el tótem calcula las escenas localmente.
+      const st = await readSettings(d);
+      // Sin hora adentro: así el CDN puede cachearla. El tótem la pide como /api/kiosk?v=<version>.
+      return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0 }, { 'cache-control': CDN });
+    }
+    case 'GET /api/version':
+      // Chequeo barato y cacheable unos segundos en el CDN (muchas pantallas → pocas lecturas).
+      return json(200, { version: (await readSettings(d)).version ?? 0 }, { 'cache-control': CDN });
+    case 'GET /api/time':
+      // Hora del servidor para corregir el reloj del tótem: nunca cacheada y sin tocar Redis.
+      return json(200, { now: d.now() });
     case 'POST /api/login': {
       if (!configured(d.env)) return json(503, { error: 'admin no configurado' });
       if ((await d.storage.incr(`totem:rl:${req.ip}`, RATE.windowSec)) > RATE.max) return json(429, { error: 'demasiados intentos, probá en unos minutos' });
@@ -57,7 +78,7 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
     case 'GET /api/session':
       return json(200, { authed: authed(req, d) });
   }
-  if (/^\w+ \/api\/(settings|login|logout|session)$/.test(route))
+  if (/^\w+ \/api\/(settings|login|logout|session|kiosk|version|time)$/.test(route))
     return json(405, { error: 'método no permitido' });
   return json(404, { error: 'no encontrado' });
 }

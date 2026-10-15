@@ -40,7 +40,7 @@ export const defaultConfig: Config = {
   topRecentHours: 3,
   keyboardNav: true,
   publicUrl: '',
-  settingsPollMs: 4000,
+  settingsPollMs: 21000,
   videoSrc: '/video/totem-video.webm',
   videoEveryCycles: 2,
   videoMode: 'full',

@@ -1,0 +1,87 @@
+// Compartido por servidor y tótem: misma agenda determinística en ambos lados.
+import { DEFAULT_SCENE_MS, SCENES, type Action, type Settings } from '../server/settings.js';
+
+/** Lo mínimo que hace falta para calcular la agenda. */
+export type ScheduleInputs = Pick<Settings, 'sceneDurations' | 'videoEveryCycles' | 'videoMode' | 'videoClipSeconds' | 'videoDurationSec' | 'epoch'>;
+
+/** Valores de la agenda cuando settings no los define (coinciden con public/config.json). */
+export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'full' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
+export const ORDER: readonly string[] = [...SCENES, 'video'];
+const VIDEO = ORDER.length - 1;
+
+export interface Position { scene: string; index: number; cycle: number; sceneStartedAt: number; sceneEndsAt: number; videoOffset?: number }
+
+interface Plan { durs: number[]; every: number; videoMs: number; clipRange: number }
+function plan(s: ScheduleInputs): Plan {
+  const d = { ...DEFAULT_SCENE_MS, ...s.sceneDurations };
+  const every = s.videoEveryCycles ?? SCHEDULE_DEFAULTS.videoEveryCycles;
+  const full = (s.videoDurationSec ?? SCHEDULE_DEFAULTS.videoDurationSec) * 1000;
+  const clip = (s.videoClipSeconds ?? SCHEDULE_DEFAULTS.videoClipSeconds) * 1000;
+  const isClip = (s.videoMode ?? SCHEDULE_DEFAULTS.videoMode) === 'clip' && clip < full;
+  return { durs: SCENES.map((n) => d[n]), every, videoMs: isClip ? clip : full, clipRange: isClip ? (full - clip) / 1000 : 0 };
+}
+const base = (p: Plan) => p.durs.reduce((a, b) => a + b, 0);
+const period = (p: Plan) => p.every * base(p) + p.videoMs;
+
+/** Pseudoaleatorio en [0,1) determinístico a partir de un número (inicio de la escena). */
+function seeded(n: number): number {
+  let h = (Math.floor(n) ^ Math.floor(n / 2 ** 32)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); h ^= h >>> 16;
+  return (h >>> 0) / 2 ** 32;
+}
+
+/** Entradas de la agenda con los defaults aplicados (lo que el servidor manda al tótem). */
+export const scheduleInputs = (s: ScheduleInputs) => ({
+  epoch: s.epoch ?? 0,
+  sceneDurations: s.sceneDurations ?? {},
+  videoEveryCycles: s.videoEveryCycles ?? SCHEDULE_DEFAULTS.videoEveryCycles,
+  videoMode: s.videoMode ?? SCHEDULE_DEFAULTS.videoMode,
+  videoClipSeconds: s.videoClipSeconds ?? SCHEDULE_DEFAULTS.videoClipSeconds,
+  videoDurationSec: s.videoDurationSec ?? SCHEDULE_DEFAULTS.videoDurationSec,
+});
+
+/** Inicio (ms desde el comienzo del bloque) de la entrada (vuelta k del bloque, índice i). */
+function offsetInBlock(p: Plan, k: number, i: number): number {
+  let t = k * base(p) + (k > 0 ? p.videoMs : 0);
+  for (let j = 0; j < i && j < VIDEO; j++) t += p.durs[j];
+  return t;
+}
+
+/** Escena vigente en `now` según la agenda que arranca en settings.epoch. Sin estado: misma entrada → misma salida. */
+export function positionAt(s: ScheduleInputs, now: number): Position {
+  const p = plan(s);
+  const epoch = s.epoch ?? 0;
+  const P = period(p);
+  const block = Math.floor((now - epoch) / P);
+  let r = now - epoch - block * P;
+  for (let k = 0; k < p.every; k++) {
+    for (let i = 0; i < ORDER.length; i++) {
+      if (i === VIDEO && k !== 0) continue;
+      const d = i === VIDEO ? p.videoMs : p.durs[i];
+      if (r < d) {
+        const sceneStartedAt = now - r;
+        const pos: Position = { scene: ORDER[i], index: i, cycle: block * p.every + k, sceneStartedAt, sceneEndsAt: sceneStartedAt + d };
+        if (i === VIDEO) pos.videoOffset = Math.round(seeded(sceneStartedAt) * p.clipRange * 1000) / 1000;
+        return pos;
+      }
+      r -= d;
+    }
+  }
+  throw new Error('agenda inconsistente');
+}
+
+/** Flechas del admin: mueve epoch para que la escena siguiente/anterior arranque ahora. */
+export function shiftSchedule<T extends ScheduleInputs>(s: T, now: number, action: Action): T {
+  const epoch = s.epoch ?? 0;
+  const cur = positionAt(s, now);
+  const target = action === 'next' ? cur.sceneEndsAt : positionAt(s, cur.sceneStartedAt - 1).sceneStartedAt;
+  return { ...s, epoch: now - (target - epoch) };
+}
+
+/** Tras cambiar la agenda, re-ancla epoch para que la escena actual conserve su inicio. */
+export function reanchor<T extends ScheduleInputs>(old: ScheduleInputs, next: T, now: number): T {
+  const cur = positionAt(old, now);
+  const p = plan(next);
+  const k = cur.index === VIDEO ? 0 : ((cur.cycle % p.every) + p.every) % p.every;
+  return { ...next, epoch: cur.sceneStartedAt - offsetInBlock(p, k, cur.index) };
+}

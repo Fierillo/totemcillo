@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests", "server", "api"]
+  "include": ["src", "tests", "server", "shared", "api"]
 }

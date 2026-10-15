@@ -8,13 +8,19 @@ export interface Settings {
   videoEveryCycles?: number;
   videoMode?: 'full' | 'clip';
   videoClipSeconds?: number;
+  /** Duración real del video (s), para la agenda del servidor. */
+  videoDurationSec?: number;
+  /** Inicio de la agenda (ms); lo maneja sólo el servidor. */
+  epoch?: number;
+  /** Se incrementa en cada cambio del admin (incluidas flechas); el tótem lo consulta barato. */
+  version?: number;
 }
 export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } };
 /** Duraciones por defecto de cada escena (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120 };
+export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number }
 
 /** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
 export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok: false; error: string } {
@@ -58,6 +64,12 @@ export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok:
       return { ok: false, error: `videoClipSeconds debe ser un entero de ${LIMITS.minClipSeconds} a ${LIMITS.maxClipSeconds}` };
     patch.videoClipSeconds = n;
   }
+  if ('videoDurationSec' in b) {
+    const n = b.videoDurationSec;
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < 1 || n > LIMITS.maxVideoSec)
+      return { ok: false, error: `videoDurationSec debe ser un número de 1 a ${LIMITS.maxVideoSec}` };
+    patch.videoDurationSec = n;
+  }
   return { ok: true, patch };
 }
 
@@ -69,5 +81,8 @@ export function applyPatch(s: Settings, p: Patch): Settings {
     ...((p.videoEveryCycles ?? s.videoEveryCycles) !== undefined ? { videoEveryCycles: p.videoEveryCycles ?? s.videoEveryCycles } : {}),
     ...((p.videoMode ?? s.videoMode) !== undefined ? { videoMode: p.videoMode ?? s.videoMode } : {}),
     ...((p.videoClipSeconds ?? s.videoClipSeconds) !== undefined ? { videoClipSeconds: p.videoClipSeconds ?? s.videoClipSeconds } : {}),
+    ...((p.videoDurationSec ?? s.videoDurationSec) !== undefined ? { videoDurationSec: p.videoDurationSec ?? s.videoDurationSec } : {}),
+    ...(s.epoch !== undefined ? { epoch: s.epoch } : {}),
+    ...(s.version !== undefined ? { version: s.version } : {}),
   };
 }
