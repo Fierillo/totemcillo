@@ -29,11 +29,20 @@ async function readBody(req: IncomingMessage & { body?: unknown }): Promise<unkn
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
+/**
+ * Client IP for rate limits (login, avatar). On Vercel, x-vercel-forwarded-for / x-real-ip are set by the platform;
+ * x-forwarded-for (first hop) and the socket are fallbacks for dev / other proxies.
+ */
+export function clientIp(headers: Record<string, string | string[] | undefined>, remote: string | undefined): string {
+  const h = (k: string) => { const v = headers[k]; return (Array.isArray(v) ? v.join(',') : v ?? '').split(',')[0].trim(); };
+  return h('x-vercel-forwarded-for') || h('x-real-ip') || h('x-forwarded-for') || remote || 'desconocida';
+}
+
 /** Node http adapter (Vercel Functions and Vite middleware). */
 export async function nodeHandler(req: IncomingMessage & { body?: unknown }, res: ServerResponse, deps: Deps) {
   const headers: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(req.headers)) headers[k] = Array.isArray(v) ? v.join(', ') : v;
-  const ip = (headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket?.remoteAddress || 'desconocida';
+  const ip = clientIp(headers, req.socket?.remoteAddress);
   const u = new URL(req.url ?? '/', 'http://x');
   const query = (req.url ?? '').includes('?') ? u.search.replace(/^\?/, '') || '?' : undefined;
   const r = await handle({ method: req.method ?? 'GET', path: u.pathname, query, headers, body: await readBody(req), ip }, deps);

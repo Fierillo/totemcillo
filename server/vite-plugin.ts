@@ -10,7 +10,7 @@ export function totemApi(): Plugin {
     const path = (req.url ?? '').split('?')[0];
     if (path === '/admin' || path === '/admin/') { req.url = '/admin.html'; return next(); }
     if (!path.startsWith('/api/')) return next();
-    if (path === '/api/avatar') { avatarHandler(req, res).catch(() => { res.statusCode = 502; res.end(); }); return; }
+    if (path === '/api/avatar') { avatarHandler(req, res, { storage: (deps ??= devDeps()).storage }).catch(() => { res.statusCode = 502; res.end(); }); return; }
     nodeHandler(req, res, (deps ??= devDeps())).catch((e) => { res.statusCode = 500; res.end(String(e)); });
   };
   return {

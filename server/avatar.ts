@@ -3,6 +3,8 @@ import { request } from 'node:https';
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
 import { BlockList, isIP } from 'node:net';
 import sharp from 'sharp';
+import { clientIp, depsFromEnv } from './node.js';
+import type { Storage } from './storage.js';
 
 /** Avatar proxy: fetches kind:0 pictures server-side (no stand IP leak), bounded and re-encoded small. */
 export const AVATAR_SIZE = 128;
@@ -10,6 +12,8 @@ export const MAX_BYTES = 5 * 1024 * 1024;
 export const MAX_REDIRECTS = 3;
 export const TIMEOUT_MS = 5000;
 export const CACHE = 'public, max-age=86400, s-maxage=604800, immutable';
+/** Per-IP limit on cache misses (the CDN absorbs repeats), counted in the same storage as the login limiter. */
+export const AVATAR_RATE = { max: 60, windowSec: 600 };
 
 const blocked = new BlockList();
 for (const [net, bits] of [['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
@@ -80,7 +84,7 @@ export async function readLimited(body: AsyncIterable<Uint8Array>, max: number):
   return Buffer.concat(parts);
 }
 
-interface FetchOpts { fetcher?: Fetcher; maxBytes?: number; maxRedirects?: number; timeoutMs?: number }
+interface FetchOpts { storage?: Storage; fetcher?: Fetcher; maxBytes?: number; maxRedirects?: number; timeoutMs?: number }
 /** Downloads the image, following at most N redirects and re-validating every hop. */
 export async function fetchAvatar(start: URL, o: FetchOpts = {}): Promise<Buffer> {
   const { fetcher = httpsFetcher, maxBytes = MAX_BYTES, maxRedirects = MAX_REDIRECTS, timeoutMs = TIMEOUT_MS } = o;
@@ -118,6 +122,12 @@ export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o
   if (req.method !== 'GET' && req.method !== 'HEAD') return fail(405);
   const url = parseAvatarUrl(new URL(req.url ?? '/', 'http://x').searchParams.get('url'));
   if (!url) return fail(400);
+  if (o.storage) {
+    const ip = clientIp(req.headers, req.socket?.remoteAddress);
+    let n = 0;
+    try { n = await o.storage.incr(`totem:rl:avatar:${ip}`, AVATAR_RATE.windowSec); } catch { /* limiter down: don't block avatars */ }
+    if (n > AVATAR_RATE.max) { res.statusCode = 429; res.setHeader('cache-control', 'no-store'); res.setHeader('retry-after', String(AVATAR_RATE.windowSec)); return res.end(); }
+  }
   let out: Buffer;
   try { out = await renderAvatar(await fetchAvatar(url, o)); } catch { return fail(502); }
   res.statusCode = 200;
@@ -128,4 +138,5 @@ export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o
   res.end(req.method === 'HEAD' ? undefined : out);
 }
 
-export default function vercel(req: IncomingMessage, res: ServerResponse) { return avatarHandler(req, res); }
+let storage: Storage | undefined;
+export default function vercel(req: IncomingMessage, res: ServerResponse) { return avatarHandler(req, res, { storage: (storage ??= depsFromEnv().storage) }); }

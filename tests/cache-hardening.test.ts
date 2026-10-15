@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { nodeHandler } from '../server/node';
+import { clientIp, nodeHandler } from '../server/node';
+import { avatarHandler, AVATAR_RATE, type Fetcher } from '../server/avatar';
 
 const PASS = 'clave-de-prueba';
 const deps = (): Deps & { get: ReturnType<typeof vi.fn> } => {
@@ -81,5 +82,42 @@ describe('/api/settings: público cacheable, admin privado', () => {
   });
   it('el tótem pide /api/kiosk sin query', () => {
     expect(readFileSync('src/follow.ts', 'utf8')).not.toMatch(/\/api\/kiosk\?/);
+  });
+});
+
+describe('clientIp (misma lógica para login y avatar)', () => {
+  it('prefiere x-vercel-forwarded-for, luego x-real-ip, luego x-forwarded-for, luego el socket', () => {
+    expect(clientIp({ 'x-vercel-forwarded-for': '9.9.9.9', 'x-real-ip': '8.8.8.8', 'x-forwarded-for': '7.7.7.7' }, '1.1.1.1')).toBe('9.9.9.9');
+    expect(clientIp({ 'x-real-ip': '8.8.8.8', 'x-forwarded-for': '7.7.7.7, 6.6.6.6' }, '1.1.1.1')).toBe('8.8.8.8');
+    expect(clientIp({ 'x-forwarded-for': '7.7.7.7, 6.6.6.6' }, '1.1.1.1')).toBe('7.7.7.7');
+    expect(clientIp({}, '1.1.1.1')).toBe('1.1.1.1');
+    expect(clientIp({}, undefined)).toBe('desconocida');
+  });
+});
+
+describe('/api/avatar: límite por IP', () => {
+  const run = async (storage: any, ip: string, fetcher: Fetcher) => {
+    const headers: Record<string, string> = {};
+    const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
+    await avatarHandler({ method: 'GET', url: '/api/avatar?url=' + encodeURIComponent('https://img.example/a.png'), headers: { 'x-vercel-forwarded-for': ip }, socket: {} } as any, res, { fetcher, storage });
+    return { status: res.statusCode, headers };
+  };
+  it(`pasado el límite (${'60'}/10 min) → 429 no-store sin descargar nada`, async () => {
+    expect(AVATAR_RATE).toEqual({ max: 60, windowSec: 600 });
+    const storage = memoryStorage();
+    const fetcher = vi.fn<Fetcher>(async () => { throw new Error('offline'); });
+    for (let i = 0; i < 60; i++) expect((await run(storage, '5.5.5.5', fetcher)).status).toBe(502);
+    const over = await run(storage, '5.5.5.5', fetcher);
+    expect(over.status).toBe(429);
+    expect(over.headers['cache-control']).toBe('no-store');
+    expect(fetcher).toHaveBeenCalledTimes(60);
+    expect((await run(storage, '6.6.6.6', fetcher)).status).toBe(502); // other IPs unaffected
+  });
+  it('URL inválida → 400 sin gastar cupo ni tocar Redis', async () => {
+    const storage = { ...memoryStorage(), incr: vi.fn() };
+    const res: any = { statusCode: 0, setHeader() {}, end() {} };
+    await avatarHandler({ method: 'GET', url: '/api/avatar?url=http%3A%2F%2Fx', headers: {}, socket: {} } as any, res, { storage });
+    expect(res.statusCode).toBe(400);
+    expect(storage.incr).not.toHaveBeenCalled();
   });
 });
