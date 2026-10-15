@@ -5,7 +5,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 #app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .topbar, .footer { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
   min-width: 0; overflow: hidden; white-space: nowrap; }
-.brand { color: var(--accent); font-weight: 800; font-size: 1.5em; flex: 0 0 auto; }
+.brand { display: block; height: 1.8em; width: auto; max-width: 40vw; object-fit: contain; flex: 0 0 auto; } /* logo oficial (blanco), alto del header */
 .tags { color: var(--accent); font-size: 1.1em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .footer { color: var(--muted); justify-content: center; }
 .footer b { color: var(--accent); }
