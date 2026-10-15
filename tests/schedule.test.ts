@@ -90,8 +90,8 @@ describe('/api/kiosk (sólo lectura)', () => {
     expect(r.headers['cache-control']).toBe('no-store');
     expect(storage.get).not.toHaveBeenCalled();
   });
-  it('endpoints de admin nunca se cachean', async () => {
-    for (const [m, path] of [['GET', '/api/settings'], ['GET', '/api/session'], ['POST', '/api/login'], ['POST', '/api/logout'], ['PUT', '/api/settings']])
+  it('endpoints de admin nunca se cachean (el GET público de settings: ver cache-hardening)', async () => {
+    for (const [m, path] of [['GET', '/api/session'], ['POST', '/api/login'], ['POST', '/api/logout'], ['PUT', '/api/settings']])
       expect((await handle(req(m, path, {}), deps())).headers['cache-control'], path).toBe('no-store');
   });
   it('GET /api/version: diminuto y cacheable unos segundos en el CDN', async () => {
@@ -168,7 +168,7 @@ describe('Follower: agenda local, el servidor manda', () => {
     return { f, st };
   };
   const urls = (f: any) => f.mock.calls.map((c: any[]) => c[0]);
-  const LOAD = (v: number) => ['/api/version', `/api/kiosk?v=${v}`, '/api/time'];
+  const LOAD = (v: number) => ['/api/version', '/api/kiosk', '/api/time'];
   it('un solo fetch al cargar; las escenas avanzan localmente sin más pedidos', async () => {
     const { f } = api(inputs());
     const ann = new Announcement('');
@@ -198,15 +198,16 @@ describe('Follower: agenda local, el servidor manda', () => {
     st.version = { version: 2 };
     st.k = inputs({ version: 2, epoch: 30_500 + 1000 - 6000, serverNow: 60_500 }); // admin moved the schedule
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version', '/api/time', '/api/version', '/api/kiosk?v=2']);
+    expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version', '/api/time', '/api/version', '/api/kiosk']);
     expect(root.className).toBe(`scene scene-${positionAt(st.k as any, 60_500).scene}`);
   });
-  it('caché viejo de /api/kiosk (versión menor que la anunciada) no rompe: se vuelve a pedir en el próximo chequeo', async () => {
+  it('caché viejo de /api/kiosk (versión menor que la anunciada) no rompe: se vuelve a pedir a los ~3 s', async () => {
     const { f, st } = api(inputs(), { version: 2 }); // CDN returned kiosk v1 even though version says 2
     await new Follower(root, scenes(), { fetchFn: f as any, clock: () => Date.now() - T0 + 500, pollMs: 30_000 }).start();
     st.k = inputs({ version: 2 });
-    await vi.advanceTimersByTimeAsync(30_000);
-    expect(urls(f)).toEqual([...LOAD(2), '/api/time', '/api/version', '/api/kiosk?v=2']);
+    await vi.advanceTimersByTimeAsync(3_100);
+    // the stale copy is re-requested ~3 s later, without waiting for the next poll
+    expect(urls(f)).toEqual([...LOAD(2), '/api/kiosk']);
   });
   it('video: arranca en videoOffset + transcurrido', async () => {
     const { f } = api(inputs({ videoMode: 'clip', videoClipSeconds: 4, serverNow: 7000 }));

@@ -29,7 +29,10 @@ const loginForm = () => {
 };
 
 async function panel() {
-  const s = (await (await api('/api/settings')).json()) as Settings;
+  // Fresh, private read through the session endpoint (the public GET /api/settings may be a CDN copy).
+  const sess = (await (await api('/api/session')).json()) as { authed: boolean; settings?: Settings };
+  if (!sess.authed || !sess.settings) return loginForm();
+  const s = sess.settings;
   const durs = { ...DEFAULT_SCENE_MS, ...s.sceneDurations };
   root.innerHTML = `<section class="panel"><header><h1>Admin · Totemcillo</h1><button type="button" class="logout">Salir</button></header>
     <nav class="tabs" role="tablist"><button type="button" role="tab" data-tab="config" aria-selected="true">Config</button><button type="button" role="tab" data-tab="mod" aria-selected="false">Mensajes</button></nav>

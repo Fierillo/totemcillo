@@ -34,8 +34,9 @@ export async function nodeHandler(req: IncomingMessage & { body?: unknown }, res
   const headers: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(req.headers)) headers[k] = Array.isArray(v) ? v.join(', ') : v;
   const ip = (headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket?.remoteAddress || 'desconocida';
-  const path = new URL(req.url ?? '/', 'http://x').pathname;
-  const r = await handle({ method: req.method ?? 'GET', path, headers, body: await readBody(req), ip }, deps);
+  const u = new URL(req.url ?? '/', 'http://x');
+  const query = (req.url ?? '').includes('?') ? u.search.replace(/^\?/, '') || '?' : undefined;
+  const r = await handle({ method: req.method ?? 'GET', path: u.pathname, query, headers, body: await readBody(req), ip }, deps);
   res.statusCode = r.status;
   for (const [k, v] of Object.entries(r.headers)) res.setHeader(k, v);
   res.end(JSON.stringify(r.body));

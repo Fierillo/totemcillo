@@ -20,7 +20,7 @@ describe('GET /api/settings (público)', () => {
     const r = await handle(req('GET', '/api/settings'), deps());
     expect(r.status).toBe(200);
     expect(r.body).toEqual(DEFAULT_SETTINGS);
-    expect(r.headers['cache-control']).toBe('no-store');
+    expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
   });
 });
 
@@ -64,7 +64,7 @@ describe('sesión y logout', () => {
     const d = deps();
     expect((await handle(req('GET', '/api/session'), d)).body).toEqual({ authed: false });
     const { cookie } = await login(d);
-    expect((await handle(req('GET', '/api/session', undefined, { cookie }), d)).body).toEqual({ authed: true });
+    expect((await handle(req('GET', '/api/session', undefined, { cookie }), d)).body).toMatchObject({ authed: true });
     const out = await handle(req('POST', '/api/logout', undefined, { cookie }), d);
     expect(String(out.headers['set-cookie'])).toContain('Max-Age=0');
   });

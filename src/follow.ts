@@ -6,6 +6,8 @@ import { positionAt, type ScheduleInputs } from '../shared/schedule';
 
 export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[]; zapProviders?: string[]; startLine?: string }
 export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
+  /** Delay before re-requesting a kiosk older than /api/version announced (default 3 s). */
+  staleRetryMs?: number;
   /** Moderation lists that come in /api/kiosk. */
   onModeration?: (m: Moderation) => void }
 
@@ -43,21 +45,30 @@ export class Follower {
 
   /**
    * Fetches the schedule inputs and re-syncs the clock.
-   * /api/version and /api/kiosk may come from the CDN (up to ~10 s old): that's why kiosk is requested with ?v=<version>
-   * (a separate cache key per version) and the time comes from /api/time, which is never cached (precision ~RTT/2).
+   * /api/version and /api/kiosk may come from the CDN (up to ~10 s old). Both are requested without a query (the
+   * server redirects any query, so it can't bust the cache); a kiosk older than the announced version is applied and
+   * re-requested shortly after. The time comes from /api/time, which is never cached (precision ~RTT/2).
    */
   async load(knownVersion?: number, sync = true): Promise<void> {
     try {
       const version = knownVersion ?? (await this.getJson('/api/version'))?.version;
       if (!num(version)) return;
-      const k = await this.getJson(`/api/kiosk?v=${version}`);
+      const k = await this.getJson('/api/kiosk');
       if (!valid(k)) return;
       if (sync && !(await this.syncTime()) && !this.samples.length) return;
       this.inputs = k;
       if (typeof k.announcement === 'string') this.o.announcement?.set(k.announcement);
       this.o.onModeration?.(moderationOf(k));
       this.tick();
+      if (k.version < version) this.retryStale(version);
     } catch { /* no network: retried on the next check */ }
+  }
+
+  private staleTimer: ReturnType<typeof setTimeout> | null = null;
+  /** CDN still had the previous kiosk: try again soon (its cache lives ~5-10 s). */
+  private retryStale(version: number) {
+    if (this.staleTimer) return;
+    this.staleTimer = setTimeout(() => { this.staleTimer = null; void this.load(version, false); }, this.o.staleRetryMs ?? 3000);
   }
 
   get clockOffset() { return this.offset; }
@@ -118,6 +129,7 @@ export class Follower {
 
   stop() {
     if (this.poller) clearInterval(this.poller);
+    if (this.staleTimer) clearTimeout(this.staleTimer);
     if (this.timer) clearTimeout(this.timer);
     this.cleanup?.();
   }
