@@ -20,7 +20,7 @@ Hacé doble click en la pantalla para pasar a fullscreen (o usá el modo kiosko 
 
 ## Configuración
 
-Editá `public/config.json`: relays, hashtags, duración de escenas (ms), lista de charlas, texto de anuncio inicial, `publicUrl` (URL del QR; vacío = la URL donde está abierta la página) y `settingsPollMs` (cada cuánto el tótem consulta `/api/settings`). No hace falta recompilar si lo cambiás en el deploy.
+Editá `public/config.json`: relays, hashtags, duración de escenas (ms), lista de charlas, texto de anuncio inicial, `publicUrl` (URL del QR; vacío = la URL donde está abierta la página) , `settingsPollMs` (cada cuánto el tótem consulta `/api/settings`) y `startLine` (línea de largada fija, ISO con offset, ej. `2026-10-13T21:00:00-03:00`: sólo se piden y muestran posts desde ese instante; no se podan con el paso del tiempo). No hace falta recompilar si lo cambiás en el deploy.
 
 El historial de posts y zaps se guarda en `localStorage` del navegador.
 

@@ -120,11 +120,15 @@ describe('firmas de notas', () => {
 });
 
 describe('ventana de tiempo en la suscripción', () => {
-  it('el filtro de notas pide since = ahora - postMaxAgeHours', () => {
-    vi.setSystemTime(1_000_000_000);
+  it('el filtro de notas usa el corte fijo recibido', () => {
     const p = mockPool();
-    startNostr({ ...cfg, postMaxAgeHours: 2 }, new ZapStore(), p, 1500, resolverFor(null));
-    expect(p.subs[0].filter).toEqual({ ...notesFilter(cfg.hashtags), since: 1_000_000 - 7200 });
+    startNostr(cfg, new ZapStore(), p, 1500, resolverFor(null), 123_456);
+    expect(p.subs[0].filter).toEqual({ ...notesFilter(cfg.hashtags), since: 123_456 });
+  });
+  it('sin corte explícito, since = startLine de la config', () => {
+    const p = mockPool();
+    startNostr({ ...cfg, startLine: '2026-10-13T21:00:00-03:00' }, new ZapStore(), p, 1500, resolverFor(null));
+    expect(p.subs[0].filter).toEqual({ ...notesFilter(cfg.hashtags), since: Date.UTC(2026, 9, 14) / 1000 });
   });
   it('notesFilter sin since no lo agrega', () => {
     expect(notesFilter(['a'])).not.toHaveProperty('since');

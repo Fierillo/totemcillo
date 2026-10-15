@@ -1,5 +1,5 @@
 import { SimplePool } from 'nostr-tools/pool';
-import type { Config } from '../config';
+import { postCutoff, type Config } from '../config';
 import { LnurlResolver } from './lnurl';
 import type { ZapStore } from './store';
 import type { NostrEvent } from './types';
@@ -33,6 +33,7 @@ export function startNostr(
   pool: PoolLike = new SimplePool() as unknown as PoolLike,
   batchMs = 1500,
   resolver: Resolver = new LnurlResolver(profileLoader(pool, cfg.relays)),
+  cutoff: number | undefined = postCutoff(cfg),
 ) {
   const subs: { close(): void }[] = [];
   const watched = new Set<string>();
@@ -55,8 +56,7 @@ export function startNostr(
   };
 
   store.posts.forEach((p) => watch(p.id));
-  const since = cfg.postMaxAgeHours ? Math.floor(Date.now() / 1000) - cfg.postMaxAgeHours * 3600 : undefined;
-  subs.unshift(pool.subscribeMany(cfg.relays, notesFilter(cfg.hashtags, since), {
+  subs.unshift(pool.subscribeMany(cfg.relays, notesFilter(cfg.hashtags, cutoff), {
     onevent: (ev) => {
       if (ev.kind !== 1 || !isSigned(ev)) return;
       store.addPost({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });

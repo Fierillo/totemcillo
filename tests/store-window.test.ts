@@ -1,73 +1,53 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
+import { postCutoff, defaultConfig } from '../src/config';
 
 const NOW = 1_000_000;
+const CUT = NOW - 3600;
 const post = (id: string, created_at: number) => ({ id, pubkey: 'p', content: id, created_at });
 const mem = (data: unknown) => { const m = new Map([['totemcillo:v1', JSON.stringify(data)]]); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
-afterEach(() => vi.useRealTimers());
 
-describe('ventana de posts', () => {
-  it('rechaza posts más viejos que la ventana al llegar', () => {
-    const s = new ZapStore(undefined, { maxAgeSec: 3600, now: () => NOW });
-    s.addPost(post('viejo', NOW - 3601));
-    s.addPost(post('justo', NOW - 3600));
+describe('corte fijo de posts', () => {
+  it('postCutoff = startLine (ISO con offset) en unix s, independiente del reloj', () => {
+    expect(postCutoff({ ...defaultConfig, startLine: '2026-10-13T21:00:00-03:00' })).toBe(Date.UTC(2026, 9, 14, 0, 0, 0) / 1000);
+    expect(postCutoff({ ...defaultConfig, startLine: '' })).toBeUndefined();
+    expect(postCutoff({ ...defaultConfig, startLine: 'basura' })).toBeUndefined();
+  });
+  it('rechaza posts anteriores al corte al llegar', () => {
+    const s = new ZapStore(undefined, { cutoff: CUT });
+    s.addPost(post('viejo', CUT - 1));
+    s.addPost(post('justo', CUT));
     expect([...s.posts.keys()]).toEqual(['justo']);
   });
-  it('filtra posts vencidos al cargar el historial', () => {
-    const s = new ZapStore(mem({ posts: [post('viejo', NOW - 5000), post('nuevo', NOW - 10)], zaps: [] }), { maxAgeSec: 3600, now: () => NOW });
-    expect([...s.posts.keys()]).toEqual(['nuevo']);
+  it('el corte no se mueve con el tiempo: posts aceptados quedan aunque pasen horas', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW * 1000);
+    const s = new ZapStore(undefined, { cutoff: CUT });
+    s.addPost(post('a', CUT + 1));
+    s.addZap({ id: 'z', postId: 'a', msats: 1000, comment: '', created_at: CUT + 2 });
+    vi.setSystemTime((NOW + 10 * 86400) * 1000);
+    vi.advanceTimersByTime(10 * 86400 * 1000);
+    s.addPost(post('b', CUT + 5));
+    expect([...s.posts.keys()].sort()).toEqual(['a', 'b']);
+    expect(s.zaps.has('z')).toBe(true);
+    vi.useRealTimers();
   });
-  it('sin maxAgeSec no hay ventana', () => {
+  it('no expone poda periódica por edad', () => {
+    const s: any = new ZapStore(undefined, { cutoff: CUT });
+    expect(s.prune).toBeUndefined();
+    expect(s.startPruning).toBeUndefined();
+  });
+  it('el historial de localStorage respeta el corte fijo (y descarta zaps huérfanos)', () => {
+    const s = new ZapStore(mem({
+      posts: [post('viejo', CUT - 10), post('nuevo', CUT + 10)],
+      zaps: [{ id: 'zv', postId: 'viejo', msats: 1000, comment: '', created_at: CUT }, { id: 'zn', postId: 'nuevo', msats: 1000, comment: '', created_at: CUT + 20 }],
+    }), { cutoff: CUT });
+    expect([...s.posts.keys()]).toEqual(['nuevo']);
+    expect([...s.zaps.keys()]).toEqual(['zn']);
+  });
+  it('sin corte no hay límite', () => {
     const s = new ZapStore();
     s.addPost(post('antiguo', 1));
     expect(s.posts.has('antiguo')).toBe(true);
-  });
-});
-
-describe('poda de posts vencidos', () => {
-  const setup = () => {
-    const clock = { now: NOW };
-    const s = new ZapStore(undefined, { maxAgeSec: 3600, now: () => clock.now });
-    s.addPost(post('a', NOW - 100));
-    s.addPost(post('b', NOW - 3000));
-    s.addZap({ id: 'z', postId: 'b', msats: 5000, comment: '', created_at: NOW - 2000 });
-    return { s, clock };
-  };
-  it('prune quita posts vencidos junto con sus zaps y notifica', () => {
-    const { s, clock } = setup();
-    s.addZap({ id: 'za', postId: 'a', msats: 1000, comment: '', created_at: NOW - 50 });
-    const fn = vi.fn();
-    s.onChange(fn);
-    clock.now = NOW + 1000;
-    expect(s.prune()).toBe(1);
-    expect([...s.posts.keys()]).toEqual(['a']);
-    expect([...s.zaps.keys()]).toEqual(['za']);
-    expect(fn).toHaveBeenCalledTimes(1);
-    expect(s.prune()).toBe(0);
-    expect(fn).toHaveBeenCalledTimes(1);
-  });
-  it('startPruning poda cada intervalo y se puede frenar', () => {
-    vi.useFakeTimers();
-    const { s, clock } = setup();
-    const stop = s.startPruning(60_000);
-    clock.now = NOW + 1000;
-    vi.advanceTimersByTime(59_999);
-    expect(s.posts.has('b')).toBe(true);
-    vi.advanceTimersByTime(1);
-    expect(s.posts.has('b')).toBe(false);
-    stop();
-    clock.now = NOW + 10_000;
-    vi.advanceTimersByTime(120_000);
-    expect(s.posts.has('a')).toBe(true);
-  });
-});
-
-describe('zaps de posts vencidos al cargar', () => {
-  it('con ventana, descarta zaps cuyo post no quedó cargado', () => {
-    const s = new ZapStore(mem({
-      posts: [post('viejo', NOW - 5000), post('nuevo', NOW - 10)],
-      zaps: [{ id: 'zv', postId: 'viejo', msats: 1000, comment: '', created_at: NOW - 4000 }, { id: 'zn', postId: 'nuevo', msats: 1000, comment: '', created_at: NOW - 5 }],
-    }), { maxAgeSec: 3600, now: () => NOW });
-    expect([...s.zaps.keys()]).toEqual(['zn']);
   });
 });

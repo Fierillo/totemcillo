@@ -17,7 +17,7 @@ export const MAX_COMMENT = 280;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
 const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
 
-export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; maxAgeSec?: number; now?: () => number }
+export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
   while (m.size > max) {
@@ -40,17 +40,15 @@ export class ZapStore {
   private maxPosts: number;
   private maxZaps: number;
   private postMaxChars: number;
-  private maxAgeSec?: number;
-  /** Reloj inyectable, en segundos unix. */
-  private now: () => number;
+  /** Corte fijo (unix s): se ignoran posts anteriores. No se mueve con el tiempo. */
+  private cutoff?: number;
 
   constructor(private storage?: KV, opts: StoreOptions = {}) {
     this.key = opts.key ?? 'totemcillo:v1';
     this.maxPosts = opts.maxPosts ?? 500;
     this.maxZaps = opts.maxZaps ?? 5000;
     this.postMaxChars = opts.postMaxChars ?? 210;
-    this.maxAgeSec = opts.maxAgeSec;
-    this.now = opts.now ?? (() => Math.floor(Date.now() / 1000));
+    this.cutoff = opts.cutoff;
     this.load();
   }
 
@@ -68,26 +66,12 @@ export class ZapStore {
     if (this.zaps.has(z.id)) this.changed();
   }
 
-  /** Quita posts fuera de la ventana junto con sus zaps (ya no se muestran en ningún lado). */
-  prune(): number {
-    let removed = 0;
-    for (const p of [...this.posts.values()]) if (!this.isFresh(p)) { this.posts.delete(p.id); removed++; }
-    if (removed) this.dropOrphanZaps();
-    if (removed) this.changed();
-    return removed;
-  }
-
-  startPruning(intervalMs = 60_000): () => void {
-    const t = setInterval(() => this.prune(), intervalMs);
-    return () => clearInterval(t);
-  }
-
   private dropOrphanZaps() {
     for (const z of [...this.zaps.values()]) if (!this.posts.has(z.postId)) this.zaps.delete(z.id);
   }
 
   private isFresh(p: Post) {
-    return this.maxAgeSec === undefined || p.created_at >= this.now() - this.maxAgeSec;
+    return this.cutoff === undefined || p.created_at >= this.cutoff;
   }
 
   private clipPost(p: Post): Post {
@@ -117,7 +101,7 @@ export class ZapStore {
       arr(d?.posts).filter(isPost).filter((p) => this.isFresh(p)).forEach((p) => this.posts.set(p.id, this.clipPost(p)));
       arr(d?.zaps).filter(isZap).forEach((z) => this.zaps.set(z.id, clipZap(z)));
       trimOldest(this.posts, this.maxPosts);
-      if (this.maxAgeSec !== undefined) this.dropOrphanZaps();
+      if (this.cutoff !== undefined) this.dropOrphanZaps();
       trimOldest(this.zaps, this.maxZaps);
     } catch (e) {
       console.warn('Historial corrupto, lo ignoro', e);

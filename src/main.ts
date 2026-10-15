@@ -1,5 +1,5 @@
 import './style.css';
-import { loadConfig } from './config';
+import { loadConfig, postCutoff } from './config';
 import { ZapStore } from './nostr/store';
 import { startNostr } from './nostr/pool';
 import { Rotator } from './rotator';
@@ -11,9 +11,9 @@ import { isMobileViewport, renderMobile } from './mobile';
 
 const cfg = await loadConfig();
 document.getElementById('tags')!.textContent = cfg.hashtags.map((t) => `#${t}`).join(' ');
-const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, maxAgeSec: cfg.postMaxAgeHours * 3600 });
-store.startPruning();
-startNostr(cfg, store);
+const cutoff = postCutoff(cfg); // línea de largada fija (config.startLine); sin poda por edad
+const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff });
+startNostr(cfg, store, undefined, undefined, undefined, cutoff);
 const announcement = new Announcement(cfg.announcement);
 const scene = document.getElementById('scene')!;
 const app = document.getElementById('app')!;

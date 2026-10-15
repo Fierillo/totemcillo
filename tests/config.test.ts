@@ -36,11 +36,12 @@ describe('postMaxChars', () => {
   });
 });
 
-describe('postMaxAgeHours', () => {
-  it('por defecto 24 y se puede sobreescribir', async () => {
-    expect(defaultConfig.postMaxAgeHours).toBe(24);
-    const f = async () => ({ ok: true, json: async () => ({ postMaxAgeHours: 6 }) });
-    expect((await loadConfig(f as any)).postMaxAgeHours).toBe(6);
+describe('startLine', () => {
+  it('tiene default y se puede sobreescribir; reemplaza a postMaxAgeHours', async () => {
+    expect(defaultConfig.startLine).toBe('2026-10-13T00:00:00-03:00');
+    expect(defaultConfig).not.toHaveProperty('postMaxAgeHours');
+    const f = async () => ({ ok: true, json: async () => ({ startLine: '2026-10-13T21:00:00-03:00' }) });
+    expect((await loadConfig(f as any)).startLine).toBe('2026-10-13T21:00:00-03:00');
   });
 });
 

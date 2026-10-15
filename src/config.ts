@@ -9,8 +9,8 @@ export interface Config {
   noteUriTemplate: string;
   /** Máximo de caracteres percibidos por post (se trunca con '…'). */
   postMaxChars: number;
-  /** Sólo se muestran posts de las últimas N horas. */
-  postMaxAgeHours: number;
+  /** Línea de largada fija (ISO con offset): sólo posts desde este instante. Vacío = sin límite. */
+  startLine: string;
   /** Ventana (horas) del Top 10 reciente. */
   topRecentHours: number;
   /** Flechas ←/→ para cambiar de escena (desactivar en el evento si molesta). */
@@ -36,7 +36,7 @@ export const defaultConfig: Config = {
   announcement: '',
   noteUriTemplate: 'nostr:{nevent}',
   postMaxChars: 210,
-  postMaxAgeHours: 24,
+  startLine: '2026-10-13T00:00:00-03:00',
   topRecentHours: 3,
   keyboardNav: true,
   publicUrl: '',
@@ -60,3 +60,9 @@ export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config>
 
 /** URL pública de la app para el QR. */
 export const publicUrlOf = (cfg: Config, origin: string) => cfg.publicUrl || `${origin.replace(/\/+$/, '')}/`;
+
+/** Corte fijo de posts (unix s) a partir de `startLine`; undefined si vacío o inválido. No se mueve con el tiempo. */
+export const postCutoff = (cfg: Pick<Config, 'startLine'>): number | undefined => {
+  const ms = cfg.startLine ? Date.parse(cfg.startLine) : NaN;
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
+};
