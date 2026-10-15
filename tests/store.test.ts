@@ -93,6 +93,53 @@ describe('persistencia y notificaciones', () => {
 });
 
 describe('límites de memoria y contenido', () => {
+  it('prioriza posts visibles sobre los borrados y sigue descartando por antigüedad entre visibles', () => {
+    const s = new ZapStore(undefined, { maxPosts: 2 });
+    s.addPost({ ...post, id: 'legitimo', created_at: 1 });
+    s.addPost({ ...post, id: 'borrado', created_at: 100 });
+    s.setModeration({ hiddenPosts: ['borrado'], bannedPubkeys: [] });
+    s.addPost({ ...post, id: 'nuevo', created_at: 101 });
+    expect([...s.posts.keys()]).toEqual(['legitimo', 'nuevo']);
+    s.addPost({ ...post, id: 'ultimo', created_at: 102 });
+    expect([...s.posts.keys()]).toEqual(['nuevo', 'ultimo']);
+  });
+  it('con espacio conserva el post y sus zaps para deshacer un baneo', () => {
+    const s = new ZapStore(undefined, { maxPosts: 3 });
+    s.addPost({ ...post, id: 'legitimo' });
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: ['atacante'] });
+    s.addPost({ ...post, id: 'baneado', pubkey: 'atacante', created_at: 2 });
+    s.addZap({ ...zap, postId: 'baneado' });
+    expect(s.latestPosts(10).map((p) => p.id)).toEqual(['legitimo']);
+    expect(s.latestZaps(10)).toEqual([]);
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: [] });
+    expect(s.latestPosts(10).map((p) => p.id)).toEqual(['baneado', 'legitimo']);
+    expect(s.top(10).map((p) => p.postId)).toEqual(['baneado']);
+  });
+  it('descarta primero el post baneado ya retenido y sus zaps sin hacerlos reaparecer como huérfanos', () => {
+    const s = new ZapStore(undefined, { maxPosts: 2 });
+    s.addPost({ ...post, id: 'legitimo', created_at: 1 });
+    s.addPost({ ...post, id: 'baneado', pubkey: 'atacante', created_at: 100 });
+    s.addZap({ ...zap, postId: 'baneado' });
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: ['atacante'] });
+    s.addPost({ ...post, id: 'nuevo', created_at: 101 });
+    expect(s.latestPosts(10).map((p) => p.id)).toEqual(['nuevo', 'legitimo']);
+    expect(s.latestZaps(10)).toEqual([]);
+    expect(s.stats().map((p) => p.postId)).toEqual(['nuevo', 'legitimo']);
+    expect(s.zaps.size).toBe(0);
+  });
+  it('una ráfaga de un autor baneado no desplaza posts visibles ni genera cambios descartados', () => {
+    const s = new ZapStore(undefined, { maxPosts: 2 });
+    s.addPost({ ...post, id: 'legitimo-1', created_at: 1 });
+    s.addPost({ ...post, id: 'legitimo-2', created_at: 2 });
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: ['atacante'] });
+    const changed = vi.fn(), live = vi.fn();
+    s.onChange(changed); s.onLive(live);
+    for (let i = 0; i < 10; i++) s.addPost({ ...post, id: `spam-${i}`, pubkey: 'atacante', created_at: 100 + i });
+    expect(s.latestPosts(10).map((p) => p.id)).toEqual(['legitimo-2', 'legitimo-1']);
+    expect(s.posts.size).toBe(2);
+    expect(changed).not.toHaveBeenCalled();
+    expect(live).not.toHaveBeenCalled();
+  });
   it('descarta los posts y zaps más viejos, sin notificar inserciones descartadas', () => {
     const s = new ZapStore(undefined, { maxPosts: 2, maxZaps: 2 });
     for (const [id, created_at] of [['p1', 1], ['p2', 3], ['p3', 2]] as const) s.addPost({ ...post, id, created_at });

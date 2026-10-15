@@ -82,6 +82,16 @@ export class ZapStore {
   addPost(p: Post) {
     if (this.posts.has(p.id) || !this.isFresh(p)) return;
     this.posts.set(p.id, this.clipPost(p));
+    // Under memory pressure, moderated posts must not evict visible history.
+    if (this.posts.size > this.maxPosts) {
+      for (const post of this.posts.values()) {
+        if (!this.postVisible(post.id)) {
+          this.posts.delete(post.id);
+          for (const z of this.zaps.values()) if (z.postId === post.id) this.zaps.delete(z.id);
+        }
+        if (this.posts.size <= this.maxPosts) break;
+      }
+    }
     trimOldest(this.posts, this.maxPosts);
     if (!this.posts.has(p.id)) return;
     this.emitLive({ type: 'post', postId: p.id }, p.created_at);

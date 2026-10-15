@@ -54,6 +54,26 @@ describe('followCutoff', () => {
 });
 
 describe('startNostr', () => {
+  it('una ráfaga firmada de un autor baneado no expulsa el post legítimo del historial ni del filtro de zaps', () => {
+    const p = mockPool(), store = new ZapStore();
+    const good = keys();
+    const legitimate = sign(good.sk, { kind: 1, created_at: 1, content: 'legítimo', tags: [['t', 'lacrypta']] });
+    store.setModeration({ hiddenPosts: [], bannedPubkeys: [author.pk] });
+    const feed = startNostr(cfg, store, p, 1500, resolverFor(null));
+    try {
+      p.subs[0].h.onevent(legitimate);
+      for (let i = 0; i < 510; i++) {
+        if (i % 50 === 0) vi.advanceTimersByTime(1000);
+        p.subs[0].h.onevent(note(`spam ${i}`));
+      }
+      expect(store.latestPosts(10).map((post) => post.id)).toEqual([legitimate.id]);
+      expect(store.posts.size).toBe(500);
+      vi.advanceTimersByTime(1500);
+      const active = p.subs.filter((s) => s.filter.kinds[0] === 9735 && !s.close.mock.calls.length);
+      expect(active).toHaveLength(1);
+      expect(active[0].filter['#e']).toContain(legitimate.id);
+    } finally { feed.close(); }
+  });
   it('usa los proveedores del store antes de consultar LNURL con el resolver real', async () => {
     const z = makeZap({ postId: 'p1' });
     const profile = sign(z.recipient.sk, { kind: 0, created_at: 1, tags: [], content: JSON.stringify({ lud16: 'a@getalby.com' }) });

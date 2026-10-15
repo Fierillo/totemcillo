@@ -57,6 +57,8 @@ Before contacting an LNURL endpoint, the client checks its hostname against the 
 
 These limits bound application work, not raw WebSocket traffic or the relay library's parsing/verification. They do not prevent valid spam/Sybil posts; moderation is still needed.
 
+When the post history reaches its capacity, posts excluded by moderation or the start line are evicted before visible posts, along with their associated zaps. This prevents an already banned author's flood from displacing visible history. Moderated posts remain available for undo while there is room; once evicted, they and their zaps are no longer retained locally.
+
 ## How sync works
 
 Settings and moderation saves use an atomic Redis version check. Concurrent changes are reapplied to the latest settings instead of overwriting each other. Retries are bounded; persistent contention returns 503 without saving a stale copy. Existing stored settings need no migration.
