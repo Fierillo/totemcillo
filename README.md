@@ -29,6 +29,8 @@ pnpm test     # vitest
 pnpm build    # dist/
 ```
 
+Dev listens on `0.0.0.0:5173`, so a phone on the same local network can open `http://<computer-LAN-IP>:5173`. Set `ADMIN_PASSWORD` when using a shared network: the local default is `admin`. Preview listens only on localhost. Neither mode pre-authorizes ngrok domains; do not expose these development servers to the internet.
+
 Environment variables (on Vercel; optional locally):
 
 | Variable | Purpose |

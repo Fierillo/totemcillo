@@ -255,6 +255,35 @@ it('identifica la IP del cliente usando cabeceras de plataforma, proxy y socket 
   expect(clientIp({}, undefined)).toBe('desconocida');
 });
 
+it('dev permite la red local, preview usa loopback y ambos rechazan túneles no autorizados', async () => {
+  const { createServer, preview } = await import('vite');
+  const { get } = await import('node:http');
+  for (const mode of ['dev', 'preview']) {
+    const server = mode === 'dev'
+      ? await createServer({ logLevel: 'silent', server: { port: 0 } })
+      : await preview({ logLevel: 'silent', preview: { port: 0 } });
+    try {
+      if ('listen' in server) await server.listen();
+      const address = server.httpServer!.address();
+      expect(address && typeof address === 'object').toBe(true);
+      if (!address || typeof address === 'string') throw new Error('missing listener');
+      if (mode === 'dev') expect(address.address).toBe('0.0.0.0');
+      else expect(['127.0.0.1', '::1']).toContain(address.address);
+      const host = mode === 'dev' ? '127.0.0.1' : address.family === 'IPv6' ? `[${address.address}]` : address.address;
+      const base = `http://${host}:${address.port}`;
+      const response = await fetch(`${base}/api/session`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ authed: false });
+      for (const host of ['demo.ngrok-free.app', 'demo.ngrok-free.dev', 'demo.ngrok.app', 'demo.ngrok.io']) {
+        const status = await new Promise<number | undefined>((resolve, reject) => {
+          get(`${base}/`, { headers: { host } }, (res) => { res.resume(); resolve(res.statusCode); }).on('error', reject);
+        });
+        expect(status).toBe(403);
+      }
+    } finally { await server.close(); }
+  }
+}, 15_000);
+
 it('la API de producción responde 503 sin usar memoria si falta URL o token de Redis', async () => {
   try {
     for (const [url, token] of [['', ''], ['https://redis.example.invalid', ''], ['', 'test-token']]) {
