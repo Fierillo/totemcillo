@@ -84,7 +84,7 @@ describe('authorHtml', () => {
     const d = document.createElement('div');
     d.innerHTML = authorHtml(pk, pc);
     const img = d.querySelector('img.avatar')!;
-    expect(img.getAttribute('src')).toBe('https://img/a.png?x="1"');
+    expect(img.getAttribute('src')).toBe('/api/avatar?url=' + encodeURIComponent('https://img/a.png?x="1"'));
     expect(img.getAttribute('alt')).toBe('');
     expect(img.getAttribute('loading')).toBe('lazy');
     expect(img.getAttribute('referrerpolicy')).toBe('no-referrer');

@@ -117,6 +117,9 @@ export class ProfileCache {
   }
 }
 
+/** Avatars always go through our proxy: no stand IP leak, bounded size, small WebP. */
+export const avatarSrc = (picture: string) => `/api/avatar?url=${encodeURIComponent(picture)}`;
+
 /** Cache shared by the whole app (main.ts configures it with the relays). */
 export const profiles = new ProfileCache();
 
@@ -125,8 +128,8 @@ export function authorHtml(pk: string | undefined, pc: ProfileCache = profiles):
   const ph = `<span class="avatar ${PLACEHOLDER_CLASS}" aria-hidden="true"></span>`;
   if (!pk) return `<span class="author">${ph}<span class="alias">anónimo</span></span>`;
   const p = pc.get(pk);
-  const av = p?.picture && !broken.has(p.picture)
-    ? `<img class="avatar" src="${esc(p.picture)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+  const av = p?.picture && !broken.has(avatarSrc(p.picture))
+    ? `<img class="avatar" src="${esc(avatarSrc(p.picture))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
     : ph;
   return `<span class="author">${av}<span class="alias">${p?.name ? esc(p.name) : shortKey(pk)}</span></span>`;
 }
