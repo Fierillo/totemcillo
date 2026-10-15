@@ -55,7 +55,11 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-post { background: var(--card); border-radius: .8rem; padding: .9rem 1rem; margin-bottom: .8rem; border-left: .25em solid var(--accent); }
 .m-meta { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; font-size: .9rem; }
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: .5rem; }
-.m-total { color: var(--accent); font-weight: 800; margin-bottom: .35rem; }
+.m-total { color: var(--accent); font-weight: 800; margin-bottom: .35rem; position: relative; width: fit-content; }
+/* Rayo de zap en móvil: a la derecha del total, nunca sobre texto. */
+.is-mobile .m-post.is-new { animation: slide-in-x .5s ease-out both, glow 2.5s ease-out; } /* de costado: no tapa el título */
+@keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
+.m-total .bolt { left: calc(100% + .5em); right: auto; top: -5%; height: 110%; }
 .m-list { list-style: none; padding: 0; margin: 0; }
 .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
 .m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
@@ -117,12 +121,12 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   10% { opacity: 1; transform: none; } 18% { opacity: .3; } 26% { opacity: 1; }
   100% { opacity: 0; }
 }
-.is-zapped .row-total, .is-zapped .amount { animation: total-pop 1.2s ease-out .15s; }
+.is-zapped .row-total, .is-zapped .amount, .is-zapped .m-total { animation: total-pop 1.2s ease-out .15s; }
 @keyframes total-pop { 0%, 30% { color: #fff6a8; text-shadow: 0 0 .6em #ffe86b; } 100% { text-shadow: 0 0 0 transparent; } } /* sólo color: el tamaño nunca cambia */
 @media (prefers-reduced-motion: reduce) {
-  .is-new { animation: glow 2.5s ease-out; }
+  .is-new, .is-mobile .m-post.is-new { animation: glow 2.5s ease-out; }
   .is-zapped { animation: zap-flash 2s ease-out; }
-  .is-zapped .row-total, .is-zapped .amount { animation: none; }
+  .is-zapped .row-total, .is-zapped .amount, .is-zapped .m-total { animation: none; }
   .bolt { animation: strike-soft 1.6s ease-out forwards; }
   @keyframes strike-soft { 0%, 30% { opacity: .9; } 100% { opacity: 0; } }
 }

@@ -5,6 +5,7 @@ import { noteUri } from './nostr/link';
 import { recentPosts, EMPTY_POSTS } from './scenes/post';
 import { EMPTY_ANUNCIO } from './scenes/anuncio';
 import { ago, esc, sats, shortKey } from './util';
+import { liveMarks } from './scenes/live';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
 
@@ -12,15 +13,21 @@ const empty = (t: string) => `<p class="muted m-empty">${t}</p>`;
 
 /** Vista de celular: todo apilado y scrolleable, sin rotación ni QR, con botón Zapear por post. */
 export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, ann: Announcement): () => void {
+  const MAX = 50;
+  // Mismas animaciones en vivo que el kiosko (post nuevo / rayo de zap) sobre las tarjetas de Posts.
+  const marks = liveMarks(store, 'mobile', ['post', 'zap'], (id) => recentPosts(store, MAX).some((x) => x.postId === id));
   const draw = () => {
     const now = Math.floor(Date.now() / 1000);
-    const posts = recentPosts(store, 50).map((s) => {
+    const list = recentPosts(store, MAX);
+    marks.begin(list.map((x) => x.postId));
+    const posts = list.map((s) => {
+      const m = marks.attrs(s.postId);
       const uri = noteUri(s.post!, cfg.relays, 'nostr:{nevent}');
       const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');
-      return `<article class="m-post">
+      return `<article class="m-post${m.cls}" data-id="${esc(s.postId)}">
         <div class="m-meta"><span class="author">${shortKey(s.post!.pubkey)}</span><span class="muted">${ago(s.post!.created_at)}</span></div>
         <p class="m-excerpt">${esc(s.post!.content)}</p>
-        <div class="m-total">⚡ ${sats(s.msats)} sats</div>
+        <div class="m-total">⚡ ${sats(s.msats)} sats${m.bolt}</div>
         ${uri && web ? `<div class="m-actions"><a class="zap-btn" href="${esc(uri)}">⚡ Zapear</a><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}
       </article>`;
     }).join('');
@@ -33,8 +40,9 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
       <section class="m-section"><h2>⚡ Últimos zaps</h2>${latest ? `<ul class="m-list">${latest}</ul>` : empty('Todavía no hay zaps')}</section>
       <section class="m-section"><h2>Top 10 zaps · histórico</h2>${topAll ? `<ol class="m-list">${topAll}</ol>` : empty('Todavía no hay zaps en este período')}</section>
       <section class="m-section"><h2>Top 10 zaps · últimas ${cfg.topRecentHours} horas</h2>${topRecent ? `<ol class="m-list">${topRecent}</ol>` : empty('Todavía no hay zaps en este período')}</section>`;
+    marks.consume();
   };
   draw();
-  const offs = [store.onChange(draw), ann.onChange(draw)];
+  const offs = [store.onChange(draw), ann.onChange(draw), marks.off];
   return () => offs.forEach((f) => f());
 }
