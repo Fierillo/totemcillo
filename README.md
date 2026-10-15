@@ -56,6 +56,4 @@ The **server clock** is the single source of truth. From a stored `epoch` and th
 - [x] Live post and zap animations
 - [x] Nostr profile alias and avatar
 - [x] QR on every scene
-- [ ] Move the bolt away from the "time ago" text
-- [ ] `videoDurationSec` field in admin
 - [ ] Optional anonymous zap via wallet invoice
