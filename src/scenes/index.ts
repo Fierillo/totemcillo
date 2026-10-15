@@ -15,12 +15,13 @@ export const DEFAULT_DURATIONS = DEFAULT_SCENE_MS;
 /** Escenas activas, todas siempre en rotación. TODO: proximasCharlas. */
 export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement(cfg.announcement), origin = globalThis.location?.origin ?? ''): Scene[] {
   const d = { ...DEFAULT_DURATIONS, ...cfg.sceneDurations };
+  const publicUrl = publicUrlOf(cfg, origin);
   return [
-    postScene(store, d.post, { publicUrl: publicUrlOf(cfg, origin) }),
+    postScene(store, d.post, { publicUrl }),
     latestZapsScene(store, d.latestZaps),
-    top10HistoricoScene(store, d.top10Historico),
-    top10Ultimas3hScene(store, d.top10Ultimas3h, cfg.topRecentHours),
-    anuncioScene(ann, d.anuncio),
+    top10HistoricoScene(store, d.top10Historico, publicUrl),
+    top10Ultimas3hScene(store, d.top10Ultimas3h, cfg.topRecentHours, undefined, publicUrl),
+    anuncioScene(ann, d.anuncio, publicUrl),
     videoScene(cfg.videoSrc, { everyCycles: cfg.videoEveryCycles, mode: cfg.videoMode, clipSeconds: cfg.videoClipSeconds }),
   ];
 }

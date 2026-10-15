@@ -33,7 +33,14 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .qr svg { display: block; width: 100%; height: auto; shape-rendering: crispEdges; }
 .qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.6vh, 22px); margin-top: .25em; line-height: 1.2; }
 
+/* Tops y anuncio: contenido a la izquierda, QR en su propia columna (misma posición y estilo que en posts). */
+.scene-anuncio, .scene-top10Historico, .scene-top10Ultimas3h { grid-template-columns: minmax(0, 1fr) auto; column-gap: 1.2em; }
+.scene-anuncio > :not(.qr-box), .scene-top10Historico > :not(.qr-box), .scene-top10Ultimas3h > :not(.qr-box) { grid-column: 1; }
+.scene-anuncio > .qr-box, .scene-top10Historico > .qr-box, .scene-top10Ultimas3h > .qr-box { grid-column: 2; grid-row: 1 / -1; }
+
 @media (orientation: portrait) {
+  .scene-anuncio, .scene-top10Historico, .scene-top10Ultimas3h { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .scene-anuncio > .qr-box, .scene-top10Historico > .qr-box, .scene-top10Ultimas3h > .qr-box { grid-column: 1; grid-row: 3; }
   .scene-post { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .qr { width: min(22vh, 42vw); justify-self: center; }
 }

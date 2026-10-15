@@ -27,10 +27,20 @@ const row = (s: PostStats, m: { cls: string; bolt: string }) => `<li class="post
       <div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div>${m.bolt}
     </li>`;
 
+const qrCache = new Map<string, string>();
+/** QR único a la app (mismo componente en posts, tops y anuncio); se genera una vez por URL. */
+export function appQr(publicUrl: string): string {
+  let h = qrCache.get(publicUrl);
+  if (!h) {
+    h = `<aside class="qr-box"><figure class="qr" data-uri="${esc(publicUrl)}">${renderSVG(publicUrl, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' })}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
+    qrCache.set(publicUrl, h);
+  }
+  return h;
+}
+
 /** Escena de posts: lista determinística (autor, hora, mensaje y total) + un único QR a la app. */
 export function postScene(store: ZapStore, duration: number, opts: PostSceneOptions = { publicUrl: `${globalThis.location?.origin ?? ''}/` }): Scene {
-  let qrHtml = '';
-  const qr = () => (qrHtml ||= `<aside class="qr-box"><figure class="qr" data-uri="${esc(opts.publicUrl)}">${renderSVG(opts.publicUrl, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' })}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`);
+  const qr = () => appQr(opts.publicUrl);
   return {
     name: 'post',
     duration,

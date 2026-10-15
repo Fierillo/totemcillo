@@ -4,8 +4,11 @@ import { fitRegions } from '../fit';
 import { live, liveMarks } from './live';
 import { esc, sats } from '../util';
 import { authorHtml } from '../nostr/profiles';
+import { appQr } from './post';
 
-export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number }
+export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number;
+  /** URL del QR a la app (como en posts); sin URL no se muestra. */
+  publicUrl?: string }
 
 /** Escena genérica de ranking de posts (presentes en la ventana) por sats desde `since` (unix s). */
 export function topScene(o: TopOptions): Scene {
@@ -26,7 +29,7 @@ export function topScene(o: TopOptions): Scene {
         root.innerHTML = `<h1 class="top-title" data-fit="text" data-max="6" data-min="20">${esc(o.title)}</h1>
 ` + (rows
           ? `<ol class="top-list" data-fit="list" data-max="3.2" data-maxw="4" data-min="14">${rows}</ol>`
-          : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps en este período</p>`);
+          : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps en este período</p>`) + (o.publicUrl ? appQr(o.publicUrl) : '');
         fitRegions(root);
         marks.consume();
       };
