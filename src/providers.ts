@@ -2,11 +2,11 @@ import { esc } from './util';
 
 export interface ProvidersOptions {
   list: string[];
-  /** Guarda la lista completa (PUT /api/settings); devuelve la que quedó o tira con el error del servidor. */
+  /** Saves the full list (PUT /api/settings); returns the stored list or throws with the server error. */
   save: (list: string[]) => Promise<string[]>;
 }
 
-/** Tarjeta del admin: dominios LNURL cuyos zaps cuentan (agregar / quitar). */
+/** Admin card: LNURL domains whose zaps count (add / remove). */
 export function renderProviders(root: HTMLElement, o: ProvidersOptions): void {
   let list = [...o.list];
   let error = '';

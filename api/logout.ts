@@ -1,2 +1,2 @@
-// Vercel Function: delega en el handler común (ver server/api.ts).
+// Vercel Function: delegates to the shared handler (see server/api.ts).
 export { default } from '../server/node.js';

@@ -11,7 +11,7 @@ export interface PoolLike {
   close(relays: string[]): void;
 }
 
-/** Los relays comparan #t exacto; NIP-24 pide minúscula pero hay clientes que respetan el caso. */
+/** Relays compare #t exactly; NIP-24 asks for lowercase but some clients keep the case. */
 export const tagVariants = (t: string) => [t.toLowerCase(), t, t[0].toUpperCase() + t.slice(1).toLowerCase(), t.toUpperCase()];
 export const notesFilter = (hashtags: string[], since?: number) => ({
   kinds: [1],
@@ -20,13 +20,13 @@ export const notesFilter = (hashtags: string[], since?: number) => ({
 });
 export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
 
-/** Carga el kind 0 firmado más reciente de un pubkey. */
+/** Loads the most recent signed kind 0 of a pubkey. */
 export const profileLoader = (pool: PoolLike, relays: string[]) => async (pubkey: string): Promise<NostrEvent | null> => {
   const evs = await pool.querySync(relays, { kinds: [0], authors: [pubkey] }, { maxWait: 4000 });
   return evs.filter((e) => e.kind === 0 && e.pubkey === pubkey && isSigned(e)).sort((a, b) => b.created_at - a.created_at)[0] ?? null;
 };
 
-/** Suscribe a notas con los hashtags y, en batches, a zap receipts (validados NIP-57) que las referencian. */
+/** Subscribes to notes with the hashtags and, in batches, to the zap receipts (NIP-57 validated) that reference them. */
 export function startNostr(
   cfg: Config,
   store: ZapStore,
@@ -65,7 +65,7 @@ export function startNostr(
   }));
 
   return {
-    /** keepPool: cierra sólo las suscripciones (el pool lo siguen usando perfiles u otra suscripción). */
+    /** keepPool: closes only the subscriptions (the pool is still used by profiles or another subscription). */
     close(keepPool = false) {
       if (timer) clearTimeout(timer);
       subs.forEach((s) => s.close());
@@ -74,7 +74,7 @@ export function startNostr(
   };
 }
 
-/** Sigue la línea de largada del servidor: si se adelanta a antes de lo cargado, vuelve a suscribirse desde ahí. */
+/** Follows the server start line: if it moves before what was loaded, resubscribes from there. */
 export function followCutoff(start: (cutoff?: number) => { close(keepPool?: boolean): void }, initial?: number) {
   let loaded = initial;
   let h = start(initial);

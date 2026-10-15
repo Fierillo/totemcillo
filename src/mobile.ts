@@ -12,10 +12,10 @@ export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.ma
 
 const empty = (t: string) => `<p class="muted m-empty">${t}</p>`;
 
-/** Vista de celular: todo apilado y scrolleable, sin rotación ni QR, con botón Zapear por post. */
+/** Mobile view: everything stacked and scrollable, no rotation or QR, with a Zapear button per post. */
 export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, ann: Announcement): () => void {
   const MAX = 50;
-  // Mismas animaciones en vivo que el kiosko (post nuevo / rayo de zap) sobre las tarjetas de Posts.
+  // Same live animations as the kiosk (new post / zap bolt) on the Posts cards.
   const marks = liveMarks(store, 'mobile', ['post', 'zap'], (id) => recentPosts(store, MAX).some((x) => x.postId === id));
   const draw = () => {
     const now = Math.floor(Date.now() / 1000);

@@ -12,7 +12,7 @@ export const EMPTY_POSTS = 'Todavía no hay posts con #lacrypta / #labitconf';
 export const MAX_POSTS = 6;
 export const QR_CAPTION = 'Escaneá y abrí esto en tu celular';
 
-/** Posts más nuevos primero (desempate por id): mismo store → mismo orden. */
+/** Newest posts first (ties broken by id): same store → same order. */
 export function recentPosts(store: ZapStore, n = MAX_POSTS): PostStats[] {
   return store.stats().filter((s) => s.post)
     .sort((a, b) => b.post!.created_at - a.post!.created_at || (a.postId < b.postId ? -1 : 1))
@@ -28,7 +28,7 @@ const row = (s: PostStats, m: { cls: string; bolt: string }) => `<li class="post
     </li>`;
 
 const qrCache = new Map<string, string>();
-/** QR único a la app (mismo componente en posts, tops y anuncio); se genera una vez por URL. */
+/** Single app QR (same component in posts, tops and announcement); generated once per URL. */
 export function appQr(publicUrl: string): string {
   let h = qrCache.get(publicUrl);
   if (!h) {
@@ -38,7 +38,7 @@ export function appQr(publicUrl: string): string {
   return h;
 }
 
-/** Escena de posts: lista determinística (autor, hora, mensaje y total) + un único QR a la app. */
+/** Posts scene: deterministic list (author, time, message and total) + a single app QR. */
 export function postScene(store: ZapStore, duration: number, opts: PostSceneOptions = { publicUrl: `${globalThis.location?.origin ?? ''}/` }): Scene {
   const qr = () => appQr(opts.publicUrl);
   return {

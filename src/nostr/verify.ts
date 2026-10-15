@@ -5,13 +5,13 @@ import { bolt11ToMsats, parseZapReceipt } from './zap';
 export interface LnurlInfo { pubkey: string; domain: string }
 export interface Resolver {
   resolve(recipientPubkey: string): Promise<string | null>;
-  /** Además del nostrPubkey, el dominio del LNURL (para la lista de proveedores). */
+  /** Besides the nostrPubkey, the LNURL domain (for the provider allowlist). */
   resolveInfo?(recipientPubkey: string): Promise<LnurlInfo | null>;
 }
 
 const tag = (ev: { tags: string[][] }, name: string) => ev.tags.find((t) => t[0] === name)?.[1];
 
-/** Firma e id válidos (nunca tira). */
+/** Valid signature and id (never throws). */
 export function isSigned(ev: NostrEvent): boolean {
   try {
     return verifyEvent(ev as Parameters<typeof verifyEvent>[0]);
@@ -29,7 +29,7 @@ function zapRequest(ev: NostrEvent): NostrEvent | null {
   }
 }
 
-/** Validación NIP-57 que no depende de la red (todo menos el nostrPubkey del LNURL). */
+/** NIP-57 validation that doesn't depend on the network (everything but the LNURL nostrPubkey). */
 export function checkZapReceipt(ev: NostrEvent): Zap | null {
   if (ev.kind !== 9735 || !isSigned(ev)) return null;
   const req = zapRequest(ev);
@@ -44,7 +44,7 @@ export function checkZapReceipt(ev: NostrEvent): Zap | null {
   return parseZapReceipt(ev);
 }
 
-/** Validación completa: además el receipt tiene que venir del nostrPubkey del LNURL del destinatario. */
+/** Full validation: the receipt must also come from the recipient's LNURL nostrPubkey. */
 export async function validateZapReceipt(ev: NostrEvent, resolver: Resolver): Promise<Zap | null> {
   const zap = checkZapReceipt(ev);
   if (!zap) return null;

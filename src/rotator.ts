@@ -1,24 +1,24 @@
 export interface Scene {
   name: string;
-  /** Duración en ms */
+  /** Duration in ms */
   duration: number;
-  /** Si es true, la escena no usa `duration`: termina cuando llama a `done`. */
+  /** If true, the scene doesn't use `duration`: it ends when it calls `done`. */
   untilDone?: boolean;
-  /** Si es > 1, la rotación automática la muestra sólo una de cada N vueltas (las flechas siempre llegan). */
+  /** If > 1, the automatic rotation only shows it once every N cycles (arrows always reach it). */
   everyCycles?: number;
-  /** Escena de video: modo y largo del clip (s). */
+  /** Video scene: mode and clip length (s). */
   videoMode?: 'full' | 'clip';
   clipSeconds?: number;
-  /** Dibuja la escena (incluido su estado vacío); devuelve la limpieza. */
+  /** Draws the scene (including its empty state); returns the cleanup. */
   render: (root: HTMLElement, done?: () => void, ctx?: RenderContext) => void | (() => void);
 }
 
-/** Datos para arrancar una escena a mitad (video: segundos ya transcurridos). */
+/** Data to start a scene midway (video: seconds already elapsed). */
 export interface RenderContext { elapsedMs?: number; clipStart?: number; onClipStart?: (sec: number) => void;
-  /** Posición (s) en que debería estar el video según el reloj del servidor; activa la corrección de deriva. */
+  /** Position (s) where the video should be per the server clock; enables drift correction. */
   expectedSec?: () => number }
 
-/** Rota por todas las escenas, en orden, sin saltear ninguna. */
+/** Rotates through every scene, in order, without skipping any. */
 export class Rotator {
   private idx = -1;
   private token = 0;
@@ -30,12 +30,12 @@ export class Rotator {
 
   start() { this.show(0); }
 
-  /** Cambia la duración de las escenas con ese nombre (rige desde la próxima vez que se muestren). */
+  /** Changes the duration of scenes with that name (applies from the next time they show). */
   setDuration(name: string, ms: number) {
     for (const s of this.scenes) if (s.name === name) s.duration = ms;
   }
 
-  /** Cambia cada cuántas vueltas aparecen las escenas con ese nombre. */
+  /** Changes how many cycles between appearances of scenes with that name. */
   setEveryCycles(name: string, n: number) {
     for (const s of this.scenes) if (s.name === name) s.everyCycles = n;
   }
@@ -55,7 +55,7 @@ export class Rotator {
     this.runCleanup();
   }
 
-  /** Siguiente escena distinta (saltea el resto del bloque con el mismo nombre); reinicia el timer. */
+  /** Next distinct scene (skips the rest of the block with the same name); restarts the timer. */
   next() {
     const n = this.scenes.length;
     if (!n) return;
@@ -67,7 +67,7 @@ export class Rotator {
     this.show(this.wrap(this.idx + 1));
   }
 
-  /** Inicio del bloque de escenas anterior; reinicia el timer. */
+  /** Start of the previous scene block; restarts the timer. */
   prev() {
     const n = this.scenes.length;
     if (!n) return;
@@ -76,7 +76,7 @@ export class Rotator {
     this.show(this.blockStart(this.wrap(start - 1)) ?? this.wrap(start - 1));
   }
 
-  /** Primer índice del bloque contiguo (mismo nombre) que contiene i; null si todas se llaman igual. */
+  /** First index of the contiguous block (same name) containing i; null if all share a name. */
   private blockStart(i: number): number | null {
     const n = this.scenes.length;
     const name = this.scenes[i].name;
@@ -106,7 +106,7 @@ export class Rotator {
     if (!scene.untilDone) this.timer = setTimeout(advance, scene.duration);
   }
 
-  /** Próximo índice de la rotación automática, salteando escenas que no tocan en esta vuelta. */
+  /** Next index of the automatic rotation, skipping scenes not due this cycle. */
   private autoNext(): number {
     const n = this.scenes.length;
     let i = this.idx;

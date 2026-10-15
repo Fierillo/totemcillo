@@ -103,9 +103,9 @@ async function panel() {
 
 let modStore: ZapStore | null = null;
 let modFeed: ReturnType<typeof followCutoff> | null = null;
-/** Aplica listas y línea de largada al panel; si la línea se adelanta, vuelve a pedir a los relays. */
+/** Applies lists and start line to the panel; if the line moves earlier, refetches from the relays. */
 const moderate = (m: Moderation) => { modStore?.setModeration(m); modFeed?.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
-/** Moderación: los mismos posts que ve el tótem (relays, del lado del cliente) con Eliminar / Banear. */
+/** Moderation: the same posts the totem sees (relays, client-side) with Eliminar / Banear. */
 async function startModeration(el: HTMLElement, s: Settings) {
   if (!modStore) {
     const cfg = await loadConfig();

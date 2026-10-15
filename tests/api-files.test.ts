@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { handle } from '../server/api';
 import { memoryStorage } from '../server/storage';
 
-// Cada ruta que usa el cliente necesita su Function en api/ (en Vercel no hay router común).
+// Every route the client uses needs its Function in api/ (Vercel has no shared router).
 const ROUTES = ['time', 'kiosk', 'version', 'settings', 'login', 'logout', 'session', 'moderation'];
 
 describe('Functions de Vercel en api/', () => {

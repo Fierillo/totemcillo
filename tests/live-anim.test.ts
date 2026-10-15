@@ -21,11 +21,11 @@ describe('store: eventos en vivo (no historial)', () => {
     const s = mkStore();
     const ev: LiveEvent[] = [];
     s.onLive((e) => ev.push(e));
-    s.addPost(post(1)); // backfill viejo
-    s.addPost(post(2, NOW - 10)); // nuevo en vivo
-    s.addPost(post(2, NOW - 10)); // duplicado
-    s.addZap(zap(1, 1, NOW - 3600)); // zap viejo
-    s.addZap(zap(2, 1, NOW - 5)); // zap en vivo
+    s.addPost(post(1)); // old backfill
+    s.addPost(post(2, NOW - 10)); // new, live
+    s.addPost(post(2, NOW - 10)); // duplicate
+    s.addZap(zap(1, 1, NOW - 3600)); // old zap
+    s.addZap(zap(2, 1, NOW - 5)); // live zap
     expect(ev).toEqual([{ type: 'post', postId: hex(2) }, { type: 'zap', postId: hex(1) }]);
   });
   it('lo cargado de localStorage nunca dispara', () => {
@@ -55,7 +55,7 @@ describe('animación de post nuevo en la lista', () => {
     const root = document.createElement('div');
     postScene(s, 1, { publicUrl: 'https://x/' }).render(root);
     s.addPost(post(2, NOW - 2));
-    s.addPost(post(3)); // redibujo por otro cambio (historial)
+    s.addPost(post(3)); // redraw from another change (history)
     expect(root.querySelector('.is-new')).toBeNull();
   });
   it('si la escena no está en pantalla, queda pendiente y se anima al entrar (una sola vez)', () => {
@@ -100,7 +100,7 @@ describe('animación de zap (rayo) en la fila visible', () => {
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     const root = document.createElement('div');
-    postScene(s, 1, { publicUrl: 'https://x/' }).render(root); // muestra los 6 más nuevos: 3..8
+    postScene(s, 1, { publicUrl: 'https://x/' }).render(root); // shows the 6 newest: 3..8
     s.addZap(zap(1, 1, NOW - 1));
     expect(root.querySelector('.is-zapped')).toBeNull();
   });
@@ -113,7 +113,7 @@ describe('estilos: livianos y con prefers-reduced-motion', () => {
     expect(css).toMatch(/\.is-new\s*\{[^}]*animation/);
     expect(css).toMatch(/\.is-zapped\s*\{[^}]*animation/);
     const pop = css.match(/@keyframes total-pop\s*\{[\s\S]*?\}\s*\}/)![0];
-    expect(pop).not.toMatch(/scale|transform/); // el total nunca cambia de tamaño: sin solapes
+    expect(pop).not.toMatch(/scale|transform/); // the total never changes size: no overlap
     expect(pop).toMatch(/color|text-shadow/);
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*is-zapped/);
   });
@@ -178,12 +178,12 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     topSc(s);
     const ind: string[] = [];
     feedFor(s).setIndicator((e) => ind.push(e.type));
-    s.addPost(post(20, NOW - 1)); // la escena top no muestra posts nuevos
+    s.addPost(post(20, NOW - 1)); // the top scene doesn't show new posts
     expect(ind).toEqual(['post']);
   });
   it('zap a post que no está en posts: sigue pendiente para los tops y se anima ahí', () => {
     const s = mkStore();
-    for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i)); // posts muestra 3..8
+    for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i)); // posts shows 3..8
     s.addZap(zap(1, 1, NOW - 1));
     postSc(s).off();
     expect(feedFor(s).pending).toHaveLength(1);
@@ -195,7 +195,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     s.addZap(zap(1, 1, NOW - 1));
-    // tops con ventana vacía (since futuro) → no aparece
+    // tops with an empty window (future since) → not shown
     postSc(s).off();
     for (const n of ['top10Historico', 'top10Ultimas3h']) { const r = document.createElement('div'); (topScene({ name: n, title: 'T', store: s, duration: 1, since: () => NOW + 10 }).render(r) as () => void)(); }
     expect(feedFor(s).pending).toHaveLength(0);

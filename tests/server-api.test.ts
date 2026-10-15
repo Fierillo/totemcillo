@@ -36,7 +36,7 @@ describe('POST /api/login', () => {
     const c = String(r.headers['set-cookie']);
     expect(c).toMatch(/^totem_session=[^;]+\.[^;]+;/);
     for (const flag of ['HttpOnly', 'SameSite=Strict', 'Path=/', 'Max-Age=3600']) expect(c).toContain(flag);
-    expect(c).not.toContain('Secure'); // localhost sobre HTTP
+    expect(c).not.toContain('Secure'); // localhost over HTTP
     expect(JSON.stringify(r.body)).not.toContain(PASS);
   });
   it('en HTTPS marca la cookie Secure', async () => {

@@ -14,14 +14,14 @@ import { isMobileViewport, renderMobile } from './mobile';
 
 const cfg = await loadConfig();
 document.getElementById('tags')!.textContent = cfg.hashtags.map((t) => `#${t}`).join(' ');
-const cutoff = postCutoff(cfg); // línea de largada fija (config.startLine); sin poda por edad
+const cutoff = postCutoff(cfg); // fixed start line (config.startLine); no age-based pruning
 const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
 const pool = new SimplePool() as unknown as PoolLike;
-// Perfiles kind:0 (alias + foto) desde los mismos relays, en lotes y cacheados en localStorage.
+// kind:0 profiles (alias + picture) from the same relays, batched and cached in localStorage.
 profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
 installAvatarFallback(document);
 const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefined, c), cutoff);
-// Moderación, proveedores y línea de largada vienen del servidor; si la línea se adelanta, se vuelve a pedir a los relays.
+// Moderation, providers and start line come from the server; if the line moves earlier, refetch from the relays.
 const moderate = (m: Moderation) => { store.setModeration(m); feed.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
 const announcement = new Announcement(cfg.announcement);
 if (import.meta.env.DEV) void import('./demo').then((m) => m.installDemo(window, store)); // window.__totemDemo.post()/zap()
@@ -37,10 +37,10 @@ if (isMobileViewport()) {
   renderMobile(scene, store, cfg, announcement);
   createRemote({ nav: noNav, announcement, baseDurations: { ...DEFAULT_DURATIONS, ...cfg.sceneDurations }, baseVideoEveryCycles: cfg.videoEveryCycles, baseVideoMode: cfg.videoMode, baseVideoClipSeconds: cfg.videoClipSeconds, onModeration: moderate }).start(cfg.settingsPollMs);
 } else {
-  // El servidor es la fuente de verdad: el tótem calcula la agenda que éste define. Flechas: /admin.
+  // The server is the source of truth: the totem computes the schedule it defines. Arrows: /admin.
   const strip = document.getElementById('live-strip');
-  if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // ⚡/💬 abajo si el objetivo no está en pantalla
-  // Una carga de la agenda + chequeo de versión cada settingsPollMs (incluye el anuncio).
+  if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // ⚡/💬 at the bottom if the target is not on screen
+  // One schedule load + a version check every settingsPollMs (includes the announcement).
   void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate }).start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }

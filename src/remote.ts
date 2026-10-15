@@ -8,7 +8,7 @@ export interface RemoteOptions { fetchFn?: typeof fetch; nav: RemoteNav; announc
 const MIN = 3000, MAX = 120000;
 const validMs = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= MIN && v <= MAX;
 
-/** Consulta /api/settings: aplica anuncio y duraciones, y ejecuta comandos ← → nuevos (por secuencia). */
+/** Polls /api/settings: applies announcement and durations, and runs new ← → commands (by sequence). */
 export function createRemote(o: RemoteOptions) {
   const fetchFn = o.fetchFn ?? fetch;
   let lastSeq: number | null = null;
@@ -48,7 +48,7 @@ export function createRemote(o: RemoteOptions) {
         }
       }
     } catch {
-      /* sin API (sitio estático) o sin red: se ignora */
+      /* no API (static site) or no network: ignored */
     }
   }
 

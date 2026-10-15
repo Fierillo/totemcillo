@@ -5,7 +5,7 @@ import { fitRegions } from '../fit';
 import { ago, esc, sats } from '../util';
 import { authorHtml } from '../nostr/profiles';
 
-/** Escena 2: últimos zaps recibidos. */
+/** Scene 2: latest zaps received. */
 export function latestZapsScene(store: ZapStore, duration: number): Scene {
   return {
     name: 'latestZaps',

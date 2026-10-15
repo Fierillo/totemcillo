@@ -24,7 +24,7 @@ describe('ProfileCache: kind 0 desde relays, en lotes y con caché', () => {
       meta(a.sk, { display_name: 'Ana Display', name: 'ana', picture: 'https://img/a.png' }),
       meta(a.sk, { name: 'vieja' }, 1),
       meta(b.sk, { name: 'beto', picture: 'javascript:alert(1)' }),
-      { ...meta(c.sk, { name: 'falsa' }), sig: '00'.repeat(64) }, // firma inválida
+      { ...meta(c.sk, { name: 'falsa' }), sig: '00'.repeat(64) }, // invalid signature
     ].filter((e) => authors.includes(e.pubkey)));
     const pc = new ProfileCache({ query, batchMs: 50 });
     expect(pc.get(a.pk)).toBeUndefined();
@@ -34,7 +34,7 @@ describe('ProfileCache: kind 0 desde relays, en lotes y con caché', () => {
     expect(query.mock.calls[0][0].sort()).toEqual([a.pk, b.pk, c.pk].sort());
     expect(pc.get(a.pk)).toEqual({ name: 'Ana Display', picture: 'https://img/a.png' });
     expect(pc.get(b.pk)).toEqual({ name: 'beto' });
-    expect(pc.get(c.pk)).toBeNull(); // sin perfil válido: no se vuelve a pedir
+    expect(pc.get(c.pk)).toBeNull(); // no valid profile: not requested again
     pc.get(c.pk);
     await vi.advanceTimersByTimeAsync(60);
     expect(query).toHaveBeenCalledTimes(1);
@@ -145,7 +145,7 @@ describe('CSS: avatar redondo chico y alias truncado sin solapes', () => {
     expect(css).toMatch(/\.avatar\s*\{[^}]*border-radius:\s*50%[^}]*flex:\s*0 0 auto/);
     expect(css).toMatch(/\.alias\s*\{[^}]*min-width:\s*0[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis/);
     expect(css).toMatch(/\.author\s*\{[^}]*display:\s*inline-flex[^}]*max-width:\s*100%/);
-    // móvil: el alias cede espacio y la hora no se parte en dos líneas
+    // mobile: the alias yields space and the time doesn't wrap onto two lines
     expect(css).toMatch(/\.m-meta > \.author\s*\{[^}]*flex:\s*0 1 auto/);
     expect(css).toMatch(/\.m-meta > \.muted\s*\{[^}]*flex:\s*0 0 auto[^}]*white-space:\s*nowrap/);
   });

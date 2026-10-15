@@ -2,7 +2,7 @@ import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { devDeps, nodeHandler } from './node.js';
 
-/** Monta /api con los mismos handlers (memoria) y /admin → admin.html, en `pnpm dev` y `pnpm preview`. */
+/** Mounts /api with the same handlers (memory) and /admin → admin.html, in `pnpm dev` and `pnpm preview`. */
 export function totemApi(): Plugin {
   let deps: ReturnType<typeof devDeps> | undefined;
   const mw = (req: IncomingMessage, res: ServerResponse, next: () => void) => {

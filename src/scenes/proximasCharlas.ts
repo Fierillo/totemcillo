@@ -1,3 +1,3 @@
-// TODO: Próximas charlas: cfg.talks
-// Implementar con TDD como Scene (ver post.ts) y sumar en scenes/index.ts.
+// TODO: Upcoming talks: cfg.talks
+// Implement with TDD as a Scene (see post.ts) and add it to scenes/index.ts.
 export {};

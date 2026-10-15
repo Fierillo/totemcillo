@@ -1,6 +1,6 @@
 export interface Navigable { next(): void; prev(): void }
 
-/** → siguiente escena, ← anterior. Devuelve la función para desenganchar. */
+/** → next scene, ← previous. Returns the unbind function. */
 export function bindKeyboard(r: Navigable, target: Pick<EventTarget, 'addEventListener' | 'removeEventListener'> = window): () => void {
   const onKey = (e: Event) => {
     const k = (e as KeyboardEvent).key;

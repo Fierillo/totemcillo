@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { domMeasurer, fitList, fitRegions, fitText, type Measurer } from '../src/fit';
 
 const size = (el: HTMLElement) => parseFloat(el.style.fontSize);
-/** Medidor falso: "entra" si tamaño × largo del texto <= capacidad. */
+/** Fake measurer: "fits" if size × text length <= capacity. */
 const textMeasurer = (cap: number): Measurer => ({ setSize: domMeasurer.setSize, fits: (el) => size(el) * (el.textContent ?? '').length <= cap });
 const el = (text: string) => { const e = document.createElement('p'); e.textContent = text; return e; };
 
@@ -35,7 +35,7 @@ describe('fitText', () => {
 
 describe('fitList', () => {
   const list = (n: number) => { const ul = document.createElement('ul'); for (let i = 0; i < n; i++) ul.append(document.createElement('li')); return ul; };
-  /** entra si tamaño × cantidad de items <= capacidad */
+  /** fits if size × item count <= capacity */
   const listMeasurer = (cap: number): Measurer => ({ setSize: domMeasurer.setSize, fits: (el) => size(el) * el.children.length <= cap });
   it('achica la fuente de la lista hasta que entren todos', () => {
     const ul = list(10);

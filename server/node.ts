@@ -3,10 +3,10 @@ import { randomBytes } from 'node:crypto';
 import { handle, type Deps } from './api.js';
 import { memoryStorage, upstashStorage } from './storage.js';
 
-/** Dependencias desde variables de entorno (Vercel). Sin Upstash usa memoria (se pierde entre invocaciones). */
+/** Dependencies from environment variables (Vercel). Without Upstash it uses memory (lost between invocations). */
 export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
   const url = env.UPSTASH_REDIS_REST_URL, token = env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) console.warn('[totemcillo] Falta UPSTASH_REDIS_REST_URL/TOKEN: uso memoria (no persiste).');
+  if (!url || !token) console.warn('[totemcillo] Missing UPSTASH_REDIS_REST_URL/TOKEN: using memory (not persisted).');
   return {
     storage: url && token ? upstashStorage(url, token) : memoryStorage(),
     env: { ADMIN_PASSWORD: env.ADMIN_PASSWORD, SESSION_SECRET: env.SESSION_SECRET },
@@ -14,10 +14,10 @@ export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
   };
 }
 
-/** Deps para `pnpm dev`/`pnpm preview`: memoria y, si no hay variables, una clave de desarrollo. */
+/** Deps for `pnpm dev`/`pnpm preview`: memory and, without variables, a development password. */
 export function devDeps(env: NodeJS.ProcessEnv = process.env): Deps {
   const ADMIN_PASSWORD = env.ADMIN_PASSWORD || 'admin';
-  if (!env.ADMIN_PASSWORD) console.warn('[totemcillo] dev: clave de /admin = "admin" (definí ADMIN_PASSWORD para cambiarla)');
+  if (!env.ADMIN_PASSWORD) console.warn('[totemcillo] dev: /admin password = "admin" (set ADMIN_PASSWORD to change it)');
   return { storage: memoryStorage(), env: { ADMIN_PASSWORD, SESSION_SECRET: env.SESSION_SECRET || randomBytes(32).toString('hex') }, now: Date.now };
 }
 
@@ -29,7 +29,7 @@ async function readBody(req: IncomingMessage & { body?: unknown }): Promise<unkn
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
-/** Adaptador http de Node (Vercel Functions y middleware de Vite). */
+/** Node http adapter (Vercel Functions and Vite middleware). */
 export async function nodeHandler(req: IncomingMessage & { body?: unknown }, res: ServerResponse, deps: Deps) {
   const headers: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(req.headers)) headers[k] = Array.isArray(v) ? v.join(', ') : v;
@@ -42,7 +42,7 @@ export async function nodeHandler(req: IncomingMessage & { body?: unknown }, res
 }
 
 let cached: Deps | undefined;
-/** Handler por defecto de cada archivo en /api. */
+/** Default handler for every file in /api. */
 export default function vercel(req: IncomingMessage & { body?: unknown }, res: ServerResponse) {
   return nodeHandler(req, res, (cached ??= depsFromEnv()));
 }

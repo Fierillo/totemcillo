@@ -15,7 +15,7 @@ export interface Zap {
   msats: number;
   comment: string;
   created_at: number;
-  /** Dominio del LNURL del destinatario (el que firmó el receipt). */
+  /** Domain of the recipient's LNURL (the one that signed the receipt). */
   domain?: string;
 }
 

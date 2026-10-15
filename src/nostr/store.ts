@@ -20,16 +20,16 @@ const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s
 const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
 
 export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number;
-  /** Reloj en segundos unix (inyectable) y antigüedad máxima (s) para considerar un evento "en vivo". */
+  /** Clock in unix seconds (injectable) and max age (s) for an event to count as "live". */
   clock?: () => number; liveWindowSec?: number;
-  /** Proveedores LNURL permitidos (dominio o subdominio); sin lista cuentan todos. */
+  /** Allowed LNURL providers (domain or subdomain); without a list, all count. */
   zapProviders?: string[] }
 
-/** Post o zap que llegó en vivo (no historial): las escenas visibles lo animan. */
-/** Listas de moderación que publica el servidor. */
+/** Post or zap that arrived live (not history): visible scenes animate it. */
+/** Moderation lists published by the server. */
 export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string }
 
-/** Dominio exacto o subdominio de alguno de la lista. */
+/** Exact domain or subdomain of one in the list. */
 export const providerAllowed = (domain: string | undefined, list: string[]) =>
   !!domain && list.some((d) => domain === d || domain.endsWith(`.${d}`));
 
@@ -45,7 +45,7 @@ function trimOldest<T extends { id: string; created_at: number }>(m: Map<string,
 
 export interface KV { getItem(k: string): string | null; setItem(k: string, v: string): void }
 
-/** Store en memoria que agrega sats por post y persiste (localStorage) con debounce. */
+/** In-memory store that sums sats per post and persists (localStorage) with debounce. */
 export class ZapStore {
   posts = new Map<string, Post>();
   zaps = new Map<string, Zap>();
@@ -53,7 +53,7 @@ export class ZapStore {
   private liveListeners = new Set<(e: LiveEvent) => void>();
   private clock: () => number;
   private liveWindowSec: number;
-  /** Moderación (desde el servidor): se filtra al leer, así también aplica a lo que llegue después. */
+  /** Moderation (from the server): filtered on read, so it also applies to what arrives later. */
   private hidden = new Set<string>();
   private banned = new Set<string>();
   private providers?: string[];
@@ -63,7 +63,7 @@ export class ZapStore {
   private maxPosts: number;
   private maxZaps: number;
   private postMaxChars: number;
-  /** Corte fijo (unix s): se ignoran posts anteriores. No se mueve con el tiempo. */
+  /** Fixed cutoff (unix s): earlier posts are ignored. Does not move over time. */
   private cutoff?: number;
 
   constructor(private storage?: KV, opts: StoreOptions = {}) {
@@ -76,7 +76,7 @@ export class ZapStore {
     this.liveWindowSec = opts.liveWindowSec ?? 120;
     this.providers = opts.zapProviders;
     this.load();
-    feedFor(this); // reparte eventos en vivo desde el arranque (indicador/pendientes)
+    feedFor(this); // dispatches live events from startup (indicator/pending)
   }
 
   addPost(p: Post) {
@@ -97,7 +97,7 @@ export class ZapStore {
     this.changed();
   }
 
-  /** Avisa eventos recientes (lo cargado de localStorage no pasa por acá). Se emite antes de redibujar. */
+  /** Notifies recent events (what is loaded from localStorage doesn't go through here). Emitted before redrawing. */
   onLive(fn: (e: LiveEvent) => void): () => void {
     this.liveListeners.add(fn);
     return () => { this.liveListeners.delete(fn); };
@@ -145,11 +145,11 @@ export class ZapStore {
       if (this.cutoff !== undefined) this.dropOrphanZaps();
       trimOldest(this.zaps, this.maxZaps);
     } catch (e) {
-      console.warn('Historial corrupto, lo ignoro', e);
+      console.warn('Corrupt history, ignoring it', e);
     }
   }
 
-  /** Posts ocultos y autores baneados (desaparecen con sus zaps; los zaps que envían no cuentan). */
+  /** Hidden posts and banned authors (vanish with their zaps; the zaps they send don't count). */
   setModeration(m: Moderation) {
     const h = new Set(m.hiddenPosts), b = new Set(m.bannedPubkeys);
     const same = (a: Set<string>, c: Set<string>) => a.size === c.size && [...a].every((x) => c.has(x));

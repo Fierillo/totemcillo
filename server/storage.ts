@@ -1,8 +1,8 @@
-/** Almacenamiento mínimo que necesita la API (Upstash en producción, memoria en tests/dev). */
+/** Minimal storage the API needs (Upstash in production, memory in tests/dev). */
 export interface Storage {
   get<T>(key: string): Promise<T | null>;
   set(key: string, value: unknown): Promise<void>;
-  /** Incrementa un contador que vence `ttlSec` después del primer incremento. */
+  /** Increments a counter that expires `ttlSec` after the first increment. */
   incr(key: string, ttlSec: number): Promise<number>;
 }
 
@@ -20,7 +20,7 @@ export function memoryStorage(now: () => number = Date.now): Storage {
   };
 }
 
-/** Upstash Redis (REST). Se importa perezosamente para no cargarlo en tests. */
+/** Upstash Redis (REST). Imported lazily so tests don't load it. */
 export function upstashStorage(url: string, token: string): Storage {
   const client = import('@upstash/redis').then(({ Redis }) => new Redis({ url, token }));
   return {

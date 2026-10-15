@@ -1,4 +1,4 @@
-// Chequeo e2e de layout: nada se superpone ni desborda en 3 viewports. Uso: pnpm test:e2e
+// E2E layout check: nothing overlaps or overflows in 3 viewports. Usage: pnpm test:e2e
 import { preview } from 'vite';
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -130,7 +130,7 @@ try {
     }
     await page.close();
   }
-  // Navegación con teclado (activable por config)
+  // Keyboard navigation (enabled via config)
   for (const keyboardNav of [true, false]) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav, sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000 } } }));
@@ -151,7 +151,7 @@ try {
       problems.push(`teclado desactivado pero cambió de escena: "${afterRight}" / "${afterLefts}"`);
     await page.close();
   }
-  // Zaps reales con comentarios: se ven ≥5 mensajes y los comentarios cortos no se recortan
+  // Real zaps with comments: ≥5 messages visible and short comments are not clipped
   const comments = ['¡Grande La Crypta! 🧡', 'Vamos LABITCONF ⚡⚡', 'Excelente charla, gracias', 'pura vida', 'Zap desde Córdoba', '🔥🔥🔥', 'Nos vemos en el stand', 'Lightning > todo'];
   const realPost = [{ id: hex(1), pubkey: 'ab'.repeat(32), content: 'Probando #lacrypta con un texto normal de un post', created_at: now - 600 }];
   const realZaps = comments.map((c, i) => ({ id: hex(500 + i), postId: hex(1), sender: (i + 1).toString().repeat(64), msats: (i + 1) * 21000, comment: c, created_at: now - i * 30 }));
@@ -189,7 +189,7 @@ try {
     await page.close();
   }
 
-  // 5 posts: se ven ≥3 a la vez, un solo QR, y navegar con flechas muestra siempre lo mismo
+  // 5 posts: ≥3 visible at once, a single QR, and arrow navigation always shows the same thing
   const five = Array.from({ length: 5 }, (_, i) => ({ id: hex(700 + i), pubkey: (i + 1).toString().repeat(64), content: `Post número ${i + 1} sobre #lacrypta y la LABITCONF, con un texto de largo normal para ver cómo entra`, created_at: now - (i + 1) * 300 }));
   const fiveZaps = five.flatMap((p, i) => Array.from({ length: Math.min(i + 1, 2) }, (_, j) => ({ id: hex(800 + i * 10 + j), postId: p.id, sender: (j + 1).toString().repeat(64), msats: (j + 1) * 21000, comment: comments[j], created_at: now - j * 20 })));
   for (const [w, h] of viewports) {
@@ -218,7 +218,7 @@ try {
     await page.close();
   }
 
-  // Móvil: misma ruta, scrolleable, sin QR, con Zapear
+  // Mobile: same route, scrollable, no QR, with Zapear
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, publicUrl: 'https://totem.lacrypta.ar/', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
@@ -248,7 +248,7 @@ try {
     await page.close();
   }
 
-  // Estados vacíos: store vacío, se recorren todas las escenas con →
+  // Empty states: empty store, step through every scene with →
   const empties = [
     ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
     ['latestZaps', 'Todavía no hay zaps'],
@@ -269,7 +269,7 @@ try {
     }
     await page.close();
   }
-  // Escena de video: pantalla completa, desde 0, sin loop; la escena termina cuando termina el video
+  // Video scene: fullscreen, from 0, no loop; the scene ends when the video ends
   for (const [w, h] of viewports) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, videoSrc: '/video/totem-video.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
@@ -294,14 +294,14 @@ try {
       if (v.bg !== 'rgb(0, 0, 0)') problems.push(`${w}x${h} video: fondo ${v.bg}`);
       await page.waitForTimeout(4000);
       await page.screenshot({ path: `${out}/${w}x${h}-video.png` });
-      // salir y volver: arranca de nuevo desde 0
+      // leave and come back: starts again from 0
       await page.keyboard.press('ArrowRight');
       await page.waitForTimeout(300);
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(1500);
       const again = await probe();
       if (!again || again.t > 3) problems.push(`${w}x${h} video: al volver no arranca desde 0 (t ${again?.t})`);
-      // cerca del final: al terminar pasa a la escena siguiente (post), no por timer
+      // near the end: when it finishes it moves to the next scene (post), not by timer
       await page.evaluate(() => { const el = document.querySelector('.scene-video video'); el.currentTime = Math.max(0, el.duration - 1); });
       await page.waitForTimeout(3500);
       const cls = await page.evaluate(() => document.getElementById('scene').className);
@@ -309,7 +309,7 @@ try {
     }
     await page.close();
   }
-  // Video cada 2 vueltas en la rotación automática
+  // Video every 2 cycles in the automatic rotation
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, videoEveryCycles: 2, videoSrc: '/video/no-existe.webm', settingsPollMs: 600000, sceneDurations: { post: 400, latestZaps: 400, top10Historico: 400, top10Ultimas3h: 400, anuncio: 400 } } }));
@@ -325,7 +325,7 @@ try {
     if (cycles.length < 3 || JSON.stringify(withVideo) !== '[true,false,true]') problems.push(`video cada 2 vueltas: ${JSON.stringify(cycles)}`);
     await page.close();
   }
-  // Video roto: el tótem no se traba
+  // Broken video: the totem does not get stuck
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.route('**/config.json', (r) => r.fulfill({ json: { ...cfg, keyboardNav: true, videoSrc: '/video/no-existe.webm', sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } } }));
@@ -340,7 +340,7 @@ try {
     await page.close();
   }
 
-  // Admin: login, anuncio y flechas remotas
+  // Admin: login, announcement and remote arrows
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.goto('http://localhost:4179/admin');
@@ -373,7 +373,7 @@ try {
     if (status !== 'Guardado') problems.push(`admin: Guardar respondió "${status}"`);
     const saved = await page.evaluate(async () => (await fetch('/api/settings')).json());
     if (saved.announcement !== '¡Sorteo desde e2e!' || saved.sceneDurations?.post !== 20000 || saved.videoEveryCycles !== 3 || saved.videoMode !== 'clip' || saved.videoClipSeconds !== 30) problems.push(`admin: anuncio/duración no guardados (${JSON.stringify(saved)})`);
-    // modo full: se oculta en vivo, guardar conserva videoClipSeconds, y al recargar sigue oculto; con clip vuelve a verse
+    // full mode: hidden live, saving keeps videoClipSeconds, and still hidden after reload; with clip it shows again
     const saveAndReload = async () => {
       await page.evaluate(() => { document.querySelector('.status').textContent = ''; });
       await page.click('button.save');
@@ -394,7 +394,7 @@ try {
     await page.waitForTimeout(300);
     const set = await page.evaluate(async () => (await fetch('/api/settings')).json());
     if (set.command?.action !== 'next' || !(set.command?.seq >= 1)) problems.push(`admin: comando remoto no guardado (${JSON.stringify(set.command)})`);
-    // layout del admin: en escritorio aprovecha el ancho; en celular, una columna; nada desborda
+    // admin layout: uses the width on desktop; one column on mobile; nothing overflows
     const cardsAt = async (w, h) => {
       await page.setViewportSize({ width: w, height: h });
       await page.waitForTimeout(200);
@@ -447,7 +447,7 @@ try {
   server.httpServer.close();
 }
 if (problems.length) {
-  console.error('PROBLEMAS DE LAYOUT:\n' + problems.join('\n'));
+  console.error('LAYOUT PROBLEMS:\n' + problems.join('\n'));
   process.exit(1);
 }
-console.log(`Layout OK en ${viewports.map((v) => v.join('x')).join(', ')}. Capturas en ${out}`);
+console.log(`Layout OK at ${viewports.map((v) => v.join('x')).join(', ')}. Screenshots in ${out}`);

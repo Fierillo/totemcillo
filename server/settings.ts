@@ -4,34 +4,34 @@ export interface Settings {
   announcement: string;
   sceneDurations: Record<string, number>;
   command: { seq: number; action: Action | null };
-  /** El video aparece una de cada N vueltas (si falta, rige config.json). */
+  /** The video appears once every N cycles (if missing, config.json applies). */
   videoEveryCycles?: number;
   videoMode?: 'full' | 'clip';
   videoClipSeconds?: number;
-  /** Duración real del video (s), para la agenda del servidor. */
+  /** Actual video duration (s), for the server schedule. */
   videoDurationSec?: number;
-  /** Inicio de la agenda (ms); lo maneja sólo el servidor. */
+  /** Schedule start (ms); managed only by the server. */
   epoch?: number;
-  /** Se incrementa en cada cambio del admin (incluidas flechas); el tótem lo consulta barato. */
+  /** Incremented on every admin change (arrows included); the totem checks it cheaply. */
   version?: number;
-  /** Moderación: ids de posts ocultos y pubkeys baneados (hex, minúscula). */
+  /** Moderation: hidden post ids and banned pubkeys (hex, lowercase). */
   hiddenPosts?: string[];
   bannedPubkeys?: string[];
-  /** Sólo cuentan zaps cuyo LNURL (el que firma el receipt) es de uno de estos dominios o subdominios. */
+  /** Only zaps whose LNURL (the one signing the receipt) belongs to one of these domains or subdomains count. */
   zapProviders?: string[];
-  /** Línea de largada (ISO con zona): sólo cuentan posts y zaps desde acá. */
+  /** Start line (ISO with zone): only posts and zaps from here on count. */
   startLine?: string;
 }
 export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
 export const DEFAULT_START_LINE = '2026-10-13T00:00:00-03:00';
 export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE };
-/** Duraciones por defecto de cada escena (ms). */
+/** Default duration of each scene (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
 export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365 };
 
 export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[]; startLine?: string }
 
-/** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
+/** Validates the PUT body; any invalid field rejects the whole request. */
 export function validatePatch(body: unknown, now = Date.now()): { ok: true; patch: Patch } | { ok: false; error: string } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, error: 'cuerpo inválido' };
   const b = body as Record<string, unknown>;
@@ -100,7 +100,7 @@ export function validatePatch(body: unknown, now = Date.now()): { ok: true; patc
   return { ok: true, patch };
 }
 
-/** Hostname con al menos dos etiquetas (sin esquema, puerto, ruta ni usuario). */
+/** Hostname with at least two labels (no scheme, port, path or user). */
 export const isHostname = (h: string) =>
   h.length <= 253 && /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/.test(h);
 
@@ -125,7 +125,7 @@ export function applyPatch(s: Settings, p: Patch): Settings {
 export type ModAction = 'hide' | 'unhide' | 'ban' | 'unban';
 const MOD_LIST = { hide: 'hiddenPosts', unhide: 'hiddenPosts', ban: 'bannedPubkeys', unban: 'bannedPubkeys' } as const;
 
-/** Aplica una acción de moderación (id/pubkey de 64 hex). Devuelve error si es inválida o la lista está llena. */
+/** Applies a moderation action (64-hex id/pubkey). Returns an error if invalid or the list is full. */
 export function applyModeration(s: Settings, body: unknown): { ok: true; settings: Settings } | { ok: false; error: string } {
   const b = (body && typeof body === 'object' ? body : {}) as { action?: unknown; id?: unknown };
   if (typeof b.action !== 'string' || !(b.action in MOD_LIST)) return { ok: false, error: 'acción inválida' };

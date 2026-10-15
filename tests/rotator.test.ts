@@ -180,7 +180,7 @@ describe('Rotator: escenas cada N vueltas (everyCycles)', () => {
     const a = mk('a'), b = mk('b'), v = mk('v', 1000, { everyCycles: 2 });
     const r = new Rotator(root, [a.s, b.s, v.s]);
     r.start();
-    vi.advanceTimersByTime(3000); // a b v a  → 2ª vuelta
+    vi.advanceTimersByTime(3000); // a b v a  → 2nd cycle
     expect(root.textContent).toBe('a');
     r.prev();
     expect(root.textContent).toBe('v');

@@ -7,10 +7,10 @@ import { authorHtml } from '../nostr/profiles';
 import { appQr } from './post';
 
 export interface TopOptions { name: string; title: string; store: ZapStore; duration: number; since: () => number;
-  /** URL del QR a la app (como en posts); sin URL no se muestra. */
+  /** App QR URL (as in posts); not shown without a URL. */
   publicUrl?: string }
 
-/** Escena genérica de ranking de posts (presentes en la ventana) por sats desde `since` (unix s). */
+/** Generic ranking scene of posts (in the window) by sats since `since` (unix s). */
 export function topScene(o: TopOptions): Scene {
   return {
     name: o.name,

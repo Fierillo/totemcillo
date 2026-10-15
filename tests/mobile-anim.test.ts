@@ -27,7 +27,7 @@ describe('vista móvil: animaciones en vivo', () => {
     s.addPost(post(3, NOW - 5));
     expect(card(root, 3).classList.contains('is-new')).toBe(true);
     expect(root.querySelectorAll('.is-new')).toHaveLength(1);
-    s.addPost(post(4)); // redibujo por historial: no se re-anima
+    s.addPost(post(4)); // redraw from history: not re-animated
     expect(root.querySelector('.is-new')).toBeNull();
   });
   it('zap en vivo: la tarjeta zapeada recibe is-zapped con rayo junto al total actualizado', () => {
@@ -74,7 +74,7 @@ describe('vista móvil: animaciones en vivo', () => {
     expect(css).toMatch(/\.m-total\s*\{[^}]*position:\s*relative[^}]*width:\s*fit-content/);
     expect(css).toMatch(/\.m-total \.bolt\s*\{[^}]*left:\s*calc\(100% \+[^}]*right:\s*auto/);
     expect(css).toMatch(/\.is-zapped \.m-total/);
-    // el rayo no se sale de la línea del total (ni hacia el mensaje de arriba ni hacia los botones)
+    // the bolt stays within the total's line (neither up into the message nor down into the buttons)
     const rule = css.match(/\.m-total \.bolt\s*\{([^}]*)\}/)![1];
     expect(Number(rule.match(/height:\s*(\d+)%/)![1])).toBeLessThanOrEqual(110);
     expect(Number(rule.match(/top:\s*(-?\d+)%/)![1])).toBeGreaterThanOrEqual(-5);

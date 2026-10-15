@@ -6,14 +6,14 @@ import { ago, esc, sats } from './util';
 
 export interface ModerationOptions {
   store: ZapStore;
-  /** Llama a POST /api/moderation; true si salió bien. */
+  /** Calls POST /api/moderation; true on success. */
   act: (action: ModAction, id: string) => Promise<boolean>;
   confirm?: (msg: string) => boolean;
 }
 
 const MAX_ROWS = 100;
 
-/** Lista de lo que muestra el tótem (más nuevo primero) con Eliminar / Banear autor, y baneados con Desbanear. */
+/** List of what the totem shows (newest first) with Eliminar / Banear autor, plus banned users with Desbanear. */
 export function renderModeration(root: HTMLElement, o: ModerationOptions): { off(): void } {
   const ask = o.confirm ?? ((m: string) => window.confirm(m));
   const draw = () => {

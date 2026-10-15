@@ -3,10 +3,10 @@ import type { KV } from './store';
 import { isSigned } from './verify';
 import { esc, shortKey } from '../util';
 
-/** Lo que mostramos de un perfil kind:0: alias (display_name, si no name) y foto (sólo https). */
+/** What we show from a kind:0 profile: alias (display_name, else name) and picture (https only). */
 export interface Profile { name?: string; picture?: string }
 export interface ProfileOptions {
-  /** Trae los kind:0 de esos autores desde los relays (en el cliente; sin servidor ni Redis). */
+  /** Fetches those authors' kind:0 from the relays (client-side; no server or Redis). */
   query?: (authors: string[]) => Promise<NostrEvent[]>;
   storage?: KV; batchMs?: number; retryMs?: number;
 }
@@ -19,7 +19,7 @@ const broken = new Set<string>();
 
 const str = (x: unknown, max: number) => (typeof x === 'string' && x.trim() ? x.trim().slice(0, max) : undefined);
 
-/** Parsea el contenido de un kind:0; null si no sirve. */
+/** Parses a kind:0's content; null if unusable. */
 export function parseProfile(ev: NostrEvent): Profile | null {
   try {
     const c = JSON.parse(ev.content);
@@ -33,7 +33,7 @@ export function parseProfile(ev: NostrEvent): Profile | null {
   } catch { return null; }
 }
 
-/** Caché de perfiles: pide en lotes, guarda en memoria y localStorage, avisa cuando llegan. */
+/** Profile cache: requests in batches, stores in memory and localStorage, notifies when they arrive. */
 export class ProfileCache {
   private map = new Map<string, Profile | null>();
   private queued = new Set<string>();
@@ -52,7 +52,7 @@ export class ProfileCache {
 
   clear() { this.map.clear(); this.queued.clear(); this.inflight.clear(); this.failedAt.clear(); if (this.timer) clearTimeout(this.timer); this.timer = null; }
 
-  /** Perfil si ya se conoce; null si no tiene; undefined mientras carga (y lo encola). */
+  /** Profile if already known; null if it has none; undefined while loading (and queues it). */
   get(pk: string): Profile | null | undefined {
     if (this.map.has(pk)) return this.map.get(pk);
     this.request(pk);
@@ -107,20 +107,20 @@ export class ProfileCache {
         const p = parseProfile({ content: JSON.stringify({ name: (v as any).name, picture: (v as any).picture }) } as NostrEvent);
         if (p) this.map.set(pk, p);
       }
-    } catch { /* caché corrupta: se ignora */ }
+    } catch { /* corrupt cache: ignored */ }
   }
 
   private save() {
     if (!this.o.storage) return;
     const entries = [...this.map].filter(([, p]) => p).slice(-MAX_STORED);
-    try { this.o.storage.setItem(KEY, JSON.stringify(Object.fromEntries(entries))); } catch { /* cuota llena */ }
+    try { this.o.storage.setItem(KEY, JSON.stringify(Object.fromEntries(entries))); } catch { /* quota full */ }
   }
 }
 
-/** Caché compartida por toda la app (main.ts la configura con los relays). */
+/** Cache shared by the whole app (main.ts configures it with the relays). */
 export const profiles = new ProfileCache();
 
-/** Autor como avatar redondo + alias (o npub corto y avatar neutro mientras carga / si falta). HTML seguro. */
+/** Author as round avatar + alias (or short npub and neutral avatar while loading / if missing). Safe HTML. */
 export function authorHtml(pk: string | undefined, pc: ProfileCache = profiles): string {
   const ph = `<span class="avatar ${PLACEHOLDER_CLASS}" aria-hidden="true"></span>`;
   if (!pk) return `<span class="author">${ph}<span class="alias">anónimo</span></span>`;
@@ -131,7 +131,7 @@ export function authorHtml(pk: string | undefined, pc: ProfileCache = profiles):
   return `<span class="author">${av}<span class="alias">${p?.name ? esc(p.name) : shortKey(pk)}</span></span>`;
 }
 
-/** Si una foto de perfil no carga, la cambia por el avatar neutro (y no la vuelve a intentar). */
+/** If a profile picture fails to load, swaps it for the neutral avatar (and doesn't retry it). */
 export function installAvatarFallback(doc: Document) {
   doc.addEventListener('error', (e) => {
     const t = e.target as HTMLElement | null;

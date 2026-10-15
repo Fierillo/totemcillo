@@ -12,7 +12,7 @@ import { DEFAULT_SCENE_MS } from '../../server/settings';
 
 export const DEFAULT_DURATIONS = DEFAULT_SCENE_MS;
 
-/** Escenas activas, todas siempre en rotación. TODO: proximasCharlas. */
+/** Active scenes, all always in rotation. TODO: proximasCharlas. */
 export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement(cfg.announcement), origin = globalThis.location?.origin ?? ''): Scene[] {
   const d = { ...DEFAULT_DURATIONS, ...cfg.sceneDurations };
   const publicUrl = publicUrlOf(cfg, origin);

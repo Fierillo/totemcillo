@@ -50,7 +50,7 @@ describe('POST /api/moderation (admin)', () => {
     const full = Array.from({ length: LIMITS.maxModeration }, (_, i) => i.toString(16).padStart(64, '0'));
     await d.storage.set('totem:settings', { announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, bannedPubkeys: full });
     expect((await mod(d, c, { action: 'ban', id: H('f') })).status).toBe(400);
-    expect((await mod(d, c, { action: 'ban', id: full[0] })).status).toBe(200); // ya estaba: no falla
+    expect((await mod(d, c, { action: 'ban', id: full[0] })).status).toBe(200); // already listed: does not fail
   });
   it('/api/kiosk (público) trae las listas y otros cambios de settings las conservan', async () => {
     const d = deps(); const c = await login(d);

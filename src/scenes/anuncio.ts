@@ -6,7 +6,7 @@ import { appQr } from './post';
 
 export const EMPTY_ANUNCIO = 'Sin anuncios por ahora';
 
-/** Escena especial "Anuncio": la edita el admin. Siempre en rotación (vacía muestra un estado vacío). */
+/** Special "Anuncio" scene: edited by the admin. Always in rotation (shows an empty state when empty). */
 export function anuncioScene(ann: Announcement, duration: number, publicUrl?: string): Scene {
   return {
     name: 'anuncio',

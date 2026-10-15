@@ -5,7 +5,7 @@ import type { LnurlInfo, Resolver } from './verify';
 export type ProfileLoader = (pubkey: string) => Promise<NostrEvent | null>;
 export type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<any> }>;
 
-/** URL del endpoint LNURL-pay a partir del contenido de un kind 0 (lud16 o lud06). */
+/** LNURL-pay endpoint URL from a kind 0's content (lud16 or lud06). */
 export function lnurlFromProfile(content: string): string | null {
   let meta: any;
   try { meta = JSON.parse(content); } catch { return null; }
@@ -20,14 +20,14 @@ export function lnurlFromProfile(content: string): string | null {
       const { words } = bech32.decode(meta.lud06.trim().toLowerCase() as `${string}1${string}`, 2000);
       const url = new TextDecoder().decode(bech32.fromWords(words));
       if (url.startsWith('https://')) return url;
-    } catch { /* inválido */ }
+    } catch { /* invalid */ }
   }
   return null;
 }
 
 interface Entry { p: Promise<LnurlInfo | null>; at: number; failed: boolean }
 
-/** Resuelve (y cachea) el nostrPubkey que firma los zaps de un destinatario. */
+/** Resolves (and caches) the nostrPubkey that signs a recipient's zaps. */
 export class LnurlResolver implements Resolver {
   private cache = new Map<string, Entry>();
 
@@ -57,7 +57,7 @@ export class LnurlResolver implements Resolver {
       const ok = j?.allowsNostr === true && typeof j.nostrPubkey === 'string' && /^[0-9a-f]{64}$/.test(j.nostrPubkey);
       return ok ? { pubkey: j.nostrPubkey, domain: new URL(url).hostname.toLowerCase() } : null;
     } catch (e) {
-      console.warn('LNURL no verificable (¿CORS?), zap sin contar', pubkey, e);
+      console.warn('LNURL not verifiable (CORS?), zap not counted', pubkey, e);
       return null;
     }
   }

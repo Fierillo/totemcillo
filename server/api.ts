@@ -10,7 +10,7 @@ export interface Deps { storage: Storage; env: Env; now: () => number }
 
 export const COOKIE = 'totem_session';
 const SESSION_TTL = 3600;
-/** Caché de CDN (Vercel) para los GET públicos del tótem; el navegador no cachea (max-age=0). */
+/** CDN cache (Vercel) for the totem's public GETs; the browser does not cache (max-age=0). */
 const CDN = 'public, max-age=0, s-maxage=5, stale-while-revalidate=5';
 const RATE = { max: 10, windowSec: 600 };
 const KEY = 'totem:settings';
@@ -64,17 +64,17 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       return json(200, next);
     }
     case 'GET /api/kiosk': {
-      // Público, de sólo lectura: entradas de la agenda; el tótem calcula las escenas localmente.
+      // Public, read-only: schedule inputs; the totem computes the scenes locally.
       const st = await readSettings(d);
-      // Sin hora adentro: así el CDN puede cachearla. El tótem la pide como /api/kiosk?v=<version>.
+      // No time inside, so the CDN can cache it. The totem requests it as /api/kiosk?v=<version>.
       return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0,
         hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [], zapProviders: st.zapProviders ?? DEFAULT_ZAP_PROVIDERS, startLine: st.startLine ?? DEFAULT_START_LINE }, { 'cache-control': CDN });
     }
     case 'GET /api/version':
-      // Chequeo barato y cacheable unos segundos en el CDN (muchas pantallas → pocas lecturas).
+      // Cheap check, cacheable for a few seconds on the CDN (many screens → few reads).
       return json(200, { version: (await readSettings(d)).version ?? 0 }, { 'cache-control': CDN });
     case 'GET /api/time':
-      // Hora del servidor para corregir el reloj del tótem: nunca cacheada y sin tocar Redis.
+      // Server time to correct the totem's clock: never cached and never touches Redis.
       return json(200, { now: d.now() });
     case 'POST /api/login': {
       if (!configured(d.env)) return json(503, { error: 'admin no configurado' });

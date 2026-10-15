@@ -6,7 +6,7 @@ export const keys = () => {
   return { sk, pk: getPublicKey(sk) };
 };
 
-/** Firma y devuelve un objeto plano (sin el símbolo de "ya verificado" de nostr-tools). */
+/** Signs and returns a plain object (without nostr-tools' "already verified" symbol). */
 export const sign = (sk: Uint8Array, t: { kind: number; created_at: number; content: string; tags: string[][] }): NostrEvent =>
   JSON.parse(JSON.stringify(finalizeEvent(t, sk)));
 

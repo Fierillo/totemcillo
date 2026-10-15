@@ -44,12 +44,12 @@ describe('ZapStore con startLine del servidor', () => {
     s.addZap({ id: 'z1', postId: 'p', msats: 1000, comment: '', created_at: 120 });
     s.addZap({ id: 'z2', postId: 'p', msats: 5000, comment: '', created_at: 220 });
     s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: new Date(200_000).toISOString() });
-    expect(s.top(10)).toEqual([]); // el post es anterior a la línea
+    expect(s.top(10)).toEqual([]); // the post is before the line
     expect(s.latestZaps(10).map((z) => z.id)).toEqual([]);
     s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: new Date(140_000).toISOString() });
-    expect(s.top(10).map((x) => x.msats)).toEqual([5000]); // z1 es anterior a la línea
+    expect(s.top(10).map((x) => x.msats)).toEqual([5000]); // z1 is before the line
     s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: new Date(50_000).toISOString() });
-    s.addPost({ id: 'viejo', pubkey: 'a', content: 'y', created_at: 60 }); // ahora entra
+    s.addPost({ id: 'viejo', pubkey: 'a', content: 'y', created_at: 60 }); // now it gets in
     expect(s.latestPosts(10).map((p) => p.id)).toEqual(['p', 'viejo']);
   });
   it('llega por el mismo flujo; si falta, la de por defecto', () => {
@@ -64,12 +64,12 @@ describe('followCutoff: vuelve a pedir a los relays si la línea se adelanta', (
     const start = vi.fn((_c?: number) => { const h = { close: vi.fn() }; handles.push(h); return h; });
     const f = followCutoff(start, sec('2026-10-13T00:00:00-03:00'));
     expect(start).toHaveBeenLastCalledWith(sec('2026-10-13T00:00:00-03:00'));
-    f.setCutoff(sec('2026-10-14T00:00:00-03:00')); // más tarde: ya está cargado
+    f.setCutoff(sec('2026-10-14T00:00:00-03:00')); // later: already loaded
     expect(start).toHaveBeenCalledTimes(1);
-    f.setCutoff(sec('2026-10-12T00:00:00-03:00')); // antes: hay que traer lo que falta
+    f.setCutoff(sec('2026-10-12T00:00:00-03:00')); // earlier: fetch what is missing
     expect(start).toHaveBeenCalledTimes(2);
     expect(start).toHaveBeenLastCalledWith(sec('2026-10-12T00:00:00-03:00'));
-    expect(handles[0].close).toHaveBeenCalledWith(true); // conserva las conexiones del pool
+    expect(handles[0].close).toHaveBeenCalledWith(true); // keeps the pool connections
     f.setCutoff(sec('2026-10-12T12:00:00-03:00'));
     expect(start).toHaveBeenCalledTimes(2);
   });

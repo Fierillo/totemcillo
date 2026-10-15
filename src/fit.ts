@@ -1,8 +1,8 @@
-/** Medición inyectable (happy-dom no tiene layout). */
+/** Injectable measurement (happy-dom has no layout). */
 export interface Measurer {
-  /** Entra sin desbordar ni recortar líneas [data-clip]. */
+  /** Fits without overflowing or clipping [data-clip] lines. */
   fits(el: HTMLElement): boolean;
-  /** Sólo la caja (recorte horizontal con … permitido); por defecto = fits. */
+  /** Box only (horizontal clipping with … allowed); defaults to fits. */
   fitsBox?(el: HTMLElement): boolean;
   setSize(el: HTMLElement, px: number): void;
 }
@@ -17,7 +17,7 @@ export const domMeasurer: Measurer = {
 
 export interface FitRange { max: number; min: number }
 
-/** Mayor entero en [lo, hi] que cumple ok (monótono), o null. */
+/** Largest integer in [lo, hi] satisfying ok (monotonic), or null. */
 function largest(lo: number, hi: number, ok: (n: number) => boolean): number | null {
   let best: number | null = null;
   lo = Math.ceil(lo);
@@ -31,7 +31,7 @@ function largest(lo: number, hi: number, ok: (n: number) => boolean): number | n
 
 const originals = new WeakMap<HTMLElement, string>();
 
-/** Achica la fuente hasta que el texto entre; si en el mínimo no entra, trunca por palabras con '…'. */
+/** Shrinks the font until the text fits; if it still doesn't at the minimum, truncates by words with '…'. */
 export function fitText(el: HTMLElement, { max, min }: FitRange, m: Measurer = domMeasurer) {
   if (!originals.has(el)) originals.set(el, el.textContent ?? '');
   const full = originals.get(el)!;
@@ -48,21 +48,21 @@ export function fitText(el: HTMLElement, { max, min }: FitRange, m: Measurer = d
   return { size: Math.ceil(min), truncated: true };
 }
 
-/** Achica la fuente de una lista; si en el mínimo no entra, saca items del final (deja al menos uno). */
+/** Shrinks a list's font; if it still doesn't fit at the minimum, drops items from the end (keeps at least one). */
 export function fitList(ul: HTMLElement, { max, min }: FitRange, m: Measurer = domMeasurer) {
   const size = largest(min, max, (s) => { m.setSize(ul, s); return m.fits(ul); });
   if (size !== null) {
     m.setSize(ul, size);
     return { size, removed: 0 };
   }
-  // Ni en el mínimo entran completos: mínimo (… como último recurso) y sólo se sacan items si no entran en alto.
+  // Not even complete at the minimum: use the minimum (… as a last resort) and only drop items if they don't fit vertically.
   m.setSize(ul, Math.ceil(min));
   const boxOk = (el: HTMLElement) => (m.fitsBox ?? m.fits)(el);
   let removed = 0;
   while (!boxOk(ul) && ul.children.length > 1) { ul.lastElementChild!.remove(); removed++; }
   return { size: Math.ceil(min), removed };
 }
-/** Ajusta los [data-fit="text|list"]: data-max en vh, data-maxw (opcional) en vw, data-min en px. */
+/** Fits [data-fit="text|list"]: data-max in vh, data-maxw (optional) in vw, data-min in px. */
 export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight, vw = window.innerWidth) {
   root.querySelectorAll<HTMLElement>('[data-fit]').forEach((el) => {
     let max = (Number(el.dataset.max) * vh) / 100;

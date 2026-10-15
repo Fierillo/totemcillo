@@ -1,18 +1,18 @@
 import type { Scene } from '../rotator';
 import { esc } from '../util';
 
-/** Corrección de deriva: tolerancia y salto (s), velocidades límite y cada cuánto se mide (ms). */
+/** Drift correction: tolerance and jump (s), rate limits and how often it measures (ms). */
 export const DRIFT = { tolerance: 0.25, seek: 1.5, minRate: 0.95, maxRate: 1.05, everyMs: 1000 };
 
 export const EMPTY_VIDEO = 'Sin video configurado';
 export type VideoMode = 'full' | 'clip';
 export interface VideoOptions {
   errorDelayMs?: number; startTimeoutMs?: number; everyCycles?: number;
-  /** full: entero desde 0; clip: `clipSeconds` desde un punto al azar. */
+  /** full: whole from 0; clip: `clipSeconds` from a random point. */
   mode?: VideoMode; clipSeconds?: number; random?: () => number;
 }
 
-/** Escena de video: pantalla completa y mudo, una vez desde 0; avisa `done` al terminar (o si falla). */
+/** Video scene: fullscreen and muted, once from 0; signals `done` when it ends (or fails). */
 export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 10000, everyCycles = 2, mode = 'full', clipSeconds = 21, random = Math.random }: VideoOptions = {}): Scene {
   const scene: Scene = {
     name: 'video',
@@ -35,7 +35,7 @@ export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 
       const v = root.querySelector('video')!;
       v.muted = true;
       v.loop = false;
-      try { v.currentTime = 0; } catch { /* sin metadata todavía */ }
+      try { v.currentTime = 0; } catch { /* no metadata yet */ }
       const startTimer = setTimeout(finish, startTimeoutMs);
       timers.push(startTimer);
       let end: number | null = null;
@@ -53,14 +53,14 @@ export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 
           if (!resumed) ctx.onClipStart?.(start);
           if (off >= clip) return finish();
           end = start + clip;
-          try { v.currentTime = start + off; } catch { /* ignorar */ }
+          try { v.currentTime = start + off; } catch { /* ignore */ }
           later((clip - off) * 1000);
         } else if (off > 0) {
           if (off >= d) return finish();
-          try { v.currentTime = off; } catch { /* ignorar */ }
+          try { v.currentTime = off; } catch { /* ignore */ }
         }
       };
-      // Deriva vs. el reloj del servidor (sin red): ajuste suave de velocidad o salto si es grande.
+      // Drift vs. the server clock (no network): gentle rate adjustment, or a jump if it's large.
       let sync: ReturnType<typeof setInterval> | null = null;
       if (ctx.expectedSec) {
         sync = setInterval(() => {
@@ -68,7 +68,7 @@ export function videoScene(src: string, { errorDelayMs = 2000, startTimeoutMs = 
           const exp = ctx.expectedSec!();
           if (!metaDone || finished || !Number.isFinite(d) || exp < 0 || exp >= d) return;
           const drift = v.currentTime - exp;
-          if (Math.abs(drift) > DRIFT.seek) { try { v.currentTime = exp; } catch { /* ignorar */ } v.playbackRate = 1; }
+          if (Math.abs(drift) > DRIFT.seek) { try { v.currentTime = exp; } catch { /* ignore */ } v.playbackRate = 1; }
           else if (Math.abs(drift) > DRIFT.tolerance) v.playbackRate = Math.min(DRIFT.maxRate, Math.max(DRIFT.minRate, 1 - drift * 0.1));
           else v.playbackRate = 1;
         }, DRIFT.everyMs);

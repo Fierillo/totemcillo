@@ -6,7 +6,7 @@ import { positionAt, type ScheduleInputs } from '../shared/schedule';
 
 export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[]; zapProviders?: string[]; startLine?: string }
 export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
-  /** Listas de moderación que vienen en /api/kiosk. */
+  /** Moderation lists that come in /api/kiosk. */
   onModeration?: (m: Moderation) => void }
 
 const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
@@ -15,13 +15,13 @@ const valid = (k: any): k is KioskInputs =>
   num(k.videoEveryCycles) && k.videoEveryCycles >= 1 && num(k.videoClipSeconds) && num(k.videoDurationSec) && (k.videoMode === 'full' || k.videoMode === 'clip');
 
 /**
- * El tótem sigue la agenda del servidor: la pide una vez (/api/kiosk), calcula las escenas localmente
- * (misma función que el servidor, con corrección de reloj) y cada `pollMs` mira sólo /api/version.
+ * The totem follows the server schedule: it fetches it once (/api/kiosk), computes scenes locally
+ * (same function as the server, with clock correction) and every `pollMs` only checks /api/version.
  */
 export class Follower {
   private inputs: KioskInputs | null = null;
   private offset = 0;
-  /** Últimas muestras de reloj [rtt, offset]; se usa la de menor RTT. */
+  /** Latest clock samples [rtt, offset]; the one with the lowest RTT is used. */
   private samples: [number, number][] = [];
   private key = '';
   private cleanup: (() => void) | void = undefined;
@@ -42,9 +42,9 @@ export class Follower {
   }
 
   /**
-   * Trae las entradas de la agenda y re-sincroniza el reloj.
-   * /api/version y /api/kiosk pueden venir del CDN (hasta ~10 s viejos): por eso kiosk se pide con ?v=<version>
-   * (otra clave de caché por versión) y la hora sale de /api/time, que nunca se cachea (precisión ~RTT/2).
+   * Fetches the schedule inputs and re-syncs the clock.
+   * /api/version and /api/kiosk may come from the CDN (up to ~10 s old): that's why kiosk is requested with ?v=<version>
+   * (a separate cache key per version) and the time comes from /api/time, which is never cached (precision ~RTT/2).
    */
   async load(knownVersion?: number, sync = true): Promise<void> {
     try {
@@ -57,14 +57,14 @@ export class Follower {
       if (typeof k.announcement === 'string') this.o.announcement?.set(k.announcement);
       this.o.onModeration?.(moderationOf(k));
       this.tick();
-    } catch { /* sin red: se reintenta en el próximo chequeo */ }
+    } catch { /* no network: retried on the next check */ }
   }
 
   get clockOffset() { return this.offset; }
 
   /**
-   * Una muestra de /api/time (sin caché ni Redis). offset = hora servidor - punto medio local del pedido.
-   * Se guardan las últimas 5 muestras y se usa la de menor RTT; muestras con RTT > 1 s se descartan (salvo la primera).
+   * One /api/time sample (no cache, no Redis). offset = server time - local midpoint of the request.
+   * Keeps the last 5 samples and uses the lowest RTT; samples with RTT > 1 s are discarded (except the first).
    */
   private async syncTime(): Promise<boolean> {
     try {
@@ -80,14 +80,14 @@ export class Follower {
     } catch { return false; }
   }
 
-  /** Chequeo periódico: re-sync de reloj y, si cambió la versión (o nunca cargó), recarga. */
+  /** Periodic check: clock re-sync and, if the version changed (or never loaded), reload. */
   async check(): Promise<void> {
     try {
       if (!this.inputs) return this.load();
       await this.syncTime();
       const v = await this.getJson('/api/version');
       if (num(v?.version) && v.version !== this.inputs.version) await this.load(v.version, false);
-    } catch { /* ignorar */ }
+    } catch { /* ignore */ }
   }
 
   private now() { return this.clock() + this.offset; }
@@ -105,7 +105,7 @@ export class Follower {
     this.root.className = `scene scene-${scene.name}`;
     this.root.innerHTML = '';
     const elapsedMs = Math.max(0, this.now() - p.sceneStartedAt);
-    // La agenda ya fijó tramo y largo: el video sólo busca la posición (offset + transcurrido).
+    // The schedule already fixed segment and length: the video only seeks to the position (offset + elapsed).
     if (scene.videoMode) scene.videoMode = 'full';
     const posMs = () => (p.videoOffset ?? 0) * 1000 + this.now() - p.sceneStartedAt;
     this.cleanup = scene.render(this.root, () => {}, { elapsedMs: (p.videoOffset ?? 0) * 1000 + elapsedMs, expectedSec: () => posMs() / 1000 });

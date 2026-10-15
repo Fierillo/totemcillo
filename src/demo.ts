@@ -3,7 +3,7 @@ import { recentPosts } from './scenes/post';
 
 const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join('');
 
-/** Sólo dev: window.__totemDemo.post(texto?) / .zap(postId?, sats?) para probar las animaciones en vivo. */
+/** Dev only: window.__totemDemo.post(text?) / .zap(postId?, sats?) to test the live animations. */
 export function installDemo(w: any, store: ZapStore, nowSec: () => number = () => Math.floor(Date.now() / 1000)) {
   w.__totemDemo = {
     post(content = `Post de prueba #lacrypta ${new Date().toLocaleTimeString('es-AR')}`) {

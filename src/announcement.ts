@@ -2,7 +2,7 @@ import { graphemes } from './text';
 
 export const MAX_ANNOUNCEMENT = 280;
 
-/** Texto del anuncio (lo cambia el admin en vivo). */
+/** Announcement text (the admin changes it live). */
 export class Announcement {
   private fns = new Set<() => void>();
   text = '';

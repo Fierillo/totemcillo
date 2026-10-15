@@ -23,7 +23,7 @@ describe('positionAt (determinístico)', () => {
     expect(positionAt(s, 106_500)).toEqual({ scene: 'video', index: 5, cycle: 0, sceneStartedAt: 106_000, sceneEndsAt: 116_000, videoOffset: 0 });
     expect(positionAt(s, 116_000)).toMatchObject({ scene: 'post', cycle: 1, sceneStartedAt: 116_000 });
     expect(positionAt(s, 121_000)).toMatchObject({ scene: 'anuncio', cycle: 1 });
-    expect(positionAt(s, 122_000)).toMatchObject({ scene: 'post', cycle: 2, sceneStartedAt: 122_000 }); // sin video en vuelta 1
+    expect(positionAt(s, 122_000)).toMatchObject({ scene: 'post', cycle: 2, sceneStartedAt: 122_000 }); // no video in cycle 1
     expect(positionAt(s, 128_000)).toMatchObject({ scene: 'video', cycle: 2 });
   });
   it('mismo resultado para cualquier llamada (sin estado) y funciona antes de epoch', () => {
@@ -43,7 +43,7 @@ describe('positionAt (determinístico)', () => {
     expect(p.videoOffset).toBeLessThanOrEqual(6);
     expect(positionAt(s, 107_000).videoOffset).toBe(p.videoOffset);
     const offs = new Set(Array.from({ length: 10 }, (_, k) => positionAt(s, 106_000 + k * 2 * 10_000 + 10).videoOffset));
-    expect(offs.size).toBeGreaterThan(1); // varía por vuelta
+    expect(offs.size).toBeGreaterThan(1); // varies per cycle
   });
   it('clip más largo que el video: video entero', () => {
     expect(positionAt(S({ videoMode: 'clip', videoClipSeconds: 30 }), 106_000)).toMatchObject({ sceneEndsAt: 116_000, videoOffset: 0 });
@@ -57,7 +57,7 @@ describe('flechas: shiftSchedule', () => {
     expect(positionAt(n, 100_500)).toMatchObject({ scene: 'latestZaps', sceneStartedAt: 100_500, sceneEndsAt: 102_500 });
     const p = shiftSchedule(n, 101_000, 'prev');
     expect(positionAt(p, 101_000)).toMatchObject({ scene: 'post', sceneStartedAt: 101_000 });
-    const pp = shiftSchedule(s, 100_200, 'prev'); // antes de post: anuncio de la vuelta anterior
+    const pp = shiftSchedule(s, 100_200, 'prev'); // before post: announcement from the previous cycle
     expect(positionAt(pp, 100_200)).toMatchObject({ scene: 'anuncio', sceneStartedAt: 100_200 });
   });
 });
@@ -65,7 +65,7 @@ describe('flechas: shiftSchedule', () => {
 describe('reanchor al cambiar duraciones', () => {
   it('la escena actual conserva su inicio', () => {
     const s = S();
-    const cur = positionAt(s, 101_500); // latestZaps desde 101_000
+    const cur = positionAt(s, 101_500); // latestZaps since 101_000
     const next = reanchor(s, { ...s, sceneDurations: { ...D, post: 5000 } }, 101_500);
     expect(positionAt(next, 101_500)).toMatchObject({ scene: 'latestZaps', sceneStartedAt: cur.sceneStartedAt, sceneEndsAt: 103_000 });
   });
@@ -153,11 +153,11 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(T0); root = document.cre
 afterEach(() => vi.useRealTimers());
 
 describe('Follower: agenda local, el servidor manda', () => {
-  // base 6000 ms + video 10 s en la vuelta 0 (ver D)
+  // base 6000 ms + 10 s video in cycle 0 (see D)
   const inputs = (o: object = {}) => ({ epoch: 0, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: 'hola', version: 1, serverNow: 500, ...o });
   const names = ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio'];
   const scenes = () => [...names.map(mk), videoScene('/v.webm')];
-  // /api/kiosk (cacheable) no trae hora; la hora sale de /api/time (sin caché). serverNow del fixture = hora del servidor.
+  // /api/kiosk (cacheable) carries no time; the time comes from /api/time (no cache). Fixture serverNow = server time.
   const api = (k: any, version?: { version: number }) => {
     const st = { k, version: version ?? { version: k.version } };
     const f = vi.fn(async (url: string) => ({ ok: true, json: async () => {
@@ -194,15 +194,15 @@ describe('Follower: agenda local, el servidor manda', () => {
     const fol = new Follower(root, scenes(), { fetchFn: f as any, clock: () => Date.now() - T0 + 500, pollMs: 30_000 });
     await fol.start();
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version']); // re-sync de reloj en cada chequeo
+    expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version']); // clock re-sync on every check
     st.version = { version: 2 };
-    st.k = inputs({ version: 2, epoch: 30_500 + 1000 - 6000, serverNow: 60_500 }); // admin movió la agenda
+    st.k = inputs({ version: 2, epoch: 30_500 + 1000 - 6000, serverNow: 60_500 }); // admin moved the schedule
     await vi.advanceTimersByTimeAsync(30_000);
     expect(urls(f)).toEqual([...LOAD(1), '/api/time', '/api/version', '/api/time', '/api/version', '/api/kiosk?v=2']);
     expect(root.className).toBe(`scene scene-${positionAt(st.k as any, 60_500).scene}`);
   });
   it('caché viejo de /api/kiosk (versión menor que la anunciada) no rompe: se vuelve a pedir en el próximo chequeo', async () => {
-    const { f, st } = api(inputs(), { version: 2 }); // CDN devolvió kiosk v1 aunque version dice 2
+    const { f, st } = api(inputs(), { version: 2 }); // CDN returned kiosk v1 even though version says 2
     await new Follower(root, scenes(), { fetchFn: f as any, clock: () => Date.now() - T0 + 500, pollMs: 30_000 }).start();
     st.k = inputs({ version: 2 });
     await vi.advanceTimersByTimeAsync(30_000);
@@ -240,10 +240,10 @@ describe('Follower: agenda local, el servidor manda', () => {
 describe('re-sync de reloj y corrección de deriva del video', () => {
   it('cada chequeo re-sincroniza con /api/time quedándose con la muestra de menor RTT e ignorando outliers', async () => {
     let t = 0;
-    const plan = [ // [rtt ms, hora servidor al responder]
-      [400, 1_000_000], // load: offset ≈ 1_000_000 - 200 - 0 → ruidoso
-      [20, 1_100_000], // muestra buena
-      [3000, 9_999_999], // outlier: RTT enorme
+    const plan = [ // [rtt ms, server time when responding]
+      [400, 1_000_000], // load: offset ≈ 1_000_000 - 200 - 0 → noisy
+      [20, 1_100_000], // good sample
+      [3000, 9_999_999], // outlier: huge RTT
     ];
     let i = 0;
     const f = vi.fn(async (url: string) => {
@@ -254,10 +254,10 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
     await fol.start();
     t = 50_000;
     await vi.advanceTimersByTimeAsync(21_000);
-    const good = 1_100_000 - 50_010; // hora servidor - punto medio local (50_000..50_020)
+    const good = 1_100_000 - 50_010; // server time - local midpoint (50_000..50_020)
     expect(fol.clockOffset).toBe(good);
     await vi.advanceTimersByTimeAsync(21_000);
-    expect(fol.clockOffset).toBe(good); // el outlier no la pisa
+    expect(fol.clockOffset).toBe(good); // the outlier doesn't override it
     expect(f.mock.calls.filter((c: any[]) => c[0] === '/api/time')).toHaveLength(3);
   });
   const meta = (v: HTMLVideoElement, d = 88) => { Object.defineProperty(v, 'duration', { value: d, configurable: true }); v.dispatchEvent(new Event('loadedmetadata')); };
@@ -270,11 +270,11 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
   };
   it('deriva chica (>0,25 s): ajusta playbackRate suave (0,95–1,05); deriva mínima: 1', () => {
     const { v } = run(10);
-    v.currentTime = 9.5; // atrasado
+    v.currentTime = 9.5; // behind
     vi.advanceTimersByTime(1000);
     expect(v.playbackRate).toBeGreaterThan(1);
     expect(v.playbackRate).toBeLessThanOrEqual(1.05);
-    v.currentTime = 10.5; // adelantado
+    v.currentTime = 10.5; // ahead
     vi.advanceTimersByTime(1000);
     expect(v.playbackRate).toBeLessThan(1);
     expect(v.playbackRate).toBeGreaterThanOrEqual(0.95);
@@ -305,7 +305,7 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
     const v = root.querySelector('video')!;
     meta(v, 10);
     expect(v.currentTime).toBe(1);
-    t = 9000; v.currentTime = 0.5; // esperado 3 s → salto
+    t = 9000; v.currentTime = 0.5; // expected 3 s → jump
     vi.advanceTimersByTime(1000);
     expect(v.currentTime).toBe(3);
   });

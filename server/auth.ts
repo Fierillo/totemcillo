@@ -2,7 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 const sha = (s: string) => createHash('sha256').update(s, 'utf8').digest();
 
-/** Compara en tiempo constante (hash de ambos para igualar largos). Clave configurada vacía nunca matchea. */
+/** Constant-time compare (hashes both to equalize lengths). An empty configured password never matches. */
 export function passwordMatches(given: unknown, expected: string): boolean {
   if (typeof given !== 'string' || !expected) return false;
   return timingSafeEqual(sha(given), sha(expected));
@@ -10,7 +10,7 @@ export function passwordMatches(given: unknown, expected: string): boolean {
 
 const mac = (secret: string, payload: string) => createHmac('sha256', secret).update(payload).digest('base64url');
 
-/** Token `payload.firma` (payload = {exp} en base64url). */
+/** Token `payload.signature` (payload = {exp} in base64url). */
 export function signSession(secret: string, nowMs: number, ttlSec: number): string {
   const payload = Buffer.from(JSON.stringify({ exp: nowMs + ttlSec * 1000 })).toString('base64url');
   return `${payload}.${mac(secret, payload)}`;
