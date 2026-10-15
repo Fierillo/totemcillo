@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderMobile, isMobileViewport } from '../src/mobile';
 import { ZapStore } from '../src/nostr/store';
 import { Announcement } from '../src/announcement';
@@ -17,6 +17,19 @@ const store = () => {
 };
 
 describe('vista móvil (misma ruta, layout scrolleable)', () => {
+  it('agrupa los redibujos de una ráfaga conservando todos los posts visibles', () => {
+    vi.useFakeTimers();
+    const root = document.createElement('div'), s = new ZapStore();
+    const writes = vi.spyOn(root, 'innerHTML', 'set');
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''));
+    try {
+      for (let i = 0; i < 30; i++) s.addPost({ id: hex(i), pubkey: 'a'.repeat(64), content: `post ${i}`, created_at: i });
+      expect(writes).toHaveBeenCalledTimes(2);
+      vi.advanceTimersByTime(100);
+      expect(writes).toHaveBeenCalledTimes(3);
+      expect(root.querySelectorAll('.m-post')).toHaveLength(30);
+    } finally { off(); writes.mockRestore(); vi.useRealTimers(); }
+  });
   it('detecta viewport angosto', () => {
     expect(isMobileViewport({ matchMedia: (q: string) => ({ matches: q.includes('max-width: 700px') }) } as any)).toBe(true);
     expect(isMobileViewport({ matchMedia: () => ({ matches: false }) } as any)).toBe(false);
@@ -99,6 +112,7 @@ describe('animaciones móviles', () => {
     return { s, root, off };
   };
   it('anima posts recientes una vez, nunca historial', () => {
+    vi.useFakeTimers();
     const { s, root, off } = setup();
     try {
       expect(root.querySelector('.is-new')).toBeNull();
@@ -106,8 +120,9 @@ describe('animaciones móviles', () => {
       expect(root.querySelector(`.m-post[data-id="${hex(3)}"]`)!.classList.contains('is-new')).toBe(true);
       expect(root.querySelectorAll('.is-new')).toHaveLength(1);
       s.addPost(post(4));
+      vi.advanceTimersByTime(100);
       expect(root.querySelector('.is-new')).toBeNull();
-    } finally { off(); }
+    } finally { off(); vi.useRealTimers(); }
   });
   it('marca el post zapeado y actualiza el total con un rayo', () => {
     const { s, root, off } = setup();

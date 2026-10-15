@@ -2,13 +2,22 @@ import type { LiveEvent, ZapStore } from '../nostr/store';
 import { feedFor } from '../livefeed';
 import { profiles } from '../nostr/profiles';
 
-/** Draws now, on every store change and on every resize; returns the cleanup function. */
+/** Draws now; coalesces store/profile/resize bursts to at most ten updates per second. */
 export function live(store: ZapStore, draw: () => void): () => void {
   draw();
-  const off = store.onChange(draw);
-  const offP = profiles.onChange(draw); // alias/avatar when profiles arrive
-  window.addEventListener('resize', draw);
-  return () => { off(); offP(); window.removeEventListener('resize', draw); };
+  let last = -Infinity;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const redraw = () => { timer = undefined; last = Date.now(); draw(); };
+  const schedule = () => {
+    if (timer !== undefined) return;
+    const wait = 100 - (Date.now() - last);
+    if (wait <= 0) redraw();
+    else timer = setTimeout(redraw, wait);
+  };
+  const off = store.onChange(schedule);
+  const offP = profiles.onChange(schedule);
+  window.addEventListener('resize', schedule);
+  return () => { off(); offP(); window.removeEventListener('resize', schedule); clearTimeout(timer); };
 }
 
 export const BOLT = '<svg class="bolt" viewBox="0 0 24 48" aria-hidden="true"><path d="M15 0 3 27h9L8 48l14-30h-9l5-18z"/></svg>';

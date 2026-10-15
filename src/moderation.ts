@@ -1,6 +1,7 @@
 import type { ZapStore } from './nostr/store';
 import type { ModAction } from '../shared/settings';
-import { authorHtml, profiles } from './nostr/profiles';
+import { authorHtml } from './nostr/profiles';
+import { live } from './scenes/live';
 import { recentPosts } from './scenes/post';
 import { ago, esc, sats } from './util';
 
@@ -44,7 +45,6 @@ export function renderModeration(root: HTMLElement, o: ModerationOptions): { off
     if (!(await o.act(...call))) btn.disabled = false;
   };
   root.addEventListener('click', onClick);
-  draw();
-  const offS = o.store.onChange(draw), offP = profiles.onChange(draw);
-  return { off() { offS(); offP(); root.removeEventListener('click', onClick); } };
+  const off = live(o.store, draw);
+  return { off() { off(); root.removeEventListener('click', onClick); } };
 }

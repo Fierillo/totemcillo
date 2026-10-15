@@ -47,6 +47,14 @@ Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
 
 `pnpm test:e2e` checks rendered layout, header, mobile/reduced-motion behavior, video and admin flows in Chrome. Screenshots go to `shots/` (override with `SHOTS`; set `CHROME` for a different executable).
 
+## Nostr overload protection
+
+Relay events are checked locally for the requested hashtags/post IDs, the start line and a maximum future clock skew of two minutes. Oversized events are rejected before application-level signature validation. Each feed admits at most 100 notes and 100 receipts per second; duplicate retained events do not spend that budget.
+
+There is one active zap subscription for the retained posts (500 by default), with four concurrent receipt validations and at most 128 queued receipts. LNURL HTTP requests time out after five seconds, including body reading. Under sustained overload, excess events are dropped rather than queued indefinitely; this feed is best-effort, not a lossless payment ledger. Scene, mobile and moderation redraws are coalesced to at most ten updates per second after the initial render.
+
+These limits bound application work, not raw WebSocket traffic or the relay library's parsing/verification. They do not prevent valid spam/Sybil posts; moderation is still needed.
+
 ## How sync works
 
 Settings and moderation saves use an atomic Redis version check. Concurrent changes are reapplied to the latest settings instead of overwriting each other. Retries are bounded; persistent contention returns 503 without saving a stale copy. Existing stored settings need no migration.

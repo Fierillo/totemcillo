@@ -17,6 +17,24 @@ const deps = (): Deps => ({ storage: memoryStorage(), env: { ADMIN_PASSWORD: PAS
 const req = (method: string, path: string, body?: unknown, headers: Record<string, string> = {}): ApiRequest =>
   ({ method, path, body, ip: '1.1.1.1', headers: { 'content-type': 'application/json', ...headers } });
 const login = async (d: Deps) => String((await handle(req('POST', '/api/login', { password: PASS }), d)).headers['set-cookie']).split(';')[0];
+
+it('el panel de moderación agrupa ráfagas sin perder posts ni dejar redibujos después de cerrar', () => {
+  vi.useFakeTimers();
+  const root = document.createElement('div'), store = new ZapStore();
+  const writes = vi.spyOn(root, 'innerHTML', 'set');
+  const panel = renderModeration(root, { store, act: async () => true });
+  try {
+    for (let i = 0; i < 30; i++) store.addPost({ id: i.toString(16).padStart(64, '0'), pubkey: H('a'), content: `post ${i}`, created_at: i });
+    expect(writes).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(100);
+    expect(writes).toHaveBeenCalledTimes(3);
+    expect(root.querySelectorAll('.mod-post')).toHaveLength(30);
+    store.addPost({ id: H('f'), pubkey: H('a'), content: 'pendiente', created_at: 50 });
+    panel.off();
+    vi.advanceTimersByTime(100);
+    expect(writes).toHaveBeenCalledTimes(3);
+  } finally { panel.off(); writes.mockRestore(); vi.useRealTimers(); }
+});
 const mod = async (d: Deps, cookie: string, body: unknown) => handle(req('POST', '/api/moderation', body, { cookie }), d);
 
 describe('POST /api/moderation (admin)', () => {

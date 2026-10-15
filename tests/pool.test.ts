@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPool, followCutoff, RELAY_CONNECT_TIMEOUT_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
+import { createPool, followCutoff, NOSTR_LIMITS, RELAY_CONNECT_TIMEOUT_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
 import { ZapStore } from '../src/nostr/store';
 import { defaultConfig } from '../src/config';
 import { keys, makeZap, sign } from './helpers';
@@ -54,6 +54,152 @@ describe('followCutoff', () => {
 });
 
 describe('startNostr', () => {
+  it('descarta el exceso de receipts sin superar el límite de cola ni el de concurrencia', async () => {
+    const p = mockPool(), store = new ZapStore();
+    store.addPost({ id: 'p1', pubkey: 'pk', content: 'x', created_at: 1 });
+    const z = makeZap({ postId: 'p1' });
+    const finish: ((pk: string | null) => void)[] = [];
+    const resolver = { resolve: vi.fn(() => new Promise<string | null>((done) => finish.push(done))) };
+    startNostr(cfg, store, p, 1500, resolver);
+    vi.advanceTimersByTime(1500);
+    const capacity = NOSTR_LIMITS.concurrentZaps + NOSTR_LIMITS.queuedZaps;
+    for (let i = 0; i < capacity + 10; i++) {
+      if (i % 50 === 0) vi.advanceTimersByTime(1000);
+      p.subs[1].h.onevent(sign(z.server.sk, { ...z.receipt, created_at: 100 + i }));
+    }
+    expect(resolver.resolve).toHaveBeenCalledTimes(NOSTR_LIMITS.concurrentZaps);
+    for (let i = 0; i < finish.length; i += NOSTR_LIMITS.concurrentZaps) {
+      finish.slice(i, i + NOSTR_LIMITS.concurrentZaps).forEach((done) => done(z.server.pk));
+      await flush();
+    }
+    expect(resolver.resolve).toHaveBeenCalledTimes(capacity);
+    expect(store.zaps.size).toBe(capacity);
+  });
+  it('no suscribe zaps de posts que el store descarta', () => {
+    const p = mockPool(), store = new ZapStore(undefined, { cutoff: 100 });
+    startNostr(cfg, store, p, 1500, resolverFor(null));
+    p.subs[0].h.onevent(note('anterior al corte del store'));
+    vi.advanceTimersByTime(1500);
+    expect(store.posts.size).toBe(0);
+    expect(p.subs).toHaveLength(1);
+  });
+  it('al cerrar ignora callbacks tardíos y resultados LNURL pendientes', async () => {
+    const p = mockPool(), store = new ZapStore();
+    store.addPost({ id: 'p1', pubkey: 'pk', content: 'x', created_at: 1 });
+    const z = makeZap({ postId: 'p1' });
+    let finish!: (pk: string | null) => void;
+    const resolver = { resolve: vi.fn(() => new Promise<string | null>((done) => { finish = done; })) };
+    const h = startNostr(cfg, store, p, 1500, resolver);
+    vi.advanceTimersByTime(1500);
+    p.subs[1].h.onevent(z.receipt);
+    h.close(true);
+    p.subs[0].h.onevent(note('tardío'));
+    finish(z.server.pk);
+    await flush();
+    expect([...store.posts.keys()]).toEqual(['p1']);
+    expect(store.zaps.size).toBe(0);
+    vi.advanceTimersByTime(1500);
+    expect(p.subs).toHaveLength(2);
+  });
+  it('deduplica receipts y procesa una ráfaga con cuatro consultas LNURL simultáneas', async () => {
+    const p = mockPool(), store = new ZapStore();
+    store.addPost({ id: 'p1', pubkey: 'pk', content: 'x', created_at: 1 });
+    const z = makeZap({ postId: 'p1' });
+    const finish: ((pk: string | null) => void)[] = [];
+    const resolver = { resolve: vi.fn(() => new Promise<string | null>((done) => finish.push(done))) };
+    startNostr(cfg, store, p, 1500, resolver);
+    vi.advanceTimersByTime(1500);
+    const events = Array.from({ length: 10 }, (_, i) => sign(z.server.sk, { ...z.receipt, created_at: 100 + i }));
+    for (let i = 0; i < 10; i++) p.subs[1].h.onevent(events[0]);
+    for (const event of events.slice(1)) p.subs[1].h.onevent(event);
+    expect(resolver.resolve).toHaveBeenCalledTimes(4);
+    finish.forEach((done) => done(z.server.pk));
+    await flush();
+    expect(store.zaps.size).toBe(4);
+    expect(resolver.resolve).toHaveBeenCalledTimes(8);
+    finish.slice(4).forEach((done) => done(z.server.pk));
+    await flush();
+    expect(store.zaps.size).toBe(8);
+    expect(resolver.resolve).toHaveBeenCalledTimes(10);
+    finish.slice(8).forEach((done) => done(z.server.pk));
+    await flush();
+    expect(store.zaps.size).toBe(10);
+    p.subs[1].h.onevent(events[0]); // already stored: no more work
+    expect(resolver.resolve).toHaveBeenCalledTimes(10);
+  });
+  it('no resuelve LNURL de receipts ajenos al filtro, futuros o sobredimensionados', async () => {
+    vi.setSystemTime(1_000_000);
+    const p = mockPool(), store = new ZapStore();
+    store.addPost({ id: 'p1', pubkey: 'pk', content: 'x', created_at: 1 });
+    const valid = makeZap({ postId: 'p1' }), foreign = makeZap({ postId: 'otro' });
+    const resolver = resolverFor(valid.server.pk);
+    startNostr(cfg, store, p, 1500, resolver);
+    vi.advanceTimersByTime(1500);
+    const resign = (fields: object) => sign(valid.server.sk, { ...valid.receipt, ...fields });
+    for (const event of [foreign.receipt, resign({ created_at: 9999999999 }), resign({ content: 'x'.repeat(20_000) })]) p.subs[1].h.onevent(event);
+    await flush();
+    expect(resolver.resolve).not.toHaveBeenCalled();
+    expect(store.zaps.size).toBe(0);
+    p.subs[1].h.onevent(valid.receipt);
+    await flush();
+    expect([...store.zaps.keys()]).toEqual([valid.receipt.id]);
+  });
+  it('acota la admisión durante una ráfaga y vuelve a admitir al segundo siguiente', () => {
+    const p = mockPool(), store = new ZapStore();
+    startNostr(cfg, store, p, 1500, resolverFor(null));
+    for (let i = 0; i < 110; i++) p.subs[0].h.onevent(note(`ráfaga ${i}`));
+    expect(store.posts.size).toBe(100);
+    vi.advanceTimersByTime(1000);
+    const next = note('después de la ráfaga');
+    p.subs[0].h.onevent(next);
+    expect(store.posts.has(next.id)).toBe(true);
+    expect(store.posts.size).toBe(101);
+  });
+  it('rechaza eventos sobredimensionados antes de guardarlos o suscribirse a sus zaps', () => {
+    const p = mockPool(), store = new ZapStore();
+    startNostr(cfg, store, p, 1500, resolverFor(null));
+    for (const fields of [
+      { content: 'x'.repeat(20_000), tags: [['t', 'lacrypta']] },
+      { content: 'tags', tags: [['t', 'lacrypta'], ...Array.from({ length: 128 }, () => ['x', 'v'])] },
+      { content: 'tag largo', tags: [['t', 'lacrypta'], ['x', 'x'.repeat(3000)]] },
+    ]) p.subs[0].h.onevent(sign(author.sk, { kind: 1, created_at: 5, ...fields }));
+    expect(store.posts.size).toBe(0);
+    vi.advanceTimersByTime(1500);
+    expect(p.subs).toHaveLength(1);
+  });
+  it('mantiene una sola suscripción de zaps limitada a los posts retenidos', () => {
+    const p = mockPool(), store = new ZapStore(undefined, { maxPosts: 2 });
+    startNostr(cfg, store, p, 1500, resolverFor(null));
+    for (let i = 0; i < 5; i++) {
+      p.subs[0].h.onevent(note(`post ${i}`));
+      vi.advanceTimersByTime(1500);
+    }
+    const active = p.subs.filter((s) => s.filter.kinds[0] === 9735 && !s.close.mock.calls.length);
+    expect(active).toHaveLength(1);
+    expect(new Set(active[0].filter['#e'])).toEqual(new Set(store.posts.keys()));
+    expect(active[0].filter['#e']).toHaveLength(2);
+  });
+  it('rechaza fechas futuras y anteriores al corte, pero acepta historial y un pequeño desfase de reloj', () => {
+    vi.setSystemTime(1_000_000);
+    const p = mockPool(), store = new ZapStore();
+    startNostr(cfg, store, p, 1500, resolverFor(null), 500);
+    const event = (created_at: number) => sign(author.sk, { kind: 1, created_at, content: 'fecha', tags: [['t', 'lacrypta']] });
+    for (const time of [499, 1121, 9_999_999_999]) p.subs[0].h.onevent(event(time));
+    expect(store.posts.size).toBe(0);
+    for (const time of [500, 1000, 1120]) p.subs[0].h.onevent(event(time));
+    expect([...store.posts.values()].map((p) => p.created_at)).toEqual([500, 1000, 1120]);
+  });
+  it('rechaza posts firmados fuera de los hashtags pedidos aunque el relay los entregue', () => {
+    const p = mockPool(), store = new ZapStore();
+    startNostr(cfg, store, p, 1500, resolverFor(null));
+    for (const tags of [[], [['t', 'otro']], [['t', 'lacrypta-falso']]]) {
+      p.subs[0].h.onevent(sign(author.sk, { kind: 1, created_at: 5, content: 'ajeno', tags }));
+    }
+    expect(store.posts.size).toBe(0);
+    const valid = note('válido');
+    p.subs[0].h.onevent(valid);
+    expect([...store.posts.keys()]).toEqual([valid.id]);
+  });
   it('suscribe notas en los relays y las agrega al store', () => {
     const p = mockPool(), store = new ZapStore();
     startNostr(cfg, store, p, 1500, resolverFor(null));
@@ -77,7 +223,8 @@ describe('startNostr', () => {
     const n3 = note('3');
     p.subs[0].h.onevent(n3);
     vi.advanceTimersByTime(1500);
-    expect(p.subs[2].filter['#e']).toEqual([n3.id]);
+    expect(p.subs[1].close).toHaveBeenCalledOnce();
+    expect(p.subs[2].filter['#e']).toEqual(['old', n1.id, n2.id, n3.id]);
   });
   it('cuenta sólo zaps válidos firmados por el nostrPubkey del LNURL', async () => {
     const p = mockPool(), store = new ZapStore();

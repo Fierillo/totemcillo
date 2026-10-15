@@ -66,6 +66,7 @@ describe('animación de post nuevo en la lista', () => {
     postScene(s, { publicUrl: 'https://x/' }).render(root);
     s.addPost(post(2, NOW - 2));
     s.addPost(post(3)); // redraw from another change (history)
+    vi.advanceTimersByTime(100);
     expect(root.querySelector('.is-new')).toBeNull();
   });
   it('si la escena no está en pantalla, queda pendiente y se anima al entrar (una sola vez)', () => {
@@ -166,6 +167,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     s.addZap(zap(1, 1, NOW - 1));
     expect(r.querySelector('.is-zapped')).not.toBeNull();
     s.addPost(post(9, NOW - 1));
+    vi.advanceTimersByTime(100);
     expect(r.querySelector('.is-new')).not.toBeNull();
     expect(ind).toEqual([]);
     expect(feedFor(s).pending).toHaveLength(0);
@@ -399,6 +401,18 @@ describe('composición y QR', () => {
 });
 
 describe('ajuste y ciclo de vida', () => {
+  it('agrupa ráfagas de cambios sin perder el último estado y cancela el redibujo pendiente al salir', () => {
+    const s = new ZapStore(), sizes: number[] = [];
+    const off = live(s, () => sizes.push(s.posts.size));
+    for (let i = 0; i < 30; i++) s.addPost(post(i, 1));
+    expect(sizes).toEqual([0, 1]);
+    vi.advanceTimersByTime(100);
+    expect(sizes).toEqual([0, 1, 30]);
+    s.addPost(post(31, 1));
+    off();
+    vi.advanceTimersByTime(100);
+    expect(sizes).toEqual([0, 1, 30]);
+  });
   it('ajusta las listas al renderizar y después de un cambio, marcando los mensajes recortables', () => {
     const s = new ZapStore(); s.addPost(post(1, 1)); s.addZap(zap(1, 1, 2));
     for (const [scene, list, message] of [[postScene(s), '.post-list', '.post-row .excerpt'], [latestZapsScene(s), '.zap-list', '.zap-list .who'], [top10HistoricoScene(s), '.top-list', '.top-list .excerpt']] as const) {
@@ -415,7 +429,9 @@ describe('ajuste y ciclo de vida', () => {
     const s = new ZapStore(), draw = vi.fn(), off = live(s, draw);
     expect(draw).toHaveBeenCalledTimes(1);
     window.dispatchEvent(new Event('resize')); expect(draw).toHaveBeenCalledTimes(2);
-    s.addPost(post(1, 1)); expect(draw).toHaveBeenCalledTimes(3);
+    s.addPost(post(1, 1));
+    vi.advanceTimersByTime(100);
+    expect(draw).toHaveBeenCalledTimes(3);
     off(); window.dispatchEvent(new Event('resize')); s.addPost(post(2, 1));
     expect(draw).toHaveBeenCalledTimes(3);
   });

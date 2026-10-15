@@ -5,6 +5,17 @@ import type { LnurlInfo, Resolver } from './verify';
 export type ProfileLoader = (pubkey: string) => Promise<NostrEvent | null>;
 export type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<any> }>;
 
+/** Deadline covers both headers and body, so a slow endpoint cannot hold a validation slot forever. */
+const fetchLnurl: FetchLike = async (url) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    const data = res.ok ? await res.json() : null;
+    return { ok: res.ok, json: async () => data };
+  } finally { clearTimeout(timer); }
+};
+
 /** LNURL-pay endpoint URL from a kind 0's content (lud16 or lud06). */
 export function lnurlFromProfile(content: string): string | null {
   let meta: any;
@@ -31,7 +42,7 @@ interface Entry { p: Promise<LnurlInfo | null>; at: number; failed: boolean }
 export class LnurlResolver implements Resolver {
   private cache = new Map<string, Entry>();
 
-  constructor(private loadProfile: ProfileLoader, private fetchFn: FetchLike = (u) => fetch(u), private retryMs = 300_000) {}
+  constructor(private loadProfile: ProfileLoader, private fetchFn: FetchLike = fetchLnurl, private retryMs = 300_000) {}
 
   resolve(pubkey: string): Promise<string | null> {
     return this.resolveInfo(pubkey).then((i) => i?.pubkey ?? null);

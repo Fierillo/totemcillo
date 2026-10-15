@@ -5,8 +5,8 @@ import { noteUri } from './nostr/link';
 import { recentPosts, EMPTY_POSTS } from './scenes/post';
 import { EMPTY_ANUNCIO } from './scenes/anuncio';
 import { ago, esc, sats } from './util';
-import { authorHtml, profiles } from './nostr/profiles';
-import { liveMarks } from './scenes/live';
+import { authorHtml } from './nostr/profiles';
+import { live, liveMarks } from './scenes/live';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
 
@@ -43,7 +43,6 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
       <section class="m-section"><h2>Top 10 zaps · últimas ${cfg.topRecentHours} horas</h2>${topRecent ? `<ol class="m-list">${topRecent}</ol>` : empty('Todavía no hay zaps en este período')}</section>`;
     marks.consume();
   };
-  draw();
-  const offs = [store.onChange(draw), ann.onChange(draw), profiles.onChange(draw), marks.off];
+  const offs = [live(store, draw), ann.onChange(draw), marks.off];
   return () => offs.forEach((f) => f());
 }

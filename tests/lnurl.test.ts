@@ -24,6 +24,20 @@ describe('lnurlFromProfile', () => {
 });
 
 describe('LnurlResolver', () => {
+  it('aborta una consulta lenta para liberar el cupo de validación', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let signal: AbortSignal | null | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+      signal = init?.signal;
+      signal?.addEventListener('abort', () => reject(new Error('timeout')), { once: true });
+    }));
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@b.com' }));
+    const pending = resolver.resolve('pk');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(signal?.aborted).toBe(true);
+    expect(await pending).toBeNull();
+  });
   it('guarda en el zap el dominio normalizado del LNURL que lo firmó', async () => {
     const z = makeZap();
     const resolver = new LnurlResolver(async () => prof({ lud16: 'yo@Pay.GetAlby.com' }), async () => ({ ok: true, json: async () => ({ allowsNostr: true, nostrPubkey: z.server.pk }) }));
