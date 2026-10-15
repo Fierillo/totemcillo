@@ -2,8 +2,7 @@ import './style.css';
 import { loadConfig, postCutoff } from './config';
 import { DEFAULT_ZAP_PROVIDERS } from '../server/settings';
 import { ZapStore, type Moderation } from './nostr/store';
-import { followCutoff, startNostr, type PoolLike } from './nostr/pool';
-import { SimplePool } from 'nostr-tools/pool';
+import { createPool, followCutoff, startNostr } from './nostr/pool';
 import { installAvatarFallback, profiles } from './nostr/profiles';
 import { Follower } from './follow';
 import { buildScenes, DEFAULT_DURATIONS } from './scenes';
@@ -15,7 +14,7 @@ import { isMobileViewport, renderMobile } from './mobile';
 const cfg = await loadConfig();
 const cutoff = postCutoff(cfg); // fixed start line (config.startLine); no age-based pruning
 const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
-const pool = new SimplePool() as unknown as PoolLike;
+const pool = createPool();
 // kind:0 profiles (alias + picture) from the same relays, batched and cached in localStorage.
 profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
 installAvatarFallback(document);

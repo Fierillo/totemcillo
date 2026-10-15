@@ -18,6 +18,12 @@ export const notesFilter = (hashtags: string[], since?: number) => ({
   '#t': [...new Set(hashtags.flatMap(tagVariants))],
   ...(since !== undefined ? { since } : {}),
 });
+/** Connection timeout per relay. Some relays that carry real posts take ~5 s to connect when the
+ *  browser opens all sockets at once; nostr-tools' 3 s default silently dropped them. */
+export const RELAY_CONNECT_TIMEOUT_MS = 12_000;
+/** Pool shared by the totem and /admin, so both see the same relays the same way. */
+export const createPool = (): PoolLike => new SimplePool({ maxWaitForConnection: RELAY_CONNECT_TIMEOUT_MS } as any) as unknown as PoolLike;
+
 export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
 
 /** Loads the most recent signed kind 0 of a pubkey. */

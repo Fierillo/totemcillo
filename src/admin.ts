@@ -1,9 +1,8 @@
 import './admin.css';
 import { LIMITS, SCENES, DEFAULT_SCENE_MS, type ModAction, type Settings } from '../server/settings';
-import { SimplePool } from 'nostr-tools/pool';
 import { loadConfig, postCutoff } from './config';
 import { ZapStore, type Moderation } from './nostr/store';
-import { followCutoff, startNostr, type PoolLike } from './nostr/pool';
+import { createPool, followCutoff, startNostr } from './nostr/pool';
 import { installAvatarFallback, profiles } from './nostr/profiles';
 import { moderationOf } from './moderation-lists';
 import { renderModeration } from './moderation';
@@ -111,7 +110,7 @@ async function startModeration(el: HTMLElement, s: Settings) {
     const cfg = await loadConfig();
     const cutoff = postCutoff(cfg);
     modStore = new ZapStore(undefined, { postMaxChars: cfg.postMaxChars, cutoff });
-    const pool = new SimplePool() as unknown as PoolLike;
+    const pool = createPool();
     profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
     installAvatarFallback(document);
     const st = modStore;
