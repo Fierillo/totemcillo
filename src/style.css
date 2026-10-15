@@ -1,15 +1,15 @@
-:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; }
+:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; cursor: none;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(14px, min(1.6vw, 2.6vh), 40px); }
-#app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
-.topbar, .footer { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
+#app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); position: relative; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
   min-width: 0; overflow: hidden; white-space: nowrap; }
 .brand { display: block; height: 1.8em; width: auto; max-width: 40vw; object-fit: contain; flex: 0 0 auto; } /* official logo (white), header height */
-.tags { color: var(--accent); font-size: 1.1em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.footer { color: var(--muted); justify-content: center; position: relative; }
-.footer b { color: var(--accent); }
-.scene { padding: 1em 1.5em; min-width: 0; min-height: 0; overflow: hidden; animation: fade .6s ease; }
+/* Header CTA (top right): one line, clipped with … rather than overlapping the logo */
+.cta { color: var(--muted); font-size: 1.1em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cta b { color: var(--accent); }
+.scene { padding: 1em 1.5em var(--strip-room); min-width: 0; min-height: 0; overflow: hidden; animation: fade .6s ease; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .muted { color: var(--muted); }
 /* Empty states */
@@ -54,8 +54,8 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 html.is-mobile, html.is-mobile body { height: auto !important; min-height: 100%; overflow: auto !important; cursor: auto; }
 html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display: block; }
 .is-mobile { display: block; }
-.is-mobile .topbar, .is-mobile .footer { position: sticky; top: 0; z-index: 2; background: var(--bg); }
-.is-mobile .footer { top: auto; bottom: 0; }
+.is-mobile .topbar { position: sticky; top: 0; z-index: 2; background: var(--bg); }
+.is-mobile .cta { white-space: normal; text-align: right; font-size: .95em; line-height: 1.25; }
 .is-mobile .mobile { display: block; padding: 1rem; overflow: visible; animation: none; }
 .m-section { margin-bottom: 1.5rem; }
 .m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
@@ -140,8 +140,8 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   @keyframes strike-soft { 0%, 30% { opacity: .9; } 100% { opacity: 0; } }
 }
 
-/* Notification strip (right corner of the footer, outside the centered text): small, brief icons. */
-#live-strip { position: absolute; right: 1.2em; top: 0; bottom: 0; display: flex; align-items: center; gap: .4em; pointer-events: none; }
+/* Notification strip (bottom-right corner of the app, in the room reserved by .scene padding): small, brief icons. */
+#live-strip { position: absolute; right: 1.2em; bottom: .4em; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
 .live-ind { display: block; height: 1.4em; animation: ind-pop 1.5s ease-out forwards; }
 .live-ind svg { height: 100%; width: auto; display: block; }
 .live-ind.zap svg { fill: #ffe86b; filter: drop-shadow(0 0 .35em #ffe86b); }

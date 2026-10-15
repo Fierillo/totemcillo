@@ -51,9 +51,9 @@ function check(scene) {
   };
   const itemsInside = (name, ul) => ul && [...ul.children].forEach((li, i) => inside(`${name} item ${i}`, li, ul));
 
-  const top = need('.topbar'), main = need('#scene'), foot = need('.footer');
-  disjoint([['topbar', top], ['escena', main], ['footer', foot]]);
-  [['topbar', top], ['escena', main], ['footer', foot]].forEach(([n, el]) => inside(n, el, VP));
+  const top = need('.topbar'), main = need('#scene');
+  disjoint([['topbar', top], ['escena', main]]);
+  [['topbar', top], ['escena', main]].forEach(([n, el]) => inside(n, el, VP));
   if (scene === 'post') {
     const list = need('ul.post-list'), qr = need('figure.qr');
     inside('lista', list, main); inside('QR', qr, main); disjoint([['lista', list], ['QR', qr]]);

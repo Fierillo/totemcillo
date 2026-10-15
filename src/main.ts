@@ -13,7 +13,6 @@ import { feedFor, showIndicator } from './livefeed';
 import { isMobileViewport, renderMobile } from './mobile';
 
 const cfg = await loadConfig();
-document.getElementById('tags')!.textContent = cfg.hashtags.map((t) => `#${t}`).join(' ');
 const cutoff = postCutoff(cfg); // fixed start line (config.startLine); no age-based pruning
 const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
 const pool = new SimplePool() as unknown as PoolLike;

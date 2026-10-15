@@ -217,12 +217,14 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     vi.advanceTimersByTime(1700);
     expect(strip.querySelectorAll('.live-ind')).toHaveLength(0);
   });
-  it('la franja vive en el footer, posicionada para no tapar el texto', async () => {
+  it('la franja vive abajo a la derecha de la app (sin footer), con lugar reservado para no tapar la escena', async () => {
     const { readFileSync } = await import('node:fs');
     const html = readFileSync(`${process.cwd()}/index.html`, 'utf8');
     const css = readFileSync(`${process.cwd()}/src/style.css`, 'utf8');
-    expect(html).toMatch(/<footer[^>]*>[\s\S]*id="live-strip"[\s\S]*<\/footer>/);
-    expect(css).toMatch(/#live-strip\s*\{[^}]*position:\s*absolute[^}]*right:/);
-    expect(css).toMatch(/\.footer\s*\{[^}]*position:\s*relative/);
+    expect(html).not.toMatch(/<footer/);
+    expect(html).toMatch(/<div id="app">[\s\S]*<main id="scene"><\/main>\s*<span id="live-strip"/);
+    expect(css).toMatch(/#live-strip\s*\{[^}]*position:\s*absolute[^}]*right:[^}]*bottom:/);
+    expect(css).toMatch(/#app\s*\{[^}]*position:\s*relative/);
+    expect(css).toMatch(/\.scene\s*\{[^}]*padding:\s*1em 1\.5em var\(--strip-room\)/);
   });
 });
