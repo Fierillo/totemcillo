@@ -2,7 +2,12 @@ import { verifyEvent } from 'nostr-tools/pure';
 import type { NostrEvent, Zap } from './types';
 import { bolt11ToMsats, parseZapReceipt } from './zap';
 
-export interface Resolver { resolve(recipientPubkey: string): Promise<string | null> }
+export interface LnurlInfo { pubkey: string; domain: string }
+export interface Resolver {
+  resolve(recipientPubkey: string): Promise<string | null>;
+  /** Además del nostrPubkey, el dominio del LNURL (para la lista de proveedores). */
+  resolveInfo?(recipientPubkey: string): Promise<LnurlInfo | null>;
+}
 
 const tag = (ev: { tags: string[][] }, name: string) => ev.tags.find((t) => t[0] === name)?.[1];
 
@@ -43,6 +48,11 @@ export function checkZapReceipt(ev: NostrEvent): Zap | null {
 export async function validateZapReceipt(ev: NostrEvent, resolver: Resolver): Promise<Zap | null> {
   const zap = checkZapReceipt(ev);
   if (!zap) return null;
-  const expected = await resolver.resolve(tag(ev, 'p')!);
+  const p = tag(ev, 'p')!;
+  if (resolver.resolveInfo) {
+    const info = await resolver.resolveInfo(p);
+    return info && info.pubkey === ev.pubkey ? { ...zap, domain: info.domain } : null;
+  }
+  const expected = await resolver.resolve(p);
   return expected && expected === ev.pubkey ? zap : null;
 }

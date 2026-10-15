@@ -17,13 +17,16 @@ export interface Settings {
   /** Moderación: ids de posts ocultos y pubkeys baneados (hex, minúscula). */
   hiddenPosts?: string[];
   bannedPubkeys?: string[];
+  /** Sólo cuentan zaps cuyo LNURL (el que firma el receipt) es de uno de estos dominios o subdominios. */
+  zapProviders?: string[];
 }
-export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null } };
+export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
+export const DEFAULT_SETTINGS: Settings = { announcement: '', sceneDurations: {}, command: { seq: 0, action: null }, zapProviders: DEFAULT_ZAP_PROVIDERS };
 /** Duraciones por defecto de cada escena (ms). */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 21000, latestZaps: 21000, top10Historico: 21000, top10Ultimas3h: 21000, anuncio: 21000 };
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000 };
+export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number  }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[] }
 
 /** Valida el cuerpo del PUT; cualquier campo inválido rechaza todo. */
 export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok: false; error: string } {
@@ -73,8 +76,23 @@ export function validatePatch(body: unknown): { ok: true; patch: Patch } | { ok:
       return { ok: false, error: `videoDurationSec debe ser un número de 1 a ${LIMITS.maxVideoSec}` };
     patch.videoDurationSec = n;
   }
+  if ('zapProviders' in b) {
+    const l = b.zapProviders;
+    if (!Array.isArray(l) || l.length > LIMITS.maxZapProviders) return { ok: false, error: `zapProviders: lista de hasta ${LIMITS.maxZapProviders} dominios` };
+    const out: string[] = [];
+    for (const x of l) {
+      const h = typeof x === 'string' ? x.trim().toLowerCase() : '';
+      if (!isHostname(h)) return { ok: false, error: `dominio inválido: ${String(x).slice(0, 80)}` };
+      if (!out.includes(h)) out.push(h);
+    }
+    patch.zapProviders = out;
+  }
   return { ok: true, patch };
 }
+
+/** Hostname con al menos dos etiquetas (sin esquema, puerto, ruta ni usuario). */
+export const isHostname = (h: string) =>
+  h.length <= 253 && /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/.test(h);
 
 export function applyPatch(s: Settings, p: Patch): Settings {
   return {
@@ -89,6 +107,7 @@ export function applyPatch(s: Settings, p: Patch): Settings {
     ...(s.version !== undefined ? { version: s.version } : {}),
     ...(s.hiddenPosts ? { hiddenPosts: s.hiddenPosts } : {}),
     ...(s.bannedPubkeys ? { bannedPubkeys: s.bannedPubkeys } : {}),
+    ...((p.zapProviders ?? s.zapProviders) ? { zapProviders: p.zapProviders ?? s.zapProviders } : {}),
   };
 }
 

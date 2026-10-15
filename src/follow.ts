@@ -4,7 +4,7 @@ import type { Moderation } from './nostr/store';
 import { moderationOf } from './moderation-lists';
 import { positionAt, type ScheduleInputs } from '../shared/schedule';
 
-export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[] }
+export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[]; zapProviders?: string[] }
 export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
   /** Listas de moderación que vienen en /api/kiosk. */
   onModeration?: (m: Moderation) => void }

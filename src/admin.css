@@ -19,9 +19,9 @@ small { color: var(--muted); }
 select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
 @media (min-width: 900px) {
   .panel:has(.cards) { width: min(1200px, calc(100vw - 4rem)); padding: 2rem; }
-  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "remote remote"; }
+  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "prov prov" "remote remote"; }
   .card { background: #11150f; border: 1px solid #262d21; border-radius: .75rem; padding: 1.25rem; }
-  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-remote { grid-area: remote; }
+  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-remote { grid-area: remote; } .card-prov { grid-area: prov; }
   .card-dur fieldset { border: 0; padding: 0; }
   .card-remote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 }
@@ -56,3 +56,14 @@ select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #
 .avatar-ph { background: #3a4036; }
 .alias { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
 @media (min-width: 900px) { .card-mod .mod-list { max-height: 70vh; overflow: auto; } }
+/* Proveedores de zaps: chips que envuelven; el dominio largo se corta, nunca se superpone. */
+.card-prov { grid-template-columns: minmax(0, 1fr); }
+.card-prov h2 { margin: 0; font-size: 1.1rem; color: var(--accent); }
+.prov-help { margin: 0; }
+.prov-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.prov-item { display: flex; align-items: center; gap: .4rem; min-width: 0; max-width: 100%; background: #0e120c; border: 1px solid #262d21; border-radius: 999px; padding: .25rem .3rem .25rem .8rem; }
+.prov-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.prov-item button { flex: 0 0 auto; padding: .25rem .6rem; background: #2a3324; color: var(--fg); border-radius: 999px; font-size: .85em; }
+.prov-add { display: flex; gap: .5rem; min-width: 0; }
+.prov-add input { flex: 1 1 auto; min-width: 0; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
+.prov-add button { flex: 0 0 auto; }

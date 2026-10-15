@@ -12,7 +12,8 @@ export const isPost = (x: any): x is Post =>
   !!x && str(x.id, 64) && str(x.pubkey, 64) && typeof x.content === 'string' && num(x.created_at);
 export const isZap = (x: any): x is Zap =>
   !!x && str(x.id, 64) && str(x.postId, 64) && num(x.msats) && x.msats > 0 && typeof x.comment === 'string' &&
-  num(x.created_at) && (x.sender === undefined || str(x.sender, 64));
+  num(x.created_at) && (x.sender === undefined || str(x.sender, 64)) &&
+  (x.domain === undefined || str(x.domain, 253));
 
 export const MAX_COMMENT = 280;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
@@ -20,11 +21,17 @@ const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) 
 
 export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number;
   /** Reloj en segundos unix (inyectable) y antigüedad máxima (s) para considerar un evento "en vivo". */
-  clock?: () => number; liveWindowSec?: number }
+  clock?: () => number; liveWindowSec?: number;
+  /** Proveedores LNURL permitidos (dominio o subdominio); sin lista cuentan todos. */
+  zapProviders?: string[] }
 
 /** Post o zap que llegó en vivo (no historial): las escenas visibles lo animan. */
 /** Listas de moderación que publica el servidor. */
-export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[] }
+export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[] }
+
+/** Dominio exacto o subdominio de alguno de la lista. */
+export const providerAllowed = (domain: string | undefined, list: string[]) =>
+  !!domain && list.some((d) => domain === d || domain.endsWith(`.${d}`));
 
 export interface LiveEvent { type: 'post' | 'zap'; postId: string }
 
@@ -49,6 +56,7 @@ export class ZapStore {
   /** Moderación (desde el servidor): se filtra al leer, así también aplica a lo que llegue después. */
   private hidden = new Set<string>();
   private banned = new Set<string>();
+  private providers?: string[];
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private key: string;
@@ -66,6 +74,7 @@ export class ZapStore {
     this.cutoff = opts.cutoff;
     this.clock = opts.clock ?? (() => Math.floor(Date.now() / 1000));
     this.liveWindowSec = opts.liveWindowSec ?? 120;
+    this.providers = opts.zapProviders;
     this.load();
     feedFor(this); // reparte eventos en vivo desde el arranque (indicador/pendientes)
   }
@@ -84,7 +93,7 @@ export class ZapStore {
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (!this.zaps.has(z.id)) return;
-    this.emitLive({ type: 'zap', postId: z.postId }, z.created_at);
+    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId }, z.created_at);
     this.changed();
   }
 
@@ -144,12 +153,14 @@ export class ZapStore {
   setModeration(m: Moderation) {
     const h = new Set(m.hiddenPosts), b = new Set(m.bannedPubkeys);
     const same = (a: Set<string>, c: Set<string>) => a.size === c.size && [...a].every((x) => c.has(x));
-    if (same(h, this.hidden) && same(b, this.banned)) return;
-    this.hidden = h; this.banned = b;
+    const pv = m.zapProviders ?? this.providers;
+    const sameP = pv === this.providers || (!!pv && !!this.providers && same(new Set(pv), new Set(this.providers)));
+    if (same(h, this.hidden) && same(b, this.banned) && sameP) return;
+    this.hidden = h; this.banned = b; this.providers = pv;
     this.listeners.forEach((f) => f());
   }
 
-  get moderation(): Moderation { return { hiddenPosts: [...this.hidden], bannedPubkeys: [...this.banned] }; }
+  get moderation(): Moderation { return { hiddenPosts: [...this.hidden], bannedPubkeys: [...this.banned], ...(this.providers ? { zapProviders: [...this.providers] } : {}) }; }
 
   private postVisible(id: string) {
     if (this.hidden.has(id)) return false;
@@ -158,6 +169,7 @@ export class ZapStore {
   }
 
   private zapVisible(z: Zap) {
+    if (this.providers && !providerAllowed(z.domain, this.providers)) return false;
     return !(z.sender && this.banned.has(z.sender)) && this.postVisible(z.postId);
   }
 

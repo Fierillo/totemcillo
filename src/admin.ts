@@ -7,6 +7,8 @@ import { startNostr, type PoolLike } from './nostr/pool';
 import { installAvatarFallback, profiles } from './nostr/profiles';
 import { moderationOf } from './moderation-lists';
 import { renderModeration } from './moderation';
+import { renderProviders } from './providers';
+import { DEFAULT_ZAP_PROVIDERS } from '../server/settings';
 
 const root = document.getElementById('admin')!;
 const api = (path: string, init?: RequestInit) => fetch(path, { credentials: 'same-origin', ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
@@ -40,6 +42,7 @@ async function panel() {
     <section class="card card-video"><label>Video: una de cada N vueltas <input type="number" name="videoEveryCycles" min="${LIMITS.minEveryCycles}" max="${LIMITS.maxEveryCycles}" step="1" value="${s.videoEveryCycles ?? 2}" /></label>
     <label>Modo del video <select name="videoMode">${(['full', 'clip'] as const).map((m) => `<option value="${m}"${(s.videoMode ?? 'full') === m ? ' selected' : ''}>${m === 'full' ? 'Completo (desde 0)' : 'Clip al azar'}</option>`).join('')}</select></label>
     <label class="clip-len"${(s.videoMode ?? 'full') === 'clip' ? '' : ' hidden'}>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? 21}" /></label></section>
+    <section class="card card-prov"></section>
     <section class="card card-remote"><div class="row"><button type="button" class="save">Guardar</button>
       <button type="button" class="cmd-prev" title="Escena anterior">←</button>
       <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
@@ -52,6 +55,16 @@ async function panel() {
     panelEl.dataset.tab = t.dataset.tab!;
     root.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b === t)));
     window.scrollTo({ top: 0 });
+  });
+  renderProviders(root.querySelector('.card-prov') as HTMLElement, {
+    list: s.zapProviders ?? DEFAULT_ZAP_PROVIDERS,
+    save: async (zapProviders) => {
+      const r = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ zapProviders }) });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.error || String(r.status));
+      modStore?.setModeration(moderationOf(body));
+      return body.zapProviders as string[];
+    },
   });
   startModeration(root.querySelector('.card-mod') as HTMLElement, s);
   const modeSel = root.querySelector('[name="videoMode"]') as HTMLSelectElement;

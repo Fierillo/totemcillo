@@ -1,6 +1,6 @@
 import { bech32 } from '@scure/base';
 import type { NostrEvent } from './types';
-import type { Resolver } from './verify';
+import type { LnurlInfo, Resolver } from './verify';
 
 export type ProfileLoader = (pubkey: string) => Promise<NostrEvent | null>;
 export type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<any> }>;
@@ -25,7 +25,7 @@ export function lnurlFromProfile(content: string): string | null {
   return null;
 }
 
-interface Entry { p: Promise<string | null>; at: number; failed: boolean }
+interface Entry { p: Promise<LnurlInfo | null>; at: number; failed: boolean }
 
 /** Resuelve (y cachea) el nostrPubkey que firma los zaps de un destinatario. */
 export class LnurlResolver implements Resolver {
@@ -34,6 +34,10 @@ export class LnurlResolver implements Resolver {
   constructor(private loadProfile: ProfileLoader, private fetchFn: FetchLike = (u) => fetch(u), private retryMs = 300_000) {}
 
   resolve(pubkey: string): Promise<string | null> {
+    return this.resolveInfo(pubkey).then((i) => i?.pubkey ?? null);
+  }
+
+  resolveInfo(pubkey: string): Promise<LnurlInfo | null> {
     const c = this.cache.get(pubkey);
     if (c && !(c.failed && Date.now() - c.at >= this.retryMs)) return c.p;
     const entry: Entry = { p: this.lookup(pubkey), at: Date.now(), failed: false };
@@ -42,7 +46,7 @@ export class LnurlResolver implements Resolver {
     return entry.p;
   }
 
-  private async lookup(pubkey: string): Promise<string | null> {
+  private async lookup(pubkey: string): Promise<LnurlInfo | null> {
     try {
       const profile = await this.loadProfile(pubkey);
       const url = profile && lnurlFromProfile(profile.content);
@@ -50,7 +54,8 @@ export class LnurlResolver implements Resolver {
       const res = await this.fetchFn(url);
       if (!res.ok) return null;
       const j = await res.json();
-      return j?.allowsNostr === true && typeof j.nostrPubkey === 'string' && /^[0-9a-f]{64}$/.test(j.nostrPubkey) ? j.nostrPubkey : null;
+      const ok = j?.allowsNostr === true && typeof j.nostrPubkey === 'string' && /^[0-9a-f]{64}$/.test(j.nostrPubkey);
+      return ok ? { pubkey: j.nostrPubkey, domain: new URL(url).hostname.toLowerCase() } : null;
     } catch (e) {
       console.warn('LNURL no verificable (¿CORS?), zap sin contar', pubkey, e);
       return null;

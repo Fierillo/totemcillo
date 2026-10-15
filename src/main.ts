@@ -1,5 +1,6 @@
 import './style.css';
 import { loadConfig, postCutoff } from './config';
+import { DEFAULT_ZAP_PROVIDERS } from '../server/settings';
 import { ZapStore } from './nostr/store';
 import { startNostr, type PoolLike } from './nostr/pool';
 import { SimplePool } from 'nostr-tools/pool';
@@ -14,7 +15,7 @@ import { isMobileViewport, renderMobile } from './mobile';
 const cfg = await loadConfig();
 document.getElementById('tags')!.textContent = cfg.hashtags.map((t) => `#${t}`).join(' ');
 const cutoff = postCutoff(cfg); // línea de largada fija (config.startLine); sin poda por edad
-const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff });
+const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
 const pool = new SimplePool() as unknown as PoolLike;
 // Perfiles kind:0 (alias + foto) desde los mismos relays, en lotes y cacheados en localStorage.
 profiles.configure({ query: (authors) => pool.querySync(cfg.relays, { kinds: [0], authors }, { maxWait: 4000 }), storage: window.localStorage });
