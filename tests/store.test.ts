@@ -168,6 +168,12 @@ describe('límites de memoria y contenido', () => {
     custom.addPost({ ...post, content: '😀'.repeat(100) });
     expect(custom.posts.get('a')!.content).toBe('😀'.repeat(49) + '…');
   });
+  it('quita espacios y saltos de línea sobrantes al principio y al final, al ingresar y al cargar', () => {
+    const s = new ZapStore();
+    s.addPost({ ...post, content: '\n  Otro test #lacrypta \n\n' });
+    expect(s.posts.get('a')!.content).toBe('Otro test #lacrypta');
+    expect(new ZapStore(mem({ posts: [{ ...post, content: 'hola\nchau\n\n' }], zaps: [] })).posts.get('a')!.content).toBe('hola\nchau');
+  });
   it('limita comentarios enormes de zaps', () => {
     const s = new ZapStore();
     s.addZap({ ...zap, comment: 'y'.repeat(100_000) });

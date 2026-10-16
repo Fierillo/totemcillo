@@ -126,7 +126,7 @@ export class ZapStore {
   }
 
   private clipPost(p: Post): Post {
-    return { ...p, content: truncateText(p.content, this.postMaxChars) };
+    return { ...p, content: truncateText(p.content.trim(), this.postMaxChars) };
   }
 
   onChange(fn: () => void): () => void {
