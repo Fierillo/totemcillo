@@ -285,7 +285,7 @@ try {
       posts: document.querySelectorAll('.m-post').length,
       extra: document.querySelectorAll('.m-post .m-zaps').length,
       meta: document.querySelectorAll('.m-post .m-meta .author').length,
-      zaps: [...document.querySelectorAll('a.zap-btn')].map((a) => a.getAttribute('href')),
+      zaps: [...document.querySelectorAll('button.zap-btn')].map((a) => a.getAttribute('data-zap')),
       alts: [...document.querySelectorAll('a.zap-alt')].map((a) => a.getAttribute('href')),
       scroll: document.documentElement.scrollHeight > innerHeight,
       rotator: !!document.querySelector('.scene-post, .scene-latestZaps'),
@@ -294,7 +294,7 @@ try {
     if (m.posts < 3) problems.push(`móvil: sólo ${m.posts} posts`);
     if (m.extra) problems.push('móvil: los posts muestran mensajes de zaps');
     if (m.meta < m.posts) problems.push('móvil: falta autor/hora en los posts');
-    if (m.zaps.length < 3 || m.zaps.some((h) => !h?.startsWith('nostr:nevent'))) problems.push('móvil: faltan botones Zapear nostr:');
+    if (m.zaps.length < 3 || m.zaps.some((id) => !/^[0-9a-f]{64}$/.test(id ?? ''))) problems.push('móvil: faltan botones Zapear asociados al post');
     if (m.alts.length < 3 || m.alts.some((h) => !h?.startsWith('https://njump.me/'))) problems.push('móvil: faltan links njump');
     if (!m.scroll) problems.push('móvil: la página no scrollea');
     if (m.rotator) problems.push('móvil: sigue rotando escenas de kiosko');
@@ -310,6 +310,11 @@ try {
     await page.getByRole('tab', { name: 'Zaps', exact: true }).click();
     if (!(await page.locator('[role="tabpanel"]:visible').innerText()).includes('Últimos zaps')) problems.push('móvil: no cambia a la sección de zaps');
     await page.getByRole('tab', { name: 'Posts', exact: true }).click();
+    await page.locator('.m-post .zap-btn').first().click();
+    const zapDialog = page.getByRole('dialog');
+    if (!(await zapDialog.locator('[data-nostr-client]').getAttribute('href'))?.startsWith('nostr:nevent')) problems.push('móvil: falta la opción de cliente Nostr');
+    if (!(await zapDialog.innerText()).includes('Pago anónimo en Nostr')) problems.push('móvil: falta el aviso de pago anónimo');
+    await zapDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
     // Reduced motion must suppress movement, even if decorative glow remains.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const movement = await page.evaluate(async () => {

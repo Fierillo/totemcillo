@@ -7,6 +7,7 @@ import { defaultConfig } from '../src/config';
 import { feedFor } from '../src/livefeed';
 import { decode } from 'nostr-tools/nip19';
 import { noteUri } from '../src/nostr/link';
+import type { InvoiceRequester } from '../src/zap-dialog';
 import { profiles } from '../src/nostr/profiles';
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');
@@ -20,6 +21,18 @@ const store = () => {
 };
 
 describe('vista móvil (misma ruta, layout scrolleable)', () => {
+  /** Abre el diálogo y genera la factura de prueba. */
+  const walletInvoice = async (invoice: InvoiceRequester) => {
+    const root = document.createElement('div');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), invoice);
+    root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
+    const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
+    return { dialog, off };
+  };
+
   it('agrupa los redibujos de una ráfaga conservando todos los posts visibles', () => {
     vi.useFakeTimers();
     const root = document.createElement('div'), s = new ZapStore();
@@ -88,9 +101,11 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       expect(active()?.querySelector('.m-post')).not.toBeNull();
     } finally { off(); }
   });
-  it('cada post tiene botón Zapear (nostr:) y alternativa njump', () => {
+  it('Zapear ofrece cliente Nostr o wallet anónima y conserva la alternativa njump', () => {
     const root = document.createElement('div');
-    renderMobile(root, store(), defaultConfig, new Announcement(''));
+    const invoice = vi.fn();
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), invoice);
+    try {
     const posts = root.querySelectorAll('#mobile-posts .m-post');
     expect(posts).toHaveLength(3);
     expect(posts[0].querySelector('.m-excerpt')!.textContent).toBe('post <i>1</i>');
@@ -99,13 +114,22 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(posts[0].querySelector('.m-meta')!.textContent).toContain('hace');
     expect(posts[0].querySelector('.m-zaps')).toBeNull();
     expect(posts[0].textContent).not.toContain('genial');
-    const btn = posts[0].querySelector<HTMLAnchorElement>('a.zap-btn')!;
+    const btn = posts[0].querySelector<HTMLButtonElement>('.zap-btn')!;
     expect(btn.textContent).toContain('Zapear');
-    expect(btn.getAttribute('href')).toMatch(/^nostr:nevent1/);
+    expect(btn.tagName).toBe('BUTTON');
+    btn.click();
+    const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+    expect(dialog.open).toBe(true);
+    expect(dialog.querySelector('[data-nostr-client]')?.getAttribute('href')).toMatch(/^nostr:nevent1/);
+    expect(dialog.textContent).toContain('Zapear desde cliente de Nostr');
+    expect(dialog.textContent).toContain('Zapear desde wallet');
+    expect(dialog.textContent).toContain('Pago anónimo en Nostr');
+    expect(invoice).not.toHaveBeenCalled();
     const alt = posts[0].querySelector<HTMLAnchorElement>('a.zap-alt')!;
     expect(alt.getAttribute('href')).toMatch(/^https:\/\/njump\.me\/nevent1/);
     expect(alt.getAttribute('target')).toBe('_blank');
     expect(alt.getAttribute('rel')).toContain('noopener');
+    } finally { off(); }
   });
   it('permite recorrer las pestañas con flechas, Inicio y Fin', () => {
     const root = document.createElement('div');
@@ -126,6 +150,106 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       expect(root.querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1);
     } finally { off(); }
   });
+  it('genera la factura anónima solo al confirmar el monto y mantiene el diálogo durante actualizaciones', async () => {
+    const root = document.createElement('div'), s = store(), ann = new Announcement('');
+    let finish!: (invoice: string) => void;
+    const invoice = vi.fn(() => new Promise<string>((resolve) => { finish = resolve; }));
+    const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    const off = renderMobile(root, s, defaultConfig, ann, invoice);
+    try {
+      root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
+      const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+      dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+      const form = dialog.querySelector<HTMLFormElement>('form')!;
+      expect(form.hidden).toBe(false);
+      expect(invoice).not.toHaveBeenCalled();
+      form.querySelector<HTMLInputElement>('input[name="sats"]')!.value = '42';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      expect(invoice).toHaveBeenCalledTimes(1);
+      expect(invoice).toHaveBeenCalledWith(s.posts.get(hex(1)), 42);
+      ann.set('Anuncio actualizado');
+      expect(document.querySelector('dialog')).toBe(dialog);
+      expect(dialog.open).toBe(true);
+      finish('lnbc420n1ptestinvoice');
+      await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')?.getAttribute('href')).toBe('lightning:lnbc420n1ptestinvoice'));
+      expect(dialog.querySelector('.wallet-qr svg')).not.toBeNull();
+      expect(dialog.querySelector('textarea')).toBeNull();
+      const qr = dialog.querySelector<HTMLButtonElement>('button.wallet-qr')!;
+      expect(qr.getAttribute('aria-label')).toBe('Copiar factura');
+      qr.click();
+      await vi.waitFor(() => expect(dialog.querySelector('[role="status"]')?.textContent).toBe('Factura copiada'));
+      expect(copy).toHaveBeenCalledWith('lnbc420n1ptestinvoice');
+      expect(dialog.textContent).toContain('No es una confirmación de pago');
+      expect(s.zaps.size).toBe(1);
+    } finally { off(); copy.mockRestore(); }
+  });
+  it('copia con el método heredado si el portapapeles moderno está bloqueado', async () => {
+    const invoice = vi.fn().mockResolvedValue('lnbc210n1ptestinvoice');
+    const write = vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('bloqueado'));
+    const exec = vi.fn(() => true) as unknown as typeof document.execCommand;
+    const original = document.execCommand;
+    document.execCommand = exec;
+    const { dialog, off } = await walletInvoice(invoice);
+    try {
+      dialog.querySelector<HTMLButtonElement>('button.wallet-qr')!.click();
+      await vi.waitFor(() => expect(dialog.querySelector('[role="status"]')?.textContent).toBe('Factura copiada'));
+      expect(exec).toHaveBeenCalled();
+      expect(dialog.querySelector('[data-manual]')).toBeNull();
+    } finally { off(); write.mockRestore(); document.execCommand = original; }
+  });
+  it('deja la factura seleccionable a mano si ningún método de copia funciona', async () => {
+    const invoice = vi.fn().mockResolvedValue('lnbc210n1ptestinvoice');
+    const write = vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('bloqueado'));
+    const original = document.execCommand;
+    document.execCommand = (() => false) as unknown as typeof document.execCommand;
+    const { dialog, off } = await walletInvoice(invoice);
+    try {
+      dialog.querySelector<HTMLButtonElement>('button.wallet-qr')!.click();
+      await vi.waitFor(() => expect(dialog.querySelector('[data-manual]')).not.toBeNull());
+      expect(dialog.querySelector<HTMLTextAreaElement>('[data-manual]')!.value).toBe('lnbc210n1ptestinvoice');
+      expect(dialog.querySelector('[role="status"]')?.textContent).toContain('Seleccioná la factura');
+    } finally { off(); write.mockRestore(); document.execCommand = original; }
+  });
+  it('muestra errores de generación sin declarar un pago y permite reintentar explícitamente', async () => {
+    const root = document.createElement('div');
+    const invoice = vi.fn().mockRejectedValueOnce(new Error('Proveedor no disponible')).mockResolvedValue('lnbc210n1ptestinvoice');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), invoice);
+    try {
+      root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
+      const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+      dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+      const form = dialog.querySelector('form')!;
+      const submit = () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      submit();
+      await vi.waitFor(() => expect(dialog.querySelector('[role="alert"]')?.textContent).toBe('Proveedor no disponible'));
+      expect(form.hidden).toBe(false);
+      expect(dialog.querySelector<HTMLButtonElement>('[type="submit"]')?.disabled).toBe(false);
+      expect(dialog.querySelector('[data-open-wallet]')).toBeNull();
+      expect(invoice).toHaveBeenCalledTimes(1);
+      submit();
+      await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
+      expect(invoice).toHaveBeenCalledTimes(2);
+    } finally { off(); }
+  });
+  it('al llegar el recibo del pago cierra el modal y anima el comentario zapeado', async () => {
+    const root = document.createElement('div');
+    const s = store();
+    const invoice = vi.fn().mockResolvedValue('lnbc210n1ptestinvoice');
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''), invoice);
+    try {
+      root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
+      const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+      dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+      dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
+      s.addZap({ id: hex(9), postId: hex(1), sender: hex(8), msats: 21_000, comment: '', created_at: Math.floor(Date.now() / 1000) });
+      await vi.waitFor(() => expect(document.querySelector('dialog')).toBeNull());
+      expect(root.querySelector('.m-post.is-zapped')).not.toBeNull();
+      expect(root.querySelector('.m-post.is-zapped .m-total .bolt')).not.toBeNull();
+    } finally { off(); }
+  });
+
   it('se actualiza en vivo y deja de hacerlo al limpiar', () => {
     const root = document.createElement('div');
     const s = store();

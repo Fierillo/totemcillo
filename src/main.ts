@@ -1,7 +1,8 @@
 import { loadConfig, postCutoff } from './config';
 import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../shared/settings';
 import { ZapStore, type Moderation } from './nostr/store';
-import { createPool, followCutoff, startNostr } from './nostr/pool';
+import { createPool, followCutoff, profileLoader, startNostr } from './nostr/pool';
+import { LnurlResolver } from './nostr/lnurl';
 import { configureProfiles } from './nostr/profiles';
 import { Follower } from './follow';
 import { buildScenes } from './scenes';
@@ -27,7 +28,8 @@ if (isMobileViewport()) {
   app.classList.add('is-mobile');
   document.documentElement.classList.add('is-mobile');
   scene.className = 'mobile';
-  renderMobile(scene, store, cfg, announcement);
+  const wallet = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS);
+  renderMobile(scene, store, cfg, announcement, (post, sats) => wallet.requestInvoice(post, sats, cfg.relays));
   createRemote({ announcement, onModeration: moderate }).start(cfg.settingsPollMs);
 } else {
   // The server is the source of truth: the totem computes the schedule it defines. Arrows: /admin.

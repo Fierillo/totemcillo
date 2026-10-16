@@ -79,7 +79,7 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-list { list-style: none; padding: 0; margin: 0; }
 .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
 .m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
-.zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; }
+.zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; border: 0; font: inherit; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; cursor: pointer; }
 .m-post .m-actions { justify-content: flex-end; margin: 0; }
 .m-post .zap-btn { background: transparent; color: var(--accent); border-radius: 0; padding: .4rem 0; font-size: .85rem; }
 .m-post .zap-btn:hover, .m-post .zap-btn:focus-visible { background: var(--accent); color: var(--bg); }
@@ -94,6 +94,29 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-skel-line { height: .9rem; margin: .5rem 0; }
 .m-skel-short { width: 55%; }
 .m-skel-rows { padding: .4rem 0; }
+
+/* Native dialog stays open independently of live feed redraws. */
+.zap-dialog { margin: auto; width: min(92vw, 28rem); max-height: 90dvh; padding: 1.2rem; border: 1px solid #35402d; border-radius: .4rem; background: var(--bg); color: var(--fg); overflow: auto; cursor: auto; }
+.zap-dialog::backdrop { background: #000b; }
+.zap-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.zap-dialog h2 { font-size: 1.15rem; }
+.zap-dialog button { cursor: pointer; font: inherit; }
+.zap-dialog [data-close] { border: 0; padding: .5rem; background: none; color: var(--muted); }
+.zap-choices { display: grid; gap: .7rem; }
+.zap-choices > a, .zap-choices > button { display: block; padding: .9rem; border: 1px solid #35402d; border-radius: 2px; background: var(--card); color: var(--accent); text-align: left; text-decoration: none; font-weight: 700; }
+.zap-choices small { display: block; margin-top: .35rem; color: var(--muted); font-size: .85rem; font-weight: 400; line-height: 1.4; }
+.zap-dialog form, .zap-dialog [data-invoice] { display: grid; gap: 1rem; }
+.zap-dialog [hidden] { display: none; }
+.zap-dialog label { display: grid; gap: .4rem; font-size: .9rem; }
+.zap-dialog input, .zap-dialog [data-manual] { min-width: 0; width: 100%; padding: .7rem; border: 1px solid #35402d; border-radius: 2px; background: var(--card); color: var(--fg); font: inherit; }
+.zap-dialog [data-manual] { font-size: .8rem; overflow-wrap: anywhere; resize: vertical; cursor: text; }
+.zap-dialog .zap-btn { text-align: center; }
+.zap-dialog button:disabled { opacity: .6; cursor: wait; }
+.zap-note { color: var(--muted); font-size: .85rem; line-height: 1.5; }
+.zap-error { color: #ff9e86; font-size: .9rem; line-height: 1.4; }
+.zap-error:not(:empty) { margin-top: 1rem; }
+.wallet-qr { width: min(100%, 16rem); justify-self: center; padding: .5rem; border: 0; border-radius: 2px; background: #fff; cursor: copy; }
+.wallet-qr svg { display: block; width: 100%; height: auto; }
 
 /* Latest zaps scene */
 .scene-latestZaps { display: grid; grid-template-rows: auto minmax(0, 1fr); }

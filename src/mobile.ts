@@ -7,6 +7,7 @@ import { EMPTY_ANUNCIO } from './scenes/anuncio';
 import { ago, esc, pending, sats } from './util';
 import { authorHtml } from './nostr/profiles';
 import { live, liveMarks } from './scenes/live';
+import { openZapDialog, type InvoiceRequester } from './zap-dialog';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
 
@@ -18,22 +19,22 @@ const SKEL_ROWS = `<div class="m-skel-rows" aria-hidden="true">${skel('m-skel-li
 const NO_MARKS = { cls: '', bolt: '' };
 
 /** Mobile feed with persistent section tabs, no rotation or QR. */
-export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, ann: Announcement): () => void {
+export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, ann: Announcement, requestInvoice?: InvoiceRequester): () => void {
   const MAX = 50;
   const tabs = [{ id: 'posts', label: 'Posts' }, { id: 'zaps', label: 'Zaps' }, { id: 'top', label: 'Top histórico' }, { id: 'recent', label: `Top ${cfg.topRecentHours}h` }];
   let selected = 'posts';
+  let closeZap: (() => void) | undefined;
   const panel = (id: string, title: string, body: string) => `<section class="m-section" id="mobile-${id}" role="tabpanel" aria-labelledby="tab-${id}" ${selected === id ? '' : 'hidden'}><h2>${title}</h2>${body}</section>`;
   // Same live animations as the kiosk (new post / zap bolt) on the Posts cards.
   const marks = liveMarks(store, 'mobile', ['post', 'zap'], (id) => recentPosts(store, MAX).some((x) => x.postId === id));
   /** Post card shared by Posts and the rankings (`rank` adds the #N position). */
   const card = (s: PostStats, m: { cls: string; bolt: string }, rank?: number) => {
-    const uri = noteUri(s.post!, cfg.relays, 'nostr:{nevent}');
     const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');
     return `<article class="m-post${m.cls}" data-id="${esc(s.postId)}">
         <div class="m-meta">${rank ? `<b class="m-rank">#${rank}</b>` : ''}${authorHtml(s.post!.pubkey)}<span class="muted">${ago(s.post!.created_at)}</span></div>
         <p class="m-excerpt">${esc(s.post!.content)}</p>
         <div class="m-post-footer"><div class="m-total">⚡ ${pending(`${sats(s.msats)} sats`, store.ready)}${m.bolt}</div>
-        ${uri && web ? `<div class="m-actions"><a class="zap-btn" href="${esc(uri)}">⚡ Zapear</a><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}
+        ${web ? `<div class="m-actions"><button class="zap-btn" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog">⚡ Zapear</button><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}
         </div>
       </article>`;
   };
@@ -64,6 +65,9 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
     window.scrollTo(0, 0);
   };
   const click = (e: MouseEvent) => {
+    const postId = (e.target as Element).closest<HTMLElement>('[data-zap]')?.dataset.zap;
+    const post = postId && store.posts.get(postId);
+    if (post) { closeZap?.(); closeZap = openZapDialog(post, cfg.relays, requestInvoice, store); }
     const id = (e.target as Element).closest<HTMLElement>('[data-tab]')?.dataset.tab;
     if (id) select(id);
   };
@@ -77,5 +81,5 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
   root.addEventListener('click', click);
   root.addEventListener('keydown', keydown);
   const offs = [live(store, draw), ann.onChange(draw), marks.off];
-  return () => { offs.forEach((f) => f()); root.removeEventListener('click', click); root.removeEventListener('keydown', keydown); };
+  return () => { offs.forEach((f) => f()); closeZap?.(); root.removeEventListener('click', click); root.removeEventListener('keydown', keydown); };
 }

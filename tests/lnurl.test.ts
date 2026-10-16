@@ -3,6 +3,7 @@ import { bech32 } from '@scure/base';
 import { LnurlResolver, lnurlFromProfile } from '../src/nostr/lnurl';
 import { validateZapReceipt } from '../src/nostr/verify';
 import { makeZap } from './helpers';
+import { verifyEvent } from 'nostr-tools/pure';
 
 const NPK = 'f'.repeat(64);
 const prof = (c: object) => ({ id: 'x', pubkey: 'p', created_at: 1, kind: 0, tags: [], content: JSON.stringify(c) });
@@ -24,6 +25,53 @@ describe('lnurlFromProfile', () => {
 });
 
 describe('LnurlResolver', () => {
+  it('pide una factura para el post con una identidad nueva y anónima, sin publicar la request', async () => {
+    const post = { id: 'a'.repeat(64), pubkey: 'b'.repeat(64) };
+    const requests: any[] = [];
+    const fetcher = vi.fn(async (url: string) => {
+      const u = new URL(url);
+      if (u.pathname.includes('.well-known')) return { ok: true, json: async () => ({ allowsNostr: true, nostrPubkey: NPK, callback: 'https://lnurl.blink.sv/pay', minSendable: 1000, maxSendable: 1000000 }) };
+      expect(u.origin).toBe('https://lnurl.blink.sv');
+      expect(u.searchParams.get('amount')).toBe('21000');
+      const request = JSON.parse(u.searchParams.get('nostr')!);
+      expect(verifyEvent(request)).toBe(true);
+      expect(request.kind).toBe(9734);
+      expect(request.content).toBe('');
+      expect(request.tags).toEqual(expect.arrayContaining([['p', post.pubkey], ['e', post.id], ['amount', '21000'], ['anon'], ['relays', 'wss://relay.example']]));
+      requests.push(request);
+      return { ok: true, json: async () => ({ pr: 'lnbc210n1ptestinvoice' }) };
+    });
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'recipient@blink.sv' }), fetcher);
+    expect(await resolver.requestInvoice(post, 21, ['wss://relay.example'])).toBe('lnbc210n1ptestinvoice');
+    await resolver.requestInvoice(post, 21, ['wss://relay.example']);
+    expect(requests[0].pubkey).not.toBe(requests[1].pubkey);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+  it('no contacta callbacks inseguros ni pide montos fuera del rango del proveedor', async () => {
+    const post = { id: 'a'.repeat(64), pubkey: 'b'.repeat(64) };
+    const metadata = { allowsNostr: true, nostrPubkey: NPK, callback: 'https://getalby.com/pay', minSendable: 1000, maxSendable: 100000 };
+    for (const change of [
+      { callback: 'https://evil.example/pay' }, { callback: 'http://getalby.com/pay' },
+      { callback: 'https://user:pass@getalby.com/pay' }, { callback: 'https://getalby.com:8443/pay' },
+      { minSendable: 22000 }, { maxSendable: 20000 }, { minSendable: undefined },
+    ]) {
+      const fetcher = okFetch({ ...metadata, ...change });
+      const resolver = new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }), fetcher);
+      await expect(resolver.requestInvoice(post, 21, ['wss://relay.example'])).rejects.toThrow();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    }
+  });
+  it('rechaza montos inválidos antes de consultar al proveedor y facturas con un monto distinto', async () => {
+    const post = { id: 'a'.repeat(64), pubkey: 'b'.repeat(64) };
+    const fetcher = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes('.well-known')
+      ? { allowsNostr: true, nostrPubkey: NPK, callback: 'https://getalby.com/pay', minSendable: 1000, maxSendable: 100000 }
+      : { pr: 'lnbc1000n1ptestinvoice' } }));
+    const resolver = new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }), fetcher);
+    for (const sats of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER])
+      await expect(resolver.requestInvoice(post, sats, ['wss://relay.example'])).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+    await expect(resolver.requestInvoice(post, 21, ['wss://relay.example'])).rejects.toThrow('factura válida');
+  });
   it('no devuelve como autorizado un proveedor retirado mientras su consulta estaba en vuelo', async () => {
     let providers = ['custom.example'];
     let finish!: () => void;
