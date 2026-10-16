@@ -1,4 +1,3 @@
-import './style.css';
 import { loadConfig, postCutoff } from './config';
 import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../shared/settings';
 import { ZapStore, type Moderation } from './nostr/store';

@@ -1,4 +1,3 @@
-import './admin.css';
 import { LIMITS, SCENES, DEFAULT_SCENE_MS, SCHEDULE_DEFAULTS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, type ModAction, type Settings } from '../shared/settings';
 import { loadConfig, postCutoff } from './config';
 import { ZapStore, type Moderation } from './nostr/store';
