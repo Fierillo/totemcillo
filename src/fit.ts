@@ -48,21 +48,15 @@ export function fitText(el: HTMLElement, { max, min }: FitRange, m: Measurer = d
   return { size: Math.ceil(min), truncated: true };
 }
 
-/** Shrinks a list's font; if it still doesn't fit at the minimum, drops items from the end (keeps at least one). */
-export function fitList(ul: HTMLElement, { max, min }: FitRange, m: Measurer = domMeasurer) {
-  const size = largest(min, max, (s) => { m.setSize(ul, s); return m.fits(ul); });
-  if (size !== null) {
-    m.setSize(ul, size);
-    return { size, removed: 0 };
-  }
-  // Not even complete at the minimum: use the minimum (… as a last resort) and only drop items if they don't fit vertically.
-  m.setSize(ul, Math.ceil(min));
+/** Fixed list font: drops items from the end until the rest fits vertically (keeps at least one; long lines end in …). */
+export function fitList(ul: HTMLElement, size: number, m: Measurer = domMeasurer) {
+  m.setSize(ul, size);
   const boxOk = (el: HTMLElement) => (m.fitsBox ?? m.fits)(el);
   let removed = 0;
   while (!boxOk(ul) && ul.children.length > 1) { ul.lastElementChild!.remove(); removed++; }
-  return { size: Math.ceil(min), removed };
+  return { size, removed };
 }
-/** Fits [data-fit="text|list"]: data-max in vh, data-maxw (optional) in vw, data-min in px. */
+/** Fits [data-fit="text|list"]: data-max in vh, data-maxw (optional) in vw, data-min in px (text only; lists use the max as a fixed size). */
 export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight, vw = window.innerWidth) {
   const qr = root.querySelector<HTMLElement>('.qr');
   const area = qr?.getBoundingClientRect();
@@ -96,8 +90,7 @@ export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = wi
   root.querySelectorAll<HTMLElement>('[data-fit]').forEach((el) => {
     let max = (Number(el.dataset.max) * vh) / 100;
     if (el.dataset.maxw) max = Math.min(max, (Number(el.dataset.maxw) * vw) / 100);
-    const range = { max, min: Number(el.dataset.min ?? 12) };
-    if (el.dataset.fit === 'list') fitList(el, range, measurer);
-    else fitText(el, range, measurer);
+    if (el.dataset.fit === 'list') fitList(el, Math.floor(max), measurer);
+    else fitText(el, { max, min: Number(el.dataset.min ?? 12) }, measurer);
   });
 }

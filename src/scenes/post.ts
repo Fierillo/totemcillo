@@ -19,8 +19,9 @@ export function recentPosts(store: ZapStore, n = MAX_POSTS): PostStats[] {
     .slice(0, n);
 }
 
-const row = (s: PostStats, m: { cls: string; bolt: string }, ready: boolean) => `<li class="post-row${m.cls}" data-id="${esc(s.postId)}">
-      <div class="row-main">
+/** Post row shared by the posts list and the rankings (`rank` adds the #N position). */
+export const postRow = (s: PostStats, m: { cls: string; bolt: string }, ready: boolean, rank?: number) => `<li class="post-row${m.cls}" data-id="${esc(s.postId)}">
+      ${rank ? `<span class="rank">#${rank}</span>` : ''}<div class="row-main">
         <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${ago(s.post!.created_at)}</span></div>
         <p class="excerpt" data-clip>${esc(s.post!.content)}</p>
       </div>
@@ -48,8 +49,8 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
       const draw = () => {
         const list = recentPosts(store);
         marks.begin(list.map((x) => x.postId));
-        root.innerHTML = (list.length
-          ? `<section class="posts"><ul class="post-list" data-fit="list" data-max="3.2" data-maxw="2.4" data-min="12">${list.map((x) => row(x, marks.attrs(x.postId), store.ready)).join('')}</ul></section>`
+        root.innerHTML = '<h1>Últimos posts</h1>' + (list.length
+          ? `<section class="posts"><ul class="post-list" data-fit="list" data-max="3.6" data-maxw="3.6">${list.map((x) => postRow(x, marks.attrs(x.postId), store.ready)).join('')}</ul></section>`
           : `<div class="empty-state"><p class="empty-msg" data-fit="text" data-max="7" data-min="16">${EMPTY_POSTS}</p></div>`) + qr();
         fitRegions(root);
         marks.consume();

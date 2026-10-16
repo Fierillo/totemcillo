@@ -99,14 +99,18 @@ describe('animación de zap (rayo) en la fila visible', () => {
   it('totales acumulados: el número parpadea hasta que el backfill termina', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addZap(zap(1, 1, NOW - 3600, 2_100_000));
-    const posts = document.createElement('div'), latest = document.createElement('div');
+    const posts = document.createElement('div'), top = document.createElement('div'), latest = document.createElement('div');
     postScene(s, { publicUrl: 'https://x/' }).render(posts);
+    topScene({ name: 'top10Historico', title: 'T', store: s, since: () => 0 }).render(top);
     latestZapsScene(s).render(latest);
     expect(posts.querySelector('.row-total .pending')!.textContent).toBe('2.100 sats');
     expect(posts.querySelector('.row-total')!.textContent).toContain('2.100');
+    expect(top.querySelector('.row-total .pending')!.textContent).toBe('2.100 sats');
+    expect(top.querySelector('.row-total')!.textContent).toBe('⚡ 2.100 sats');
     expect(latest.querySelector('.pending')).toBeNull();
     s.setReady();
     expect(posts.querySelector('.pending')).toBeNull();
+    expect(top.querySelector('.pending')).toBeNull();
   });
   it('top: anima la fila si el post está listado; zap viejo no anima', () => {
     const s = mkStore();
@@ -243,9 +247,11 @@ describe('renderizado de posts', () => {
   it('pasa del estado vacío a la lista al llegar un post, manteniendo un QR', () => {
     const s = new ZapStore(), root = document.createElement('div');
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
+    expect(root.querySelector('h1')!.textContent).toBe('Últimos posts');
     expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay posts con #lacrypta / #labitconf');
     expect(root.querySelectorAll('figure.qr')).toHaveLength(1);
     s.addPost({ ...post(1, 1), content: 'llegó' });
+    expect(root.querySelector('h1')!.textContent).toBe('Últimos posts');
     expect(root.querySelector('.empty-msg')).toBeNull();
     expect(excerpts(root)).toEqual(['llegó']);
     cleanup?.();
@@ -309,13 +315,14 @@ describe('rankings', () => {
     expect(root.querySelector('li')).toBeNull();
     cleanup?.();
   });
-  it('ordena diez filas con rank, sats, autor y extracto escapado; excluye huérfanos y actualiza en vivo', () => {
+  it('ordena diez posts como en Posts (puesto, autor, hace cuánto, extracto escapado y total); excluye huérfanos y actualiza en vivo', () => {
     profiles.set('a'.repeat(64), null);
     const s = setup(), root = document.createElement('div'), cleanup = top10HistoricoScene(s).render(root);
-    const rows = root.querySelectorAll('.top-list li');
+    const rows = root.querySelectorAll('.top-list > .post-row');
     expect(rows).toHaveLength(10);
     expect(rows[0].querySelector('.rank')!.textContent).toBe('#1');
-    expect(rows[0].querySelector('.amount')!.textContent).toBe(sats(12_000));
+    expect(rows[0].querySelector('.row-total')!.textContent).toBe(`⚡ ${sats(12_000)} sats`);
+    expect(rows[0].querySelector('.ago')!.textContent).toContain('hace');
     expect(rows[0].querySelector('.excerpt')!.textContent).toBe('Post 11 <b>x</b>');
     expect(rows[0].querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
     expect(rows[9].querySelector('.rank')!.textContent).toBe('#10');
@@ -333,10 +340,10 @@ describe('rankings', () => {
     const show = (hours: number, time = now) => top10Ultimas3hScene(s, hours, () => time * 1000).render(root);
     let cleanup = show(3);
     expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 3 horas');
-    expect([...root.querySelectorAll('.top-list li')].map((li) => [li.querySelector('.excerpt')!.textContent, li.querySelector('.amount')!.textContent])).toEqual([['A', sats(2000)], ['B', sats(1000)]]);
+    expect([...root.querySelectorAll('.top-list li')].map((li) => [li.querySelector('.excerpt')!.textContent, li.querySelector('.row-total')!.textContent])).toEqual([['A', `⚡ ${sats(2000)} sats`], ['B', `⚡ ${sats(1000)} sats`]]);
     cleanup?.(); cleanup = show(6);
     expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 6 horas');
-    expect(root.querySelector('.amount')!.textContent).toBe(sats(902_000));
+    expect(root.querySelector('.row-total')!.textContent).toBe(`⚡ ${sats(902_000)} sats`);
     cleanup?.(); cleanup = show(3, now + 4 * 3600);
     expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps en este período');
     cleanup?.();

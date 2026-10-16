@@ -44,25 +44,25 @@ describe('fitList', () => {
   const list = (n: number) => { const ul = document.createElement('ul'); for (let i = 0; i < n; i++) ul.append(document.createElement('li')); return ul; };
   /** fits if size × item count <= capacity */
   const listMeasurer = (cap: number): Measurer => ({ setSize: domMeasurer.setSize, fits: (el) => size(el) * el.children.length <= cap });
-  it('achica la fuente de la lista hasta que entren todos', () => {
+  it('usa el tamaño fijo, sin achicarlo, si entran todos', () => {
     const ul = list(10);
-    expect(fitList(ul, { max: 40, min: 10 }, listMeasurer(200))).toEqual({ size: 20, removed: 0 });
+    expect(fitList(ul, 20, listMeasurer(200))).toEqual({ size: 20, removed: 0 });
     expect(ul.children).toHaveLength(10);
   });
-  it('en el mínimo saca items del final hasta que entre (deja al menos uno)', () => {
+  it('con el tamaño fijo saca items del final hasta que entre (deja al menos uno)', () => {
     const ul = list(10);
-    expect(fitList(ul, { max: 40, min: 10 }, listMeasurer(55))).toEqual({ size: 10, removed: 5 });
+    expect(fitList(ul, 20, listMeasurer(110))).toEqual({ size: 20, removed: 5 });
     expect(ul.children).toHaveLength(5);
     const one = list(3);
-    fitList(one, { max: 40, min: 10 }, listMeasurer(1));
+    fitList(one, 20, listMeasurer(1));
     expect(one.children).toHaveLength(1);
   });
 });
 
 describe('fitRegions', () => {
-  it('ajusta los [data-fit] con max en vh y min en px', () => {
+  it('ajusta los textos con max en vh y min en px; las listas usan el máximo como tamaño fijo', () => {
     const root = document.createElement('div');
-    root.innerHTML = '<p data-fit="text" data-max="5" data-min="10">' + 'x'.repeat(40) + '</p><ul data-fit="list" data-max="4" data-min="8"><li></li><li></li></ul><span>libre</span>';
+    root.innerHTML = '<p data-fit="text" data-max="5" data-min="10">' + 'x'.repeat(40) + '</p><ul data-fit="list" data-max="4"><li></li><li></li></ul><span>libre</span>';
     const m: Measurer = { setSize: domMeasurer.setSize, fits: (el) => size(el) * (el.tagName === 'UL' ? el.children.length * 10 : el.textContent!.length) <= 1000 };
     fitRegions(root, m, 1000);
     expect(root.querySelector('p')!.style.fontSize).toBe('25px');
@@ -91,20 +91,15 @@ describe('mensajes recortados', () => {
     expect(domMeasurer.fits(ok)).toBe(true);
   });
   const ul5 = () => { const ul = document.createElement('ul'); for (let i = 0; i < 5; i++) ul.append(document.createElement('li')); return ul; };
-  it('fitList achica hasta que los mensajes entran completos', () => {
-    const m: Measurer = { setSize: domMeasurer.setSize, fitsBox: (el) => size(el) * el.children.length <= 100, fits: (el) => size(el) <= 10 && size(el) * el.children.length <= 100 };
-    const ul = ul5();
-    expect(fitList(ul, { max: 40, min: 8 }, m)).toEqual({ size: 10, removed: 0 });
-  });
-  it('si ni en el mínimo entran completos, usa el mínimo y no saca items por eso', () => {
+  it('mensajes recortados a lo ancho (con …) no sacan items: solo cuenta que entren a lo alto', () => {
     const m: Measurer = { setSize: domMeasurer.setSize, fitsBox: (el) => size(el) * el.children.length <= 40, fits: () => false };
     const ul = ul5();
-    expect(fitList(ul, { max: 40, min: 8 }, m)).toEqual({ size: 8, removed: 0 });
+    expect(fitList(ul, 8, m)).toEqual({ size: 8, removed: 0 });
     expect(ul.children).toHaveLength(5);
   });
   it('fitRegions respeta además un máximo en vw (data-maxw)', () => {
     const root = document.createElement('div');
-    root.innerHTML = '<ul data-fit="list" data-max="4" data-maxw="2" data-min="8"><li></li></ul>';
+    root.innerHTML = '<ul data-fit="list" data-max="4" data-maxw="2"><li></li></ul>';
     fitRegions(root, { setSize: domMeasurer.setSize, fits: () => true }, 1000, 500);
     expect(root.querySelector('ul')!.style.fontSize).toBe('10px');
   });

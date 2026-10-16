@@ -223,7 +223,7 @@ try {
         });
         if (r.items < 1) problems.push(`${w}x${h} 8 zaps post: sin filas`);
         if (!r.qr) problems.push(`${w}x${h} 8 zaps post: falta el QR`);
-        if (r.font > r.vh * 0.032 + 1) problems.push(`${w}x${h} 8 zaps post: fuente ${r.font}px > 3.2vh`);
+        if (r.font > r.vh * 0.042 + 1) problems.push(`${w}x${h} 8 zaps post: fuente ${r.font}px > 4.2vh`);
         await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
         await k.show('latestZaps');
         continue;
@@ -234,7 +234,7 @@ try {
         return { items: ul ? ul.children.length : 0, font: ul ? parseFloat(ul.style.fontSize) : 0, clipped, vh: innerHeight };
       });
       if (r.items < 5) problems.push(`${w}x${h} 8 zaps ${scene}: sólo ${r.items} mensajes visibles`);
-      if (r.font > r.vh * 0.032 + 1) problems.push(`${w}x${h} 8 zaps ${scene}: fuente de lista ${r.font}px > 3.2vh`);
+      if (r.font > r.vh * 0.042 + 1) problems.push(`${w}x${h} 8 zaps ${scene}: fuente de lista ${r.font}px > 4.2vh`);
       if (r.clipped.length) problems.push(`${w}x${h} 8 zaps ${scene}: mensajes recortados: ${r.clipped.join(' | ')}`);
       await page.screenshot({ path: `${out}/${w}x${h}-8zaps-${scene}.png` });
     }

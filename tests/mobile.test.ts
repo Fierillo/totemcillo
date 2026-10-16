@@ -45,6 +45,23 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(root.querySelector('[data-fit]')).toBeNull();
     expect(root.textContent).toContain('Sorteo a las 18');
   });
+  it('los Top muestran cada post como en Posts, con su puesto y ordenados por sats', () => {
+    const root = document.createElement('div'), s = store();
+    s.addZap({ id: 'z2', postId: hex(2), sender: 'b'.repeat(64), msats: 50_000, comment: '', created_at: Math.floor(Date.now() / 1000) });
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''));
+    try {
+      for (const id of ['#mobile-top', '#mobile-recent']) {
+        const cards = root.querySelectorAll(`${id} .m-post`);
+        expect([...cards].map((c) => c.querySelector('.m-rank')!.textContent)).toEqual(['#1', '#2']);
+        expect(cards[0].querySelector('.m-excerpt')!.textContent).toBe('post <i>2</i>');
+        expect(cards[0].querySelector('.m-meta .author')!.textContent).toBe('aaaaaaaa…aaaa');
+        expect(cards[0].querySelector('.m-meta')!.textContent).toContain('hace');
+        expect(cards[0].querySelector('.m-total')!.textContent).toContain('50 sats');
+        expect(cards[0].querySelector('.zap-btn')).not.toBeNull();
+      }
+      expect(root.querySelector('#mobile-posts .m-rank')).toBeNull();
+    } finally { off(); }
+  });
   it('abre Posts por defecto, cambia de pestaña y conserva la selección al actualizar datos', () => {
     const root = document.createElement('div'), s = store(), ann = new Announcement('Sorteo a las 18');
     const off = renderMobile(root, s, defaultConfig, ann);
@@ -74,7 +91,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
   it('cada post tiene botón Zapear (nostr:) y alternativa njump', () => {
     const root = document.createElement('div');
     renderMobile(root, store(), defaultConfig, new Announcement(''));
-    const posts = root.querySelectorAll('.m-post');
+    const posts = root.querySelectorAll('#mobile-posts .m-post');
     expect(posts).toHaveLength(3);
     expect(posts[0].querySelector('.m-excerpt')!.textContent).toBe('post <i>1</i>');
     expect(posts[0].querySelector('.m-total')!.textContent).toContain('21');
