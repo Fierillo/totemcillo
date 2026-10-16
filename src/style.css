@@ -95,6 +95,20 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-skel-short { width: 55%; }
 .m-skel-rows { padding: .4rem 0; }
 
+/* Zap burst: bolt + sats at the bottom over whatever scene is on screen (random horizontal spot) */
+.zap-fx { position: fixed; bottom: 7vh; left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none; }
+.zap-fx-burst { display: grid; justify-items: center; gap: .6rem; opacity: 0; }
+.zap-fx svg { width: clamp(4rem, 13vw, 8.5rem); fill: var(--accent); filter: drop-shadow(0 0 1.5rem #a3e63599); }
+.zap-fx-sats { font-size: clamp(2rem, 6.5vw, 4.5rem); font-weight: 900; color: var(--fg); text-shadow: 0 0 1.5rem #000, 0 0 .5rem var(--accent); }
+.zap-fx.is-on .zap-fx-burst { animation: zap-fx 3s ease both; }
+@keyframes zap-fx {
+  0% { opacity: 0; transform: translateY(45%) scale(.35); }
+  10% { opacity: 1; transform: translateY(0) scale(1.15); }
+  18% { transform: translateY(0) scale(1); }
+  72% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(0) scale(1.08); }
+}
+
 /* Native dialog stays open independently of live feed redraws. */
 .zap-dialog { margin: auto; width: min(92vw, 28rem); max-height: 90dvh; padding: 1.2rem; border: 1px solid #35402d; border-radius: .4rem; background: var(--bg); color: var(--fg); overflow: auto; cursor: auto; }
 .zap-dialog::backdrop { background: #000b; }

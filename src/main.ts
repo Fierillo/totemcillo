@@ -10,6 +10,7 @@ import { Announcement } from './announcement';
 import { createRemote } from './remote';
 import { feedFor, showIndicator } from './livefeed';
 import { isMobileViewport, renderMobile } from './mobile';
+import { zapFx } from './zap-fx';
 
 const cfg = await loadConfig();
 const cutoff = postCutoff({ startLine: DEFAULT_START_LINE });
@@ -23,6 +24,7 @@ const announcement = new Announcement(DEFAULT_SETTINGS.announcement);
 if (import.meta.env.DEV) void import('./demo').then((m) => m.installDemo(window, store)); // window.__totemDemo.post()/zap()
 const scene = document.getElementById('scene')!;
 const app = document.getElementById('app')!;
+zapFx(store); // ⚡ + sats whenever a zap arrives, regardless of the scene on screen
 
 if (isMobileViewport()) {
   app.classList.add('is-mobile');

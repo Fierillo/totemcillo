@@ -255,7 +255,7 @@ describe('proveedores permitidos', () => {
     s.addZap({ ...zap, id: 't', created_at: 99, domain: 'evil.xyz' });
     expect(live).not.toHaveBeenCalled();
     s.addZap({ ...zap, id: 'o', created_at: 99, domain: 'getalby.com' });
-    expect(live).toHaveBeenCalledWith({ type: 'zap', postId: 'a' });
+    expect(live).toHaveBeenCalledWith({ type: 'zap', postId: 'a', msats: 1000 });
   });
   it('recibe proveedores e inicio por moderación, con defaults si faltan', () => {
     expect(moderationOf({ zapProviders: ['x.com'], startLine: '2026-10-14T21:30:00-03:00' })).toMatchObject({ zapProviders: ['x.com'], startLine: '2026-10-14T21:30:00-03:00' });

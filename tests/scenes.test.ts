@@ -37,7 +37,7 @@ describe('store: eventos en vivo (no historial)', () => {
     s.addPost(post(2, NOW - 10)); // duplicate
     s.addZap(zap(1, 1, NOW - 3600)); // old zap
     s.addZap(zap(2, 1, NOW - 5)); // live zap
-    expect(ev).toEqual([{ type: 'post', postId: hex(2) }, { type: 'zap', postId: hex(1) }]);
+    expect(ev).toEqual([{ type: 'post', postId: hex(2) }, { type: 'zap', postId: hex(1), msats: 21_000 }]);
   });
   it('lo cargado de localStorage nunca dispara', () => {
     const ev: LiveEvent[] = [];

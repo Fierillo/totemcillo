@@ -25,15 +25,15 @@ export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: numbe
   /** Allowed LNURL providers (domain or subdomain); without a list, all count. */
   zapProviders?: string[] }
 
-/** Post or zap that arrived live (not history): visible scenes animate it. */
+/** Post or zap that arrived live (not history): visible scenes animate it. `msats` only on zaps. */
+export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: number }
+
 /** Moderation lists published by the server. */
 export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string }
 
 /** Exact domain or subdomain of one in the list. */
 export const providerAllowed = (domain: string | undefined, list: string[]) =>
   !!domain && list.some((d) => domain === d || domain.endsWith(`.${d}`));
-
-export interface LiveEvent { type: 'post' | 'zap'; postId: string }
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
   while (m.size > max) {
@@ -104,7 +104,7 @@ export class ZapStore {
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (!this.zaps.has(z.id)) return;
-    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId }, z.created_at);
+    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId, msats: z.msats }, z.created_at);
     this.changed();
   }
 
