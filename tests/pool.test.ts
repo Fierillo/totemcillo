@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPool, followCutoff, NOSTR_LIMITS, RELAY_CONNECT_TIMEOUT_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
+import { createPool, followCutoff, NOSTR_LIMITS, READY_FALLBACK_MS, RELAY_CONNECT_TIMEOUT_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
 import { ZapStore } from '../src/nostr/store';
 import { defaultConfig } from '../src/config';
 import { keys, makeZap, sign } from './helpers';
@@ -54,6 +54,81 @@ describe('followCutoff', () => {
 });
 
 describe('startNostr', () => {
+  it('marca el store como listo recién cuando todos los relays terminaron notas y zaps (EOSE)', () => {
+    const p = mockPool(), store = new ZapStore();
+    const h = startNostr(cfg, store, p, 1500, resolverFor(null));
+    try {
+      expect(store.ready).toBe(false);
+      p.subs[0].h.onevent(note('post'));
+      vi.advanceTimersByTime(1500); // abre la suscripción de zaps
+      p.subs[1].h.oneose();
+      expect(store.ready).toBe(false); // faltan notas de algún relay
+      p.subs[0].h.oneose();
+      expect(store.ready).toBe(true);
+    } finally { h.close(); }
+  });
+  it('sin posts alcanza con el EOSE de las notas', () => {
+    const p = mockPool(), store = new ZapStore();
+    const h = startNostr(cfg, store, p, 1500, resolverFor(null));
+    try {
+      p.subs[0].h.oneose();
+      expect(store.ready).toBe(true);
+    } finally { h.close(); }
+  });
+  it('un post nuevo antes del EOSE exige el EOSE de la nueva suscripción de zaps, no el de la vieja', () => {
+    const p = mockPool(), store = new ZapStore();
+    const h = startNostr(cfg, store, p, 1500, resolverFor(null));
+    try {
+      p.subs[0].h.onevent(note('1'));
+      vi.advanceTimersByTime(1500);
+      p.subs[0].h.onevent(note('2'));
+      p.subs[0].h.oneose();
+      expect(store.ready).toBe(false); // el post 2 todavía no tiene sus zaps pedidos
+      vi.advanceTimersByTime(1500);
+      p.subs[1].h.oneose(); // nostr-tools dispara oneose al cerrar la suscripción vieja
+      expect(store.ready).toBe(false);
+      p.subs[2].h.oneose();
+      expect(store.ready).toBe(true);
+    } finally { h.close(); }
+  });
+  it('espera a que se validen los zaps recibidos antes de marcar listo', async () => {
+    const p = mockPool(), store = new ZapStore();
+    store.addPost({ id: 'p1', pubkey: 'pk', content: 'x', created_at: 1 });
+    const z = makeZap({ postId: 'p1' });
+    let finish!: (pk: string | null) => void;
+    const resolver = { resolve: vi.fn(() => new Promise<string | null>((done) => { finish = done; })) };
+    const h = startNostr(cfg, store, p, 1500, resolver);
+    try {
+      vi.advanceTimersByTime(1500);
+      p.subs[1].h.onevent(z.receipt);
+      p.subs[0].h.oneose(); p.subs[1].h.oneose();
+      expect(store.ready).toBe(false);
+      finish(z.server.pk);
+      await flush();
+      expect(store.zaps.size).toBe(1);
+      expect(store.ready).toBe(true);
+    } finally { h.close(); }
+  });
+  it('el respaldo supera el peor caso de conexión + EOSE de notas y luego de zaps', () => {
+    expect(READY_FALLBACK_MS).toBeGreaterThan(2 * (RELAY_CONNECT_TIMEOUT_MS + 4400));
+  });
+  it('da por terminado el backfill tras el tiempo de reserva si ningún relay responde EOSE', () => {
+    const p = mockPool(), store = new ZapStore();
+    const h = startNostr(cfg, store, p, 1500, resolverFor(null));
+    try {
+      vi.advanceTimersByTime(READY_FALLBACK_MS - 1);
+      expect(store.ready).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(store.ready).toBe(true);
+    } finally { h.close(); }
+  });
+  it('al cerrar cancela el respaldo del backfill', () => {
+    const p = mockPool(), store = new ZapStore();
+    const h = startNostr(cfg, store, p, 1500, resolverFor(null));
+    h.close();
+    vi.advanceTimersByTime(READY_FALLBACK_MS + 1);
+    expect(store.ready).toBe(false);
+  });
   it('una ráfaga firmada de un autor baneado no expulsa el post legítimo del historial ni del filtro de zaps', () => {
     const p = mockPool(), store = new ZapStore();
     const good = keys();

@@ -96,6 +96,18 @@ describe('animación de zap (rayo) en la fila visible', () => {
     expect(r.querySelector('.row-total')!.textContent).toContain('2.100');
     expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
   });
+  it('totales acumulados: el número parpadea hasta que el backfill termina', () => {
+    const s = mkStore();
+    s.addPost(post(1)); s.addZap(zap(1, 1, NOW - 3600, 2_100_000));
+    const posts = document.createElement('div'), latest = document.createElement('div');
+    postScene(s, { publicUrl: 'https://x/' }).render(posts);
+    latestZapsScene(s).render(latest);
+    expect(posts.querySelector('.row-total .pending')!.textContent).toBe('2.100 sats');
+    expect(posts.querySelector('.row-total')!.textContent).toContain('2.100');
+    expect(latest.querySelector('.pending')).toBeNull();
+    s.setReady();
+    expect(posts.querySelector('.pending')).toBeNull();
+  });
   it('top: anima la fila si el post está listado; zap viejo no anima', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addPost(post(2));

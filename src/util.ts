@@ -1,4 +1,6 @@
 export const sats = (msats: number) => Math.floor(msats / 1000).toLocaleString('es-AR');
+/** Cumulative total that can still grow while the backfill runs: the number blinks until relays finish loading. */
+export const pending = (total: string, ready: boolean) => (ready ? total : `<span class="pending" aria-label="Total parcial, cargando zaps">${total}</span>`);
 const ENT: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ENT[c]);
 /** Returns safe HTML (already escaped). */

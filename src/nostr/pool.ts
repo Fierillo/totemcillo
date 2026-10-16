@@ -7,7 +7,7 @@ import { isSigned, validateZapReceipt, type Resolver } from './verify';
 import { DEFAULT_ZAP_PROVIDERS } from '../../shared/settings';
 
 export interface PoolLike {
-  subscribeMany(relays: string[], filter: any, params: { onevent: (ev: NostrEvent) => void }): { close(): void };
+  subscribeMany(relays: string[], filter: any, params: { onevent: (ev: NostrEvent) => void; oneose?: () => void }): { close(): void };
   querySync(relays: string[], filter: any, params?: { maxWait?: number }): Promise<NostrEvent[]>;
   close(relays: string[]): void;
 }
@@ -26,6 +26,8 @@ export const RELAY_CONNECT_TIMEOUT_MS = 12_000;
 export const createPool = (): PoolLike => new SimplePool({ maxWaitForConnection: RELAY_CONNECT_TIMEOUT_MS } as any) as unknown as PoolLike;
 
 export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
+/** Safety net only: nostr-tools already ends every relay by connection or EOSE timeout, for notes and then zaps. */
+export const READY_FALLBACK_MS = 45_000;
 /** Allow clock skew, never let future-dated events pin the feed. */
 export const MAX_FUTURE_SEC = 120;
 export const NOSTR_LIMITS = { eventsPerSecond: 100, concurrentZaps: 4, queuedZaps: 128, contentChars: 16_384, tags: 128, tagValues: 16, tagChars: 2048, eventChars: 32_768 };
@@ -81,6 +83,14 @@ export function startNostr(
   const inFlight = new Set<string>();
   const pendingZaps = new Map<string, NostrEvent>();
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let notesSynced = false;
+  let zapsSynced = true;
+  const readyTimer = setTimeout(() => store.setReady(), READY_FALLBACK_MS);
+  const checkReady = () => {
+    if (closed || !notesSynced || !zapsSynced || timer || pendingZaps.size || inFlight.size) return;
+    clearTimeout(readyTimer);
+    store.setReady();
+  };
 
   const drainZaps = () => {
     while (!closed && pendingZaps.size && inFlight.size < NOSTR_LIMITS.concurrentZaps) {
@@ -94,15 +104,22 @@ export function startNostr(
         .catch(() => { /* Invalid/unavailable LNURL: do not count the zap. */ })
         .finally(() => { inFlight.delete(ev.id); drainZaps(); });
     }
+    checkReady();
   };
 
   const flush = () => {
     timer = null;
     const ids = [...store.posts.keys()];
-    if (ids.length === watched.size && ids.every((id) => watched.has(id))) return;
+    if (ids.length === watched.size && ids.every((id) => watched.has(id))) return checkReady();
     zapSub?.close();
-    watched = new Set(ids);
+    const current = watched = new Set(ids);
+    zapsSynced = !ids.length;
     zapSub = ids.length ? pool.subscribeMany(cfg.relays, zapsFilter(ids), {
+      oneose: () => {
+        if (current !== watched) return;
+        zapsSynced = true;
+        checkReady();
+      },
       onevent: (ev) => {
         if (closed || store.zaps.has(ev?.id) || inFlight.has(ev?.id) || pendingZaps.has(ev?.id) || pendingZaps.size >= NOSTR_LIMITS.queuedZaps || !admitZap()) return;
         if (!boundedEvent(ev) || ev.kind !== 9735 || !validTime(ev, cutoff) || !ev.tags.some((t) => t[0] === 'e' && watched.has(t[1]) && store.posts.has(t[1]))) return;
@@ -117,6 +134,7 @@ export function startNostr(
 
   if (store.posts.size) watch();
   const notesSub = pool.subscribeMany(cfg.relays, notesFilter(cfg.hashtags, cutoff), {
+    oneose: () => { notesSynced = true; checkReady(); },
     onevent: (ev) => {
       if (closed || store.posts.has(ev?.id) || !admitNote()) return;
       if (!boundedEvent(ev)) return;
@@ -134,6 +152,7 @@ export function startNostr(
       closed = true;
       pendingZaps.clear();
       if (timer) clearTimeout(timer);
+      clearTimeout(readyTimer);
       notesSub.close();
       zapSub?.close();
       if (!keepPool) pool.close(cfg.relays);

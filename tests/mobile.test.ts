@@ -14,6 +14,7 @@ const store = () => {
   const s = new ZapStore();
   for (let i = 1; i <= 3; i++) s.addPost({ id: hex(i), pubkey: 'a'.repeat(64), content: `post <i>${i}</i>`, created_at: Math.floor(Date.now() / 1000) - i * 60 });
   s.addZap({ id: 'z', postId: hex(1), sender: 'b'.repeat(64), msats: 21000, comment: 'genial', created_at: Math.floor(Date.now() / 1000) });
+  s.setReady();
   profiles.set('a'.repeat(64), null);
   return s;
 };
@@ -29,7 +30,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       expect(writes).toHaveBeenCalledTimes(2);
       vi.advanceTimersByTime(100);
       expect(writes).toHaveBeenCalledTimes(3);
-      expect(root.querySelectorAll('.m-post')).toHaveLength(30);
+      expect(root.querySelectorAll('#mobile-posts .m-post')).toHaveLength(30);
     } finally { off(); writes.mockRestore(); vi.useRealTimers(); }
   });
   it('detecta viewport angosto', () => {
@@ -124,7 +125,9 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
   });
   it('estados vacíos', () => {
     const root = document.createElement('div');
-    renderMobile(root, new ZapStore(), defaultConfig, new Announcement(''));
+    const s = new ZapStore();
+    s.setReady();
+    renderMobile(root, s, defaultConfig, new Announcement(''));
     expect(root.textContent).toContain('Todavía no hay posts con #lacrypta / #labitconf');
     expect(root.textContent).toContain('Todavía no hay zaps');
   });
@@ -154,10 +157,42 @@ describe('animaciones móviles', () => {
   const post = (n: number, created_at = NOW - 3600) => ({ id: hex(n), pubkey: 'a'.repeat(64), content: `post ${n}`, created_at });
   const zap = (created_at = NOW) => ({ id: hex(1001), postId: hex(1), sender: 'b'.repeat(64), msats: 210_000, comment: '', created_at });
   const setup = () => {
-    const s = new ZapStore(undefined, { clock: () => NOW }); s.addPost(post(1)); s.addPost(post(2));
+    const s = new ZapStore(undefined, { clock: () => NOW }); s.addPost(post(1)); s.addPost(post(2)); s.setReady();
     const root = document.createElement('div'), off = renderMobile(root, s, defaultConfig, new Announcement(''));
     return { s, root, off };
   };
+  it('muestra los totales acumulados con mini ruedita y skeletons en textos hasta que el backfill termina', () => {
+    vi.useFakeTimers();
+    const s = new ZapStore(undefined, { clock: () => NOW });
+    s.addPost(post(1));
+    s.addZap(zap());
+    const root = document.createElement('div'), off = renderMobile(root, s, defaultConfig, new Announcement(''));
+    const s2 = new ZapStore(undefined, { clock: () => NOW });
+    s2.addPost(post(2));
+    const root2 = document.createElement('div'), off2 = renderMobile(root2, s2, defaultConfig, new Announcement(''));
+    const s3 = new ZapStore(undefined, { clock: () => NOW });
+    const root3 = document.createElement('div'), off3 = renderMobile(root3, s3, defaultConfig, new Announcement(''));
+    try {
+      expect(root.querySelector('.m-total .pending')!.textContent).toBe('210 sats'); // total parcial: el número parpadea
+      expect(root.querySelector('.m-total')!.textContent).toContain('210');
+      expect(root.querySelector('#mobile-top .pending')).not.toBeNull();
+      expect(root.querySelector('#mobile-recent .pending')).not.toBeNull();
+      expect(root.querySelector('#mobile-zaps .pending')).toBeNull(); // un zap suelto ya es definitivo
+      expect(root2.querySelector('#mobile-zaps .skel')).not.toBeNull(); // textos pendientes: skeletons
+      expect(root2.querySelector('#mobile-top .skel')).not.toBeNull();
+      expect(root2.querySelector('#mobile-recent .skel')).not.toBeNull();
+      expect(root3.querySelector('#mobile-posts .skel')).not.toBeNull();
+      expect(root3.textContent).not.toContain('Todavía no hay posts'); // nunca afirmar vacío antes de tiempo
+      s.setReady(); s2.setReady(); s3.setReady();
+      vi.advanceTimersByTime(100);
+      expect(root.querySelectorAll('.pending')).toHaveLength(0);
+      expect(root.querySelector('.m-total')!.textContent).toContain('210');
+      expect(root.querySelector('#mobile-zaps')!.textContent).toContain('210');
+      expect(root2.querySelectorAll('.m-skel-post, .m-skel-rows')).toHaveLength(0);
+      expect(root2.textContent).toContain('Todavía no hay zaps');
+      expect(root3.textContent).toContain('Todavía no hay posts');
+    } finally { off(); off2(); off3(); vi.useRealTimers(); }
+  });
   it('anima posts recientes una vez, nunca historial', () => {
     vi.useFakeTimers();
     const { s, root, off } = setup();

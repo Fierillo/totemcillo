@@ -57,6 +57,7 @@ export class ZapStore {
   private hidden = new Set<string>();
   private banned = new Set<string>();
   private providers?: string[];
+  private backfill = false;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private key: string;
@@ -111,6 +112,15 @@ export class ZapStore {
   onLive(fn: (e: LiveEvent) => void): () => void {
     this.liveListeners.add(fn);
     return () => { this.liveListeners.delete(fn); };
+  }
+
+  /** True once the relay backfill finished: before that, totals are still loading, not zero. */
+  get ready(): boolean { return this.backfill; }
+  /** Latches once (idempotent) and redraws. */
+  setReady() {
+    if (this.backfill) return;
+    this.backfill = true;
+    this.changed();
   }
 
   private emitLive(e: LiveEvent, createdAt: number) {

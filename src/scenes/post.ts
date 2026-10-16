@@ -3,7 +3,7 @@ import type { Scene } from './types';
 import type { PostStats, ZapStore } from '../nostr/store';
 import { live, liveMarks } from './live';
 import { fitRegions } from '../fit';
-import { ago, esc, sats } from '../util';
+import { ago, esc, pending, sats } from '../util';
 import { authorHtml } from '../nostr/profiles';
 
 export interface PostSceneOptions { publicUrl: string }
@@ -19,12 +19,12 @@ export function recentPosts(store: ZapStore, n = MAX_POSTS): PostStats[] {
     .slice(0, n);
 }
 
-const row = (s: PostStats, m: { cls: string; bolt: string }) => `<li class="post-row${m.cls}" data-id="${esc(s.postId)}">
+const row = (s: PostStats, m: { cls: string; bolt: string }, ready: boolean) => `<li class="post-row${m.cls}" data-id="${esc(s.postId)}">
       <div class="row-main">
         <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${ago(s.post!.created_at)}</span></div>
         <p class="excerpt" data-clip>${esc(s.post!.content)}</p>
       </div>
-      <div class="row-total">⚡ ${sats(s.msats)}<small> sats</small></div>${m.bolt}
+      <div class="row-total">⚡ ${pending(`${sats(s.msats)}<small> sats</small>`, ready)}</div>${m.bolt}
     </li>`;
 
 const qrCache = new Map<string, string>();
@@ -49,7 +49,7 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         const list = recentPosts(store);
         marks.begin(list.map((x) => x.postId));
         root.innerHTML = (list.length
-          ? `<section class="posts"><ul class="post-list" data-fit="list" data-max="3.2" data-maxw="2.4" data-min="12">${list.map((x) => row(x, marks.attrs(x.postId))).join('')}</ul></section>`
+          ? `<section class="posts"><ul class="post-list" data-fit="list" data-max="3.2" data-maxw="2.4" data-min="12">${list.map((x) => row(x, marks.attrs(x.postId), store.ready)).join('')}</ul></section>`
           : `<div class="empty-state"><p class="empty-msg" data-fit="text" data-max="7" data-min="16">${EMPTY_POSTS}</p></div>`) + qr();
         fitRegions(root);
         marks.consume();
