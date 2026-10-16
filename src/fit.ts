@@ -64,11 +64,40 @@ export function fitList(ul: HTMLElement, { max, min }: FitRange, m: Measurer = d
 }
 /** Fits [data-fit="text|list"]: data-max in vh, data-maxw (optional) in vw, data-min in px. */
 export function fitRegions(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight, vw = window.innerWidth) {
+  const qr = root.querySelector<HTMLElement>('.qr');
+  const area = qr?.getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(root).fontSize) || 16;
+  const measurer: Measurer = area?.width ? { ...m, setSize(el, px) {
+    m.setSize(el, px);
+    if (el.dataset.fit === 'list') {
+      for (const row of el.children) {
+        const item = row as HTMLElement;
+        item.style.width = '';
+        // Use layout coordinates, not temporary new-post/zap animation transforms.
+        const origin = item.offsetParent?.getBoundingClientRect();
+        const top = (origin?.top ?? 0) + item.offsetTop;
+        const left = (origin?.left ?? 0) + item.offsetLeft;
+        if (top + item.offsetHeight > area.top - gap && top < area.bottom + gap)
+          item.style.width = `${Math.max(0, area.left - gap - left)}px`;
+      }
+    } else {
+      el.style.setProperty('--qr-flow-width', '0px');
+      el.style.setProperty('--qr-flow-height', '0px');
+      // Wrapping can change a centered paragraph's height and position.
+      for (let i = 0; i < 3; i++) {
+        const r = el.getBoundingClientRect();
+        const overlaps = r.bottom > area.top - gap && r.top < area.bottom + gap;
+        el.style.setProperty('--qr-flow-width', `${overlaps ? Math.max(0, r.right - area.left + gap) : 0}px`);
+        el.style.setProperty('--qr-flow-height', `${r.height}px`);
+        el.style.setProperty('--qr-flow-top', `${Math.max(0, area.top - gap - r.top)}px`);
+      }
+    }
+  } } : m;
   root.querySelectorAll<HTMLElement>('[data-fit]').forEach((el) => {
     let max = (Number(el.dataset.max) * vh) / 100;
     if (el.dataset.maxw) max = Math.min(max, (Number(el.dataset.maxw) * vw) / 100);
     const range = { max, min: Number(el.dataset.min ?? 12) };
-    if (el.dataset.fit === 'list') fitList(el, range, m);
-    else fitText(el, range, m);
+    if (el.dataset.fit === 'list') fitList(el, range, measurer);
+    else fitText(el, range, measurer);
   });
 }

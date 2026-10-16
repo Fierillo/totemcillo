@@ -78,13 +78,14 @@ function check(scene) {
   [['topbar', top], ['escena', main]].forEach(([n, el]) => inside(n, el, VP));
   if (scene === 'post') {
     const list = need('ul.post-list'), qr = need('figure.qr');
-    inside('lista', list, main); inside('QR', qr, main); disjoint([['lista', list], ['QR', qr]]);
+    inside('lista', list, main); inside('QR', qr, main);
     if (qr && qr.getBoundingClientRect().width < 120) P.push(`QR demasiado chico (${qr.getBoundingClientRect().width}px)`);
     if (qr && !/Escaneá.*celular|Abrí.*celular|Escaneá y abrí/i.test(qr.textContent)) P.push('QR sin leyenda para el celular');
     const rows = [...document.querySelectorAll('.post-row')];
     if (!rows.length) P.push('no hay filas de posts');
     rows.forEach((row, i) => {
       inside(`fila ${i}`, row, list);
+      disjoint([[`fila ${i}`, row], ['QR', qr]]);
       for (const sel of ['.author', '.ago', '.excerpt', '.row-total']) if (!row.querySelector(sel)) P.push(`fila ${i}: falta ${sel}`);
       if (row.querySelector('.row-zaps')) P.push(`fila ${i}: muestra mensajes de zaps`);
       const excerpt = row.querySelector('.excerpt');
@@ -109,6 +110,16 @@ function check(scene) {
     noOverflow('lista de últimos zaps', ul); itemsInside('último zap', ul);
     if (ul && !ul.children.length) P.push('lista vacía');
   }
+  const qr = document.querySelector('figure.qr');
+  if (qr) {
+    for (const row of document.querySelectorAll('.post-row, .zap-list > li, .top-list > li')) {
+      disjoint([['fila', row], ['QR', qr]]);
+      const parent = row.parentElement;
+      const edge = R(parent).right - parseFloat(getComputedStyle(parent).paddingRight);
+      const gap = parseFloat(getComputedStyle(main).fontSize);
+      if (R(row).bottom < R(qr).top - gap - 1 && R(row).right < edge - 2) P.push('fila superior restringida por una columna invisible del QR');
+    }
+  }
   document.querySelectorAll('.amount, .rank, .total, .row-total').forEach((el, i) => {
     if (el.scrollWidth > el.clientWidth + 1) P.push(`monto/rank recortado #${i}: "${el.textContent.trim()}"`);
   });
@@ -127,6 +138,8 @@ function checkEmpty([scene, expected]) {
   if (msg.textContent !== expected) P.push(`mensaje "${msg.textContent}"`);
   if (parseFloat(getComputedStyle(msg).fontSize) < 16) P.push('mensaje demasiado chico');
   inside('mensaje', msg); noOverflow('mensaje', msg);
+  if (scene === 'anuncio' && Math.abs((R(msg).left + R(msg).right) / 2 - innerWidth / 2) > 2) P.push('anuncio descentrado horizontalmente');
+  if (scene === 'anuncio' && Math.abs((R(msg).top + R(msg).bottom - R(main).top - R(main).bottom) / 2) > 2) P.push('anuncio descentrado verticalmente');
   const h1 = main.querySelector('h1');
   if (h1) {
     inside('título', h1); noOverflow('título', h1);
@@ -320,6 +333,25 @@ try {
       problems.push(...(await page.evaluate(checkEmpty, [scene, expected])).map((p) => `${w}x${h} vacío ${scene}: ${p}`));
       await page.screenshot({ path: `${out}/${w}x${h}-empty-${scene}.png` });
     }
+    const announcement = await kiosk(page, { anuncio: 60000 }, { announcement: 'Bitcoin, Nostr y proyectos de la comunidad. '.repeat(40) });
+    await announcement.show('anuncio');
+    await page.waitForTimeout(700);
+    const flow = await page.evaluate(() => {
+      const text = document.querySelector('.anuncio-msg'), qr = document.querySelector('.qr').getBoundingClientRect();
+      const box = text.getBoundingClientRect(), heading = document.querySelector('#scene h1').getBoundingClientRect(), main = document.querySelector('#scene').getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const lines = [...range.getClientRects()];
+      return {
+        overlaps: lines.some((r) => r.right > qr.left + 1 && r.left < qr.right - 1 && r.bottom > qr.top + 1 && r.top < qr.bottom - 1),
+        fullWidthAbove: lines.some((r) => r.bottom < qr.top && r.right > qr.left),
+        overflow: text.scrollHeight > text.clientHeight + 1,
+        outside: box.top < heading.bottom - 1 || box.bottom > main.bottom + 1,
+        offCenter: Math.abs((box.top + box.bottom - main.top - main.bottom) / 2) > 2,
+      };
+    });
+    if (flow.overlaps || flow.overflow || flow.outside || flow.offCenter || !flow.fullWidthAbove) problems.push(`${w}x${h} anuncio no fluye alrededor del QR: ${JSON.stringify(flow)}`);
+    await page.screenshot({ path: `${out}/${w}x${h}-announcement-flow.png` });
     await page.close();
   }
   // Video scene: fullscreen, no loop, plays; the schedule (videoDurationSec) ends it and moves on to post

@@ -15,6 +15,8 @@ export function anuncioScene(ann: Announcement, publicUrl?: string): Scene {
         root.innerHTML = `<h1>📣 Anuncio</h1>` + (ann.text
           ? `<p class="anuncio-msg" data-fit="text" data-max="9" data-min="18">${esc(ann.text)}</p>`
           : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">${EMPTY_ANUNCIO}</p>`) + (publicUrl ? appQr(publicUrl) : '');
+        const heading = root.querySelector('h1')!;
+        root.style.setProperty('--announcement-heading', `${heading.offsetHeight + (parseFloat(getComputedStyle(heading).marginBottom) || 0)}px`);
         fitRegions(root);
       };
       draw();
