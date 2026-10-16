@@ -298,8 +298,18 @@ try {
     if (m.alts.length < 3 || m.alts.some((h) => !h?.startsWith('https://njump.me/'))) problems.push('móvil: faltan links njump');
     if (!m.scroll) problems.push('móvil: la página no scrollea');
     if (m.rotator) problems.push('móvil: sigue rotando escenas de kiosko');
+    if (await page.locator('[role="tab"]').count() !== 4 || await page.locator('[role="tabpanel"]:visible').count() !== 1) problems.push('móvil: faltan pestañas o hay secciones apiladas');
     problems.push(...(await page.evaluate(checkHeader)).map((p) => `móvil header: ${p}`));
     await page.screenshot({ path: `${out}/390x844-mobile.png`, fullPage: true });
+    await page.evaluate(() => window.scrollTo(0, 300));
+    const tabsVisible = await page.locator('.m-tabs').evaluate((el) => {
+      const r = el.getBoundingClientRect(), header = document.querySelector('.topbar').getBoundingClientRect();
+      return header.top >= -1 && r.top >= header.bottom - 1 && r.bottom < innerHeight;
+    });
+    if (!tabsVisible) problems.push('móvil: pestañas ocultas al desplazarse');
+    await page.getByRole('tab', { name: 'Zaps', exact: true }).click();
+    if (!(await page.locator('[role="tabpanel"]:visible').innerText()).includes('Últimos zaps')) problems.push('móvil: no cambia a la sección de zaps');
+    await page.getByRole('tab', { name: 'Posts', exact: true }).click();
     // Reduced motion must suppress movement, even if decorative glow remains.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const movement = await page.evaluate(async () => {

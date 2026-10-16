@@ -34,13 +34,39 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(isMobileViewport({ matchMedia: (q: string) => ({ matches: q.includes('max-width: 700px') }) } as any)).toBe(true);
     expect(isMobileViewport({ matchMedia: () => ({ matches: false }) } as any)).toBe(false);
   });
-  it('apila todas las secciones, sin QR y sin ajuste de fuente de kiosko', () => {
+  it('conserva todas las secciones en pestañas, sin QR ni ajuste de fuente de kiosko', () => {
     const root = document.createElement('div');
     renderMobile(root, store(), defaultConfig, new Announcement('Sorteo a las 18'));
     expect([...root.querySelectorAll('h2')].map((h) => h.textContent)).toEqual(['📣 Anuncio', 'Posts', '⚡ Últimos zaps', 'Top 10 zaps · histórico', `Top 10 zaps · últimas ${defaultConfig.topRecentHours} horas`]);
     expect(root.querySelector('.qr')).toBeNull();
     expect(root.querySelector('[data-fit]')).toBeNull();
     expect(root.textContent).toContain('Sorteo a las 18');
+  });
+  it('abre Posts por defecto, cambia de pestaña y conserva la selección al actualizar datos', () => {
+    const root = document.createElement('div'), s = store(), ann = new Announcement('Sorteo a las 18');
+    const off = renderMobile(root, s, defaultConfig, ann);
+    try {
+      const active = () => root.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden])');
+      expect(root.querySelectorAll('[role="tab"]')).toHaveLength(4);
+      expect(active()?.querySelectorAll('.m-post')).toHaveLength(3);
+      expect(root.querySelector('.m-announcement')?.closest('[role="tabpanel"]')).toBeNull();
+      const tab = () => [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Zaps')!;
+      tab().click();
+      expect(active()?.textContent).toContain('Últimos zaps');
+      expect(root.querySelector('.m-announcement')?.textContent).toContain('Sorteo a las 18');
+      expect(root.querySelectorAll('[role="tabpanel"]:not([hidden])')).toHaveLength(1);
+      expect(tab().getAttribute('aria-selected')).toBe('true');
+      ann.set('Cambio de horario');
+      s.addPost({ id: hex(8), pubkey: 'a'.repeat(64), content: 'nuevo post', created_at: Math.floor(Date.now() / 1000) });
+      expect(tab().getAttribute('aria-selected')).toBe('true');
+      expect(active()?.textContent).toContain('Últimos zaps');
+      expect(root.querySelector('.m-announcement')?.textContent).toContain('Cambio de horario');
+      [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Posts')!.click();
+      expect(active()?.querySelectorAll('.m-post')).toHaveLength(4);
+      off();
+      tab().click();
+      expect(active()?.querySelector('.m-post')).not.toBeNull();
+    } finally { off(); }
   });
   it('cada post tiene botón Zapear (nostr:) y alternativa njump', () => {
     const root = document.createElement('div');
@@ -60,6 +86,25 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(alt.getAttribute('href')).toMatch(/^https:\/\/njump\.me\/nevent1/);
     expect(alt.getAttribute('target')).toBe('_blank');
     expect(alt.getAttribute('rel')).toContain('noopener');
+  });
+  it('permite recorrer las pestañas con flechas, Inicio y Fin', () => {
+    const root = document.createElement('div');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''));
+    try {
+      const current = () => root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')!;
+      const key = (value: string) => current().dispatchEvent(new KeyboardEvent('keydown', { key: value, bubbles: true }));
+      key('ArrowRight');
+      expect(current().textContent).toBe('Zaps');
+      key('End');
+      expect(current().textContent).toBe(`Top ${defaultConfig.topRecentHours}h`);
+      key('ArrowRight');
+      expect(current().textContent).toBe('Posts');
+      key('ArrowLeft');
+      expect(current().textContent).toBe(`Top ${defaultConfig.topRecentHours}h`);
+      key('Home');
+      expect(current().textContent).toBe('Posts');
+      expect(root.querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1);
+    } finally { off(); }
   });
   it('se actualiza en vivo y deja de hacerlo al limpiar', () => {
     const root = document.createElement('div');

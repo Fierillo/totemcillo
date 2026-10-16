@@ -51,20 +51,26 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   width: 100%; max-width: 100%; max-height: 100%; color: var(--fg); line-height: 1.3; overflow-wrap: anywhere; white-space: pre-wrap; }
 
 /* Mobile: same route, scrollable */
-html.is-mobile, html.is-mobile body { height: auto !important; min-height: 100%; overflow: auto !important; cursor: auto; }
+html.is-mobile, html.is-mobile body { height: auto !important; min-height: 100%; overflow: visible !important; cursor: auto; }
 html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display: block; }
 .is-mobile { display: block; }
-.is-mobile .topbar { position: sticky; top: 0; z-index: 2; background: var(--bg); }
+.is-mobile .topbar { position: sticky; top: 0; height: 4rem; z-index: 3; background: var(--bg); }
 .is-mobile .cta { white-space: normal; text-align: right; font-size: .95em; line-height: 1.25; }
-.is-mobile .mobile { display: block; padding: 1rem; overflow: visible; animation: none; }
+.is-mobile .mobile { display: block; padding: 0 1rem 1rem; overflow: visible; animation: none; }
+.m-tabs { position: sticky; top: 4rem; z-index: 2; display: flex; margin: 0 -1rem 1rem; padding: 0 .5rem; background: var(--bg); border-bottom: 1px solid #2b3325; }
+.m-tabs button { flex: 1; min-width: 0; min-height: 44px; padding: .65rem .3rem; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.m-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.m-tabs button:focus-visible { outline: 1px solid var(--accent); outline-offset: -4px; }
 .m-section { margin-bottom: 1.5rem; }
+.m-announcement { padding-top: 1rem; }
 .m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
-.m-post { background: var(--card); border-radius: .8rem; padding: .9rem 1rem; margin-bottom: .8rem; border-left: .25em solid var(--accent); }
-.m-meta { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; font-size: .9rem; }
+.m-post { padding: .8rem 0; border-bottom: 1px solid #222; }
+.m-meta { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .85rem; }
 .m-meta > .author { flex: 0 1 auto; min-width: 0; }
 .m-meta > .muted { flex: 0 0 auto; white-space: nowrap; }
-.m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: .5rem; }
-.m-total { color: var(--accent); font-weight: 800; margin-bottom: .35rem; position: relative; width: fit-content; }
+.m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: 1rem; line-height: 1.45; }
+.m-post-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; }
+.m-total { color: var(--accent); font: 600 .85rem ui-monospace, monospace; position: relative; width: fit-content; }
 /* Mobile zap bolt: right of the total, never over text. */
 .is-mobile .m-post.is-new { animation: slide-in-x .5s ease-out both, glow 2.5s ease-out; } /* sideways: doesn't cover the heading */
 @keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -73,6 +79,9 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
 .m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
 .zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; }
+.m-post .m-actions { justify-content: flex-end; margin: 0; }
+.m-post .zap-btn { background: transparent; color: var(--accent); border-radius: 0; padding: .4rem 0; font-size: .85rem; }
+.m-post .zap-btn:hover, .m-post .zap-btn:focus-visible { background: var(--accent); color: var(--bg); }
 .zap-alt { color: var(--muted); font-size: .85rem; }
 .m-empty, .m-anuncio { color: var(--muted); }
 .m-anuncio { color: var(--fg); font-size: 1.1rem; white-space: pre-wrap; }
