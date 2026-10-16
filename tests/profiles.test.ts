@@ -14,7 +14,7 @@ const meta = (sk: Uint8Array, content: object, created_at = 10) => sign(sk, { ki
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => { profiles.clear(); profiles.configure({ query: undefined, subscribe: undefined, storage: undefined }); vi.useRealTimers(); });
+afterEach(() => { profiles.clear(); profiles.configure({ query: undefined, subscribe: undefined, storage: undefined, preload: undefined }); vi.useRealTimers(); });
 
 describe('ProfileCache: kind 0 desde relays, en lotes y con caché', () => {
   it('agrupa pedidos en un solo query y usa display_name, si no name; picture sólo https', async () => {
@@ -70,14 +70,45 @@ describe('ProfileCache: kind 0 desde relays, en lotes y con caché', () => {
 
 describe('authorHtml', () => {
   const pk = 'f'.repeat(64);
-  it('cargando o sin perfil: avatar neutro + npub corto', () => {
+  it('cargando: skeleton de avatar y nombre, nunca la npub sin resolver', () => {
     const pc = new ProfileCache({ batchMs: 10 });
+    const d = document.createElement('div');
+    d.innerHTML = authorHtml(pk, pc);
+    expect(d.querySelectorAll('.author .skel')).toHaveLength(2);
+    expect(d.textContent).not.toContain('ffffffff');
+    expect(d.querySelector('img')).toBeNull();
+  });
+  it('sin perfil: avatar neutro + npub corto', () => {
+    const pc = new ProfileCache({ batchMs: 10 });
+    pc.set(pk, null);
     const h = authorHtml(pk, pc);
     expect(h).toContain(PLACEHOLDER_CLASS);
     expect(h).toContain('ffffffff…ffff');
-    expect(h).not.toContain('<img');
+    expect(h).not.toContain('skel');
   });
-  it('con perfil: <img> redondo (lazy, sin referrer) + alias escapado', () => {
+  it('precarga la foto antes de mostrar el perfil; si falla, alias con avatar neutro', async () => {
+    let finish!: () => void, fail!: (e: Error) => void;
+    const preload = vi.fn((src: string) => new Promise<void>((done, reject) => { if (src.includes('ok')) finish = done; else fail = reject; }));
+    const pc = new ProfileCache({ preload });
+    const ok = 'a'.repeat(64), bad = 'b'.repeat(64);
+    pc.set(ok, { name: 'Ana', picture: 'https://img/ok.png' });
+    pc.set(bad, { name: 'Beto', picture: 'https://img/bad.png' });
+    const fn = vi.fn(); pc.onChange(fn);
+    expect(pc.get(ok)).toBeUndefined();
+    expect(pc.get(bad)).toBeUndefined();
+    pc.get(ok);
+    expect(preload).toHaveBeenCalledTimes(2);
+    finish(); fail(new Error('404'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fn).toHaveBeenCalled();
+    expect(pc.get(ok)).toEqual({ name: 'Ana', picture: 'https://img/ok.png' });
+    const d = document.createElement('div');
+    d.innerHTML = authorHtml(ok, pc) + authorHtml(bad, pc);
+    expect(d.querySelectorAll('img.avatar')).toHaveLength(1);
+    expect([...d.querySelectorAll('.alias')].map((e) => e.textContent)).toEqual(['Ana', 'Beto']);
+    expect(d.querySelectorAll(`.${PLACEHOLDER_CLASS}`)).toHaveLength(1);
+  });
+  it('con perfil: <img> redondo (sin lazy ni referrer) + alias escapado', () => {
     const pc = new ProfileCache({ batchMs: 10 });
     pc.set(pk, { name: '<b>Ana</b>', picture: 'https://img/a.png?x="1"' });
     const d = document.createElement('div');
@@ -85,7 +116,7 @@ describe('authorHtml', () => {
     const img = d.querySelector('img.avatar')!;
     expect(img.getAttribute('src')).toBe('/api/avatar?url=' + encodeURIComponent('https://img/a.png?x="1"'));
     expect(img.getAttribute('alt')).toBe('');
-    expect(img.getAttribute('loading')).toBe('lazy');
+    expect(img.hasAttribute('loading')).toBe(false);
     expect(img.getAttribute('referrerpolicy')).toBe('no-referrer');
     expect(d.querySelector('.alias')!.textContent).toBe('<b>Ana</b>');
     expect(d.querySelector('b')).toBeNull();
@@ -130,7 +161,10 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
       renderMobile(roots[3], store, defaultConfig, new Announcement('')),
     ];
     try {
-      for (const r of roots) expect(r.querySelector(`.${PLACEHOLDER_CLASS}`), r.innerHTML.slice(0, 80)).not.toBeNull();
+      for (const r of roots) {
+        expect(r.querySelector('.author .skel'), r.innerHTML.slice(0, 80)).not.toBeNull();
+        expect(r.textContent).not.toContain('…');
+      }
       await vi.advanceTimersByTimeAsync(1000);
       for (const r of [roots[0], roots[1], roots[3]]) {
         expect([...r.querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Autora');

@@ -15,6 +15,7 @@ import { ORDER } from '../shared/schedule';
 import { sats } from '../src/util';
 import { installDemo } from '../src/demo';
 import { feedFor, showIndicator, MAX_PENDING } from '../src/livefeed';
+import { profiles } from '../src/nostr/profiles';
 
 const NOW = 1_800_000_000;
 const hex = (n: number) => n.toString(16).padStart(64, '0');
@@ -24,7 +25,7 @@ const mem = (data: unknown) => { const m = new Map([['totemcillo:v1', JSON.strin
 const mkStore = (storage?: any) => new ZapStore(storage, { clock: () => NOW });
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+afterEach(() => { profiles.clear(); vi.useRealTimers(); });
 
 describe('store: eventos en vivo (no historial)', () => {
   it('emite post/zap sólo si son recientes (≤ liveWindowSec) y nuevos', () => {
@@ -250,6 +251,7 @@ describe('renderizado de posts', () => {
     s.addPost({ ...post(1, 1), content: 'Hola <b>mundo</b>' });
     s.addPost({ ...post(2, 2), content: 'Segundo' });
     for (let i = 0; i < 4; i++) s.addZap({ ...zap(i, 1, 10 + i, 1_000_000), comment: `comentario${i}` });
+    profiles.set('a'.repeat(64), null);
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
     const [b, a] = [...root.querySelectorAll('.post-row')];
     expect(a.querySelector('.excerpt')!.textContent).toBe('Hola <b>mundo</b>');
@@ -266,6 +268,7 @@ describe('renderizado de posts', () => {
     const s = new ZapStore(), root = document.createElement('div');
     s.addPost({ ...post(1, 1), pubkey: '<img src=x onerror=alert(1)>' });
     s.addZap({ ...zap(1, 1, 2), sender: '<svg onload=alert(1)>' });
+    profiles.set('<img src=x onerror=alert(1)>', null);
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
     expect(root.querySelector('img')).toBeNull();
     expect(root.querySelectorAll('svg')).toHaveLength(1);
@@ -295,6 +298,7 @@ describe('rankings', () => {
     cleanup?.();
   });
   it('ordena diez filas con rank, sats, autor y extracto escapado; excluye huérfanos y actualiza en vivo', () => {
+    profiles.set('a'.repeat(64), null);
     const s = setup(), root = document.createElement('div'), cleanup = top10HistoricoScene(s).render(root);
     const rows = root.querySelectorAll('.top-list li');
     expect(rows).toHaveLength(10);

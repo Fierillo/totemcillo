@@ -55,6 +55,7 @@ select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #
 .avatar { width: 1.6em; height: 1.6em; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: #2a2f27; display: block; }
 .avatar-ph { background: #3a4036; }
 .alias { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+.skel-name { display: block; width: 6em; height: .9em; border-radius: .3em; background: #2a2f27; }
 @media (min-width: 900px) { .card-mod .mod-list { max-height: 70vh; overflow: auto; } }
 /* Zap providers: wrapping chips; long domains are clipped, never overlap. */
 .card-prov { grid-template-columns: minmax(0, 1fr); }

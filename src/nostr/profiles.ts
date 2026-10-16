@@ -14,6 +14,8 @@ export interface ProfileOptions {
   subscribe?: (authors: string[], onevent: (ev: NostrEvent) => void) => { close(): void };
   /** Debounce before (re)opening the subscription when new authors show up (default 3 s). */
   subscribeDebounceMs?: number;
+  /** Downloads and decodes an avatar; the profile is only exposed once it settles (rejects = broken). */
+  preload?: (src: string) => Promise<void>;
 }
 
 export const PLACEHOLDER_CLASS = 'avatar-ph';
@@ -56,6 +58,8 @@ export class ProfileCache {
   private subKey = '';
   private sub: { close(): void } | null = null;
   private subTimer: ReturnType<typeof setTimeout> | null = null;
+  private settled = new Set<string>();
+  private preloading = new Set<string>();
 
   constructor(o: ProfileOptions = {}) { this.configure(o); }
 
@@ -64,14 +68,27 @@ export class ProfileCache {
     if (o.storage) this.load();
   }
 
-  clear() { this.unsubscribe(); this.watched.clear(); this.at.clear(); this.map.clear(); this.queued.clear(); this.inflight.clear(); this.failedAt.clear(); if (this.timer) clearTimeout(this.timer); this.timer = null; }
+  clear() { this.unsubscribe(); this.watched.clear(); this.at.clear(); this.map.clear(); this.queued.clear(); this.inflight.clear(); this.failedAt.clear(); this.settled.clear(); this.preloading.clear(); if (this.timer) clearTimeout(this.timer); this.timer = null; }
 
-  /** Profile if already known; null if it has none; undefined while loading (and queues it). */
+  /** Profile if already known (avatar preloaded); null if it has none; undefined while loading (and queues it). */
   get(pk: string): Profile | null | undefined {
     this.watch(pk);
-    if (this.map.has(pk)) return this.map.get(pk);
-    this.request(pk);
-    return undefined;
+    if (!this.map.has(pk)) {
+      this.request(pk);
+      return undefined;
+    }
+    const p = this.map.get(pk);
+    return p?.picture && !this.avatarSettled(avatarSrc(p.picture)) ? undefined : p;
+  }
+
+  private avatarSettled(src: string): boolean {
+    if (!this.o.preload || this.settled.has(src)) return true;
+    if (this.preloading.has(src)) return false;
+    this.preloading.add(src);
+    this.o.preload(src)
+      .catch(() => { broken.add(src); })
+      .finally(() => { this.preloading.delete(src); this.settled.add(src); this.changed(); });
+    return false;
   }
 
   set(pk: string, p: Profile | null) { this.map.set(pk, p); this.changed(); }
@@ -185,6 +202,17 @@ export class ProfileCache {
 /** Avatars always go through our proxy: no stand IP leak, bounded size, small WebP. */
 export const avatarSrc = (picture: string) => `/api/avatar?url=${encodeURIComponent(picture)}`;
 
+export const AVATAR_TIMEOUT_MS = 4000;
+/** Downloads and decodes the image so it never paints half loaded; slow or broken ones reject. */
+export async function preloadImage(src: string, timeoutMs = AVATAR_TIMEOUT_MS): Promise<void> {
+  const img = new Image();
+  img.referrerPolicy = 'no-referrer';
+  img.src = src;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`Avatar ${src} took over ${timeoutMs} ms; showing the neutral avatar`)), timeoutMs); });
+  try { await Promise.race([img.decode(), timeout]); } finally { clearTimeout(timer); }
+}
+
 /** Cache shared by the whole app (main.ts configures it with the relays). */
 export const profiles = new ProfileCache();
 
@@ -194,17 +222,21 @@ export function configureProfiles(pool: Pick<PoolLike, 'querySync' | 'subscribeM
     query: (authors) => pool.querySync(relays, { kinds: [0], authors }, { maxWait: 4000 }),
     subscribe: (authors, onevent) => pool.subscribeMany(relays, { kinds: [0], authors }, { onevent }),
     storage,
+    preload: preloadImage,
   });
   installAvatarFallback(doc);
 }
 
-/** Author as round avatar + alias (or short npub and neutral avatar while loading / if missing). Safe HTML. */
+const AUTHOR_LOADING = '<span class="author" aria-busy="true"><span class="avatar skel" aria-hidden="true"></span><span class="alias skel skel-name" aria-hidden="true"></span></span>';
+
+/** Author as round avatar + alias; skeleton while loading; short npub and neutral avatar if it has no profile. Safe HTML. */
 export function authorHtml(pk: string | undefined, pc: ProfileCache = profiles): string {
   const ph = `<span class="avatar ${PLACEHOLDER_CLASS}" aria-hidden="true"></span>`;
   if (!pk) return `<span class="author">${ph}<span class="alias">anónimo</span></span>`;
   const p = pc.get(pk);
+  if (p === undefined) return AUTHOR_LOADING;
   const av = p?.picture && !broken.has(avatarSrc(p.picture))
-    ? `<img class="avatar" src="${esc(avatarSrc(p.picture))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+    ? `<img class="avatar" src="${esc(avatarSrc(p.picture))}" alt="" decoding="async" referrerpolicy="no-referrer">`
     : ph;
   return `<span class="author">${av}<span class="alias">${p?.name ? esc(p.name) : shortKey(pk)}</span></span>`;
 }

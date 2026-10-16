@@ -167,3 +167,10 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .row-meta > .author { flex: 0 1 auto; }
 .row-meta > .ago { flex: 0 0 auto; }
 .who .author { max-width: 60%; }
+
+/* Skeleton shimmer: after .avatar so its background wins on the loading avatar. */
+.skel { display: block; border-radius: .35rem; background: linear-gradient(90deg, #171c13 25%, #242c1c 37%, #171c13 63%); background-size: 400% 100%; animation: skel 1.4s ease infinite; }
+@keyframes skel { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.avatar.skel, .skel.m-skel-avatar { border-radius: 50%; }
+.skel-name { width: 6em; height: .9em; }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; background: #1d2417; } }
