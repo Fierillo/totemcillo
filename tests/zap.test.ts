@@ -50,6 +50,12 @@ describe('validación NIP-57', () => {
     expect(checkZapReceipt(z.receipt)).toMatchObject({ id: z.receipt.id, postId: z.receipt.tags.find((t) => t[0] === 'e')![1], msats: 21000, sender: z.sender.pk, comment: 'vamo' });
     expect(checkZapReceipt(makeZap({ reqAmount: null }).receipt)).not.toBeNull();
   });
+  it('valida un zap anónimo sin mostrar la identidad efímera ni el tag P como autor', () => {
+    const z = makeZap({ msats: 21000 });
+    const request = sign(z.sender.sk, { kind: 9734, created_at: z.req.created_at, content: '', tags: [...z.req.tags, ['anon']] });
+    const receipt = resign(z, [...tagsWith(z, 'description', JSON.stringify(request)), ['P', z.sender.pk]]);
+    expect(checkZapReceipt(receipt)).toMatchObject({ msats: 21000, sender: undefined, postId: z.req.tags.find((t) => t[0] === 'e')![1] });
+  });
   it('rechaza firma inválida o kind incorrecto del receipt', () => {
     const z = makeZap();
     expect(checkZapReceipt({ ...z.receipt, created_at: 999 })).toBeNull();
