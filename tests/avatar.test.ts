@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
-import { avatarHandler, AVATAR_RATE, fetchAvatar, isBlockedIp, parseAvatarUrl, readLimited, renderAvatar, safeLookup, type Fetcher } from '../server/avatar';
+import { avatarHandler, AVATAR_RATE, fetchAvatar, isBlockedIp, parseAvatarUrl, readLimited, renderAvatar, safeLookup, devAvatarFetcher, type Fetcher } from '../server/avatar';
 import { memoryStorage } from '../server/storage';
 
 const png = (w: number, h: number) => sharp({ create: { width: w, height: h, channels: 3, background: '#f00' } }).png().toBuffer();
@@ -150,5 +150,15 @@ describe('límite de descargas por IP', () => {
     await avatarHandler({ method: 'GET', url: '/api/avatar?url=http%3A%2F%2Fx', headers: {}, socket: {} } as any, res, { storage });
     expect(res.statusCode).toBe(400);
     expect(storage.incr).not.toHaveBeenCalled();
+  });
+});
+
+describe('devAvatarFetcher (solo pnpm dev, opt-in)', () => {
+  it('sin la variable no hay excepción: se usa el fetcher seguro por defecto', () => {
+    expect(devAvatarFetcher({})).toBeUndefined();
+    expect(devAvatarFetcher({ TOTEM_DEV_AVATAR_ANY_IP: '0' })).toBeUndefined();
+  });
+  it('con TOTEM_DEV_AVATAR_ANY_IP=1 devuelve un fetcher que no filtra IPs resueltas', () => {
+    expect(typeof devAvatarFetcher({ TOTEM_DEV_AVATAR_ANY_IP: '1' })).toBe('function');
   });
 });

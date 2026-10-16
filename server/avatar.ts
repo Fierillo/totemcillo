@@ -61,9 +61,9 @@ export function safeLookup(base: LookupFn = dnsLookup as any): LookupFn {
 export interface FetchResult { status: number; headers: Record<string, string | undefined>; body: AsyncIterable<Uint8Array> }
 export type Fetcher = (url: URL, signal: AbortSignal) => Promise<FetchResult>;
 
-/** Default fetcher: one https hop, no automatic redirects, DNS checked at connect time. */
-export const httpsFetcher: Fetcher = (url, signal) => new Promise((resolve, reject) => {
-  const req = request(url, { method: 'GET', lookup: safeLookup() as any, signal, headers: { accept: 'image/*', 'user-agent': 'totemcillo-avatar/1' } }, (res) => {
+/** One https hop, no automatic redirects; `lookup` decides which resolved addresses may be dialed. */
+const fetcherWith = (lookup: LookupFn | undefined): Fetcher => (url, signal) => new Promise((resolve, reject) => {
+  const req = request(url, { method: 'GET', ...(lookup && { lookup: lookup as any }), signal, headers: { accept: 'image/*', 'user-agent': 'totemcillo-avatar/1' } }, (res) => {
     const headers: Record<string, string | undefined> = {};
     for (const [k, v] of Object.entries(res.headers)) headers[k] = Array.isArray(v) ? v.join(', ') : v;
     resolve({ status: res.statusCode ?? 0, headers, body: res });
@@ -71,6 +71,13 @@ export const httpsFetcher: Fetcher = (url, signal) => new Promise((resolve, reje
   req.on('error', reject);
   req.end();
 });
+
+/** Default fetcher: DNS checked at connect time. */
+export const httpsFetcher: Fetcher = fetcherWith(safeLookup());
+
+/** Dev-only escape hatch for sandboxes whose DNS answers with reserved IPs (e.g. 198.18.0.0/15): opt-in via TOTEM_DEV_AVATAR_ANY_IP=1, never used by the Vercel handler. */
+export const devAvatarFetcher = (env: Record<string, string | undefined>): Fetcher | undefined =>
+  env.TOTEM_DEV_AVATAR_ANY_IP === '1' ? fetcherWith(undefined) : undefined;
 
 /** Buffers a stream, aborting as soon as it exceeds max bytes. */
 export async function readLimited(body: AsyncIterable<Uint8Array>, max: number): Promise<Buffer> {
