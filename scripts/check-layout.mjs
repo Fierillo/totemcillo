@@ -150,6 +150,24 @@ function checkHeader() {
   return problems;
 }
 
+function checkRepoLink() {
+  const link = document.querySelector('a.repo-link');
+  if (!link) return ['falta el enlace al repo'];
+  const problems = [];
+  if (link.href !== 'https://github.com/Fierillo/totemcillo' || !link.getAttribute('aria-label')) problems.push('enlace incorrecto o sin nombre accesible');
+  if (!link.querySelector('svg') || link.textContent.trim()) problems.push('debe mostrar solo el ícono de GitHub');
+  const footer = document.querySelector('footer');
+  if (!footer || !footer.contains(link)) problems.push('falta la banda inferior con el enlace');
+  if (footer) {
+    const f = footer.getBoundingClientRect(), main = document.querySelector('#scene').getBoundingClientRect();
+    if (f.top < main.bottom - 1 || f.bottom > innerHeight + 1) problems.push('banda inferior superpuesta o fuera de pantalla');
+  }
+  const r = link.getBoundingClientRect();
+  if (r.width < 16 || r.width > 36 || r.height < 16 || r.height > 36) problems.push('ícono no es pequeño');
+  if (Math.abs((r.left + r.right) / 2 - innerWidth / 2) > 1 || r.bottom > innerHeight || innerHeight - r.bottom > 24) problems.push('enlace fuera del centro inferior');
+  return problems;
+}
+
 const problems = [];
 const viewports = [[1280, 720], [1920, 1080], [1080, 1920]];
 try {
@@ -163,9 +181,13 @@ try {
       await k.show(scene);
       await page.waitForTimeout(1200);
       problems.push(...(await page.evaluate(check, scene)).map((p) => `${w}x${h} ${scene}: ${p}`));
+      problems.push(...(await page.evaluate(checkRepoLink)).map((p) => `${w}x${h} ${scene}: ${p}`));
       if (scene === 'post') problems.push(...(await page.evaluate(checkHeader)).map((p) => `${w}x${h} header: ${p}`));
       await page.screenshot({ path: `${out}/${w}x${h}-${scene}.png` });
     }
+    await k.show('video');
+    problems.push(...(await page.evaluate(checkRepoLink)).map((p) => `${w}x${h} video: ${p}`));
+    await page.screenshot({ path: `${out}/${w}x${h}-video.png` });
     await page.close();
   }
   // Real zaps with comments: ≥5 messages visible and short comments are not clipped

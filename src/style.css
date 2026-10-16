@@ -2,7 +2,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; cursor: none;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(14px, min(1.6vw, 2.6vh), 40px); }
-#app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); position: relative; }
+#app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: relative; }
+.footer { position: relative; min-height: max(48px, 2.3rem); background: var(--bg); border-top: 1px solid #222; }
+.repo-link { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; width: 32px; height: 32px; padding: 8px; color: var(--muted); cursor: pointer; }
+.repo-link svg { display: block; width: 100%; height: 100%; }
+.repo-link:hover, .repo-link:focus-visible { color: var(--accent); }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
   min-width: 0; overflow: hidden; white-space: nowrap; }
 .brand { display: block; height: 1.8em; width: auto; max-width: 40vw; object-fit: contain; flex: 0 0 auto; } /* official logo (white), header height */
@@ -140,8 +144,8 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   @keyframes strike-soft { 0%, 30% { opacity: .9; } 100% { opacity: 0; } }
 }
 
-/* Notification strip (bottom-right corner of the app, in the room reserved by .scene padding): small, brief icons. */
-#live-strip { position: absolute; right: 1.2em; bottom: .4em; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
+/* Notification strip beside the repo link in the bottom band. */
+#live-strip { position: absolute; right: 48px; bottom: .4em; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
 .live-ind { display: block; height: 1.4em; animation: ind-pop 1.5s ease-out forwards; }
 .live-ind svg { height: 100%; width: auto; display: block; }
 .live-ind.zap svg { fill: #ffe86b; filter: drop-shadow(0 0 .35em #ffe86b); }
