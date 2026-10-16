@@ -14,7 +14,7 @@ export function installDemo(w: any, store: ZapStore, nowSec: () => number = () =
     zap(postId?: string, sats = 21_000) {
       const id = postId ?? recentPosts(store, 1)[0]?.postId;
       if (!id) return null;
-      store.addZap({ id: rndHex(), postId: id, sender: rndHex(), msats: sats * 1000, comment: '', created_at: nowSec() });
+      store.addZap({ id: rndHex(), postId: id, sender: rndHex(), msats: sats * 1000, comment: '', created_at: nowSec(), domain: 'getalby.com' });
       return id;
     },
   };
