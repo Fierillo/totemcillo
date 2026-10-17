@@ -5,6 +5,7 @@ import { ZapStore } from '../src/nostr/store';
 import { Announcement } from '../src/announcement';
 import { defaultConfig } from '../src/config';
 import { feedFor } from '../src/livefeed';
+import { zapFx } from '../src/zap-fx';
 import { decode } from 'nostr-tools/nip19';
 import { noteUri } from '../src/nostr/link';
 import type { InvoiceRequester } from '../src/zap-dialog';
@@ -304,6 +305,24 @@ describe('animaciones móviles', () => {
     const root = document.createElement('div'), off = renderMobile(root, s, defaultConfig, new Announcement(''));
     return { s, root, off };
   };
+  it('zap con otra pestaña abierta: ráfaga de abajo, sin rayo; en Posts: rayo, sin ráfaga', () => {
+    vi.useFakeTimers();
+    const { s, root, off } = setup();
+    document.body.append(root);
+    const stop = zapFx(s);
+    try {
+      root.querySelector<HTMLButtonElement>('[data-tab="zaps"]')!.click();
+      s.addZap(zap());
+      expect(document.querySelector('.zap-fx')).not.toBeNull();
+      expect(document.querySelector('svg.strike')).toBeNull();
+      document.querySelector('.zap-fx')!.remove();
+      root.querySelector<HTMLButtonElement>('[data-tab="posts"]')!.click();
+      s.addZap({ ...zap(), id: hex(1002) });
+      vi.advanceTimersByTime(100); // redraws are coalesced
+      expect(document.querySelector('svg.strike')).not.toBeNull();
+      expect(document.querySelector('.zap-fx')).toBeNull();
+    } finally { stop(); off(); root.remove(); vi.useRealTimers(); }
+  });
   it('muestra los totales acumulados con mini ruedita y skeletons en textos hasta que el backfill termina', () => {
     vi.useFakeTimers();
     const s = new ZapStore(undefined, { clock: () => NOW });
@@ -367,7 +386,7 @@ describe('animaciones móviles', () => {
   });
   it('consume eventos visibles sin pendientes y deja de consumirlos al cerrar', () => {
     const { s, off } = setup();
-    let indicators = 0; feedFor(s).setIndicator(() => indicators++);
+    let indicators = 0; feedFor(s).onMiss(() => indicators++);
     s.addZap(zap()); s.addPost(post(9, NOW - 1));
     expect(indicators).toBe(0);
     expect(feedFor(s).pending).toHaveLength(0);

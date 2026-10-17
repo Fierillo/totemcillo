@@ -26,7 +26,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
   let closeZap: (() => void) | undefined;
   const panel = (id: string, title: string, body: string) => `<section class="m-section" id="mobile-${id}" role="tabpanel" aria-labelledby="tab-${id}" ${selected === id ? '' : 'hidden'}><h2>${title}</h2>${body}</section>`;
   // Same live animations as the kiosk (new post / zap strike) on the Posts cards.
-  const marks = liveMarks(store, 'mobile', ['post', 'zap'], (id) => recentPosts(store, MAX).some((x) => x.postId === id));
+  const marks = liveMarks(store, 'mobile', ['post', 'zap'], (id) => selected === 'posts' && recentPosts(store, MAX).some((x) => x.postId === id)); // other tab: burst instead
   /** Post card shared by Posts and the rankings (`rank` adds the #N position). */
   const card = (s: PostStats, m: { cls: string }, rank?: number) => {
     const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');

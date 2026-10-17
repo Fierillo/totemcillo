@@ -1,16 +1,17 @@
 import type { ZapStore, LiveEvent } from './nostr/store';
+import { feedFor } from './livefeed';
 import { sats } from './util';
 
 export const FX_MS = 3000;
 
 /**
- * Bolt + sats in the lower band of the screen over whatever is on scene rotation, mobile tabs or empty state.
+ * Bolt + sats in the lower band, only when the zapped post is not on screen (otherwise the real strike falls on its row).
  * One element: a burst coalesces on the latest zap (new random spot and slight tilt each time) and hides itself when done.
  */
 export function zapFx(store: ZapStore, host: HTMLElement = document.body, ms = FX_MS, rnd = Math.random): () => void {
   let el: HTMLElement | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const off = store.onLive((e: LiveEvent) => {
+  const off = feedFor(store).onMiss((e: LiveEvent) => {
     if (e.type !== 'zap' || !e.msats) return;
     if (!el) {
       el = document.createElement('div');

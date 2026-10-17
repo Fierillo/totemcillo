@@ -2,7 +2,7 @@ import type { LiveEvent, ZapStore } from './nostr/store';
 
 export const MAX_PENDING = 10;
 export const INDICATOR_MS = 1500;
-/** Scenes where each event type's target can be visible. */
+/** Scenes where each event type's target can be visible (pending expires once all were checked; latestZaps also takes pending zaps). */
 export const TARGET_SCENES: Record<LiveEvent['type'], readonly string[]> = { post: ['post'], zap: ['post', 'top10Historico', 'top10Ultimas3h'] };
 
 interface Handler { name: string; kinds: LiveEvent['type'][]; visible: (postId: string) => boolean; mark: (e: LiveEvent) => void }
@@ -10,22 +10,23 @@ interface Pending extends LiveEvent { checked: Set<string> }
 
 /**
  * Dispatches live events: if a scene on screen shows the target, it animates right away;
- * otherwise, an indicator at the bottom + pending until entering a scene that shows it (or it expires).
+ * otherwise, the miss listeners (post icon / zap burst) + pending until entering a scene that shows it (or it expires).
  */
 export class LiveFeed {
   pending: Pending[] = [];
   private handlers = new Set<Handler>();
-  private indicator?: (e: LiveEvent) => void;
+  private misses = new Set<(e: LiveEvent) => void>();
 
   constructor(store: ZapStore, private max = MAX_PENDING) { store.onLive((e) => this.onLive(e)); }
 
-  setIndicator(fn: (e: LiveEvent) => void) { this.indicator = fn; }
+  /** Called for live events whose target is not on screen (the one place that decides on-screen vs off-screen). */
+  onMiss(fn: (e: LiveEvent) => void): () => void { this.misses.add(fn); return () => { this.misses.delete(fn); }; }
 
   attach(h: Handler): () => void { this.handlers.add(h); return () => { this.handlers.delete(h); }; }
 
   private onLive(e: LiveEvent) {
     for (const h of this.handlers) if (h.kinds.includes(e.type) && h.visible(e.postId)) { h.mark(e); return; }
-    this.indicator?.(e);
+    this.misses.forEach((fn) => fn(e));
     this.pending.push({ ...e, checked: new Set() });
     if (this.pending.length > this.max) this.pending.splice(0, this.pending.length - this.max);
   }

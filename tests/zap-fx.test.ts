@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
 import { zapFx } from '../src/zap-fx';
+import { postScene } from '../src/scenes/post';
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');
 const NOW = 1_000_000;
@@ -11,7 +12,7 @@ const zap = (n: number, msats: number, created_at = NOW) =>
 
 afterEach(() => {
   vi.useRealTimers();
-  document.querySelectorAll('.zap-fx').forEach((el) => el.remove());
+  document.body.innerHTML = '';
 });
 
 describe('animación de zap', () => {
@@ -74,6 +75,35 @@ describe('animación de zap', () => {
       expect(fx.classList.contains('is-on')).toBe(true);
       expect(fx.textContent).toContain('7');
     } finally { stop(); vi.useRealTimers(); }
+  });
+
+  it('si el post zapeado está en pantalla cae el rayo real y no aparece la ráfaga de abajo', () => {
+    const s = store();
+    s.addPost({ id: hex(11), pubkey: hex(30), content: 'hola', created_at: NOW - 60 });
+    const stop = zapFx(s);
+    const off = postScene(s, { publicUrl: 'https://x/' }).render(document.body.appendChild(document.createElement('main')));
+    try {
+      s.addZap(zap(1, 21_000)); // postId hex(11)
+      expect(document.querySelector('svg.strike')).not.toBeNull();
+      expect(document.querySelector('.zap-fx')).toBeNull();
+    } finally { stop(); off?.(); }
+  });
+
+  it('fuera de escena aparece la ráfaga; al entrar a la escena el pendiente trae el rayo, no otra ráfaga', () => {
+    vi.useFakeTimers();
+    const s = store();
+    s.addPost({ id: hex(11), pubkey: hex(30), content: 'hola', created_at: NOW - 60 });
+    const stop = zapFx(s);
+    try {
+      s.addZap(zap(1, 21_000));
+      expect(document.querySelector('.zap-fx.is-on')).not.toBeNull();
+      expect(document.querySelector('svg.strike')).toBeNull();
+      vi.advanceTimersByTime(3000);
+      const off = postScene(s, { publicUrl: 'https://x/' }).render(document.body.appendChild(document.createElement('main')));
+      expect(document.querySelector('svg.strike')).not.toBeNull();
+      expect(document.querySelector('.zap-fx.is-on')).toBeNull();
+      off?.();
+    } finally { stop(); }
   });
 
   it('al detenerla deja de escuchar y retira el elemento', () => {

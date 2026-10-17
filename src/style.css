@@ -190,12 +190,19 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 @keyframes strike-glow { 0% { stroke-width: 36; opacity: 1; } 100% { stroke-width: 20; opacity: .5; } }
 @keyframes strike-impact { 0% { opacity: .95; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.8); } }
 @keyframes strike-life { 0%, 45% { opacity: 1; } 50% { opacity: .3; } 56% { opacity: 1; } 100% { opacity: 0; } } /* flicker ≈ 200–240ms */
-.is-zapped .row-total, .is-zapped .m-total { animation: total-pop 1.2s ease-out .1s; }
-@keyframes total-pop { 0%, 30% { color: #fff6a8; text-shadow: 0 0 .6em #ffe86b; } 100% { text-shadow: 0 0 0 transparent; } } /* color only: the size never changes */
+/* Amount pop at the strike's impact (.1s): scale + accent glow; transform only, so the layout never moves. */
+.is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { transform-origin: right center; animation: total-pop .9s ease-out .1s; }
+.is-zapped .m-total { transform-origin: left center; }
+@keyframes total-pop {
+  0% { transform: scale(1); }
+  18% { transform: scale(1.25); color: #f6ffe6; text-shadow: 0 0 .35em var(--accent), 0 0 1em var(--accent); }
+  45% { transform: scale(1.1); color: var(--accent); text-shadow: 0 0 .5em var(--accent); }
+  100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
+}
 @media (prefers-reduced-motion: reduce) {
   .is-new, .is-mobile .m-post.is-new { animation: glow 2.5s ease-out; }
   .is-zapped { animation: zap-flash 2s ease-out; }
-  .is-zapped .row-total, .is-zapped .m-total { animation: none; }
+  .is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { animation: none; }
   .strike { display: none; } /* just the row highlight, no strike */
   .pending { animation: pending-pulse 1.2s ease-in-out infinite; }
   @keyframes pending-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }

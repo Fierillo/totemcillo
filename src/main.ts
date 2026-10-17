@@ -26,7 +26,7 @@ let follower: Follower | undefined; // totem only: mobile doesn't follow the clo
 if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store), import.meta.env.DEV, follower));
 const scene = document.getElementById('scene')!;
 const app = document.getElementById('app')!;
-zapFx(store); // ⚡ + sats whenever a zap arrives, regardless of the scene on screen
+zapFx(store); // ⚡ + sats at the bottom when the zapped post is not on screen
 
 if (isMobileViewport()) {
   app.classList.add('is-mobile');
@@ -38,7 +38,7 @@ if (isMobileViewport()) {
 } else {
   // The server is the source of truth: the totem computes the schedule it defines. Arrows: /admin.
   const strip = document.getElementById('live-strip');
-  if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // 💬 in the lower band if the post is not on screen
+  if (strip) feedFor(store).onMiss((e) => showIndicator(strip, e)); // 💬 in the lower band if the post is not on screen
   // One schedule load + a version check every settingsPollMs (includes the announcement).
   follower = new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate });
   void follower.start();

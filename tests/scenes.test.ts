@@ -96,6 +96,19 @@ describe('animación de zap (rayo) en la fila visible', () => {
     expect(r.querySelector('.row-total')!.textContent).toContain('2.100');
     expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
   });
+  it('últimos zaps: cae el rayo sobre la fila del zap nuevo (no las viejas del mismo post) y su monto resalta', () => {
+    const s = mkStore();
+    s.addPost(post(1));
+    s.addZap(zap(1, 1, NOW - 3600));
+    const root = document.createElement('div');
+    latestZapsScene(s).render(root);
+    s.addZap(zap(2, 1, NOW - 1, 50_000));
+    const [fresh, old] = root.querySelectorAll('.zap-list li');
+    expect(fresh.classList.contains('is-zapped')).toBe(true);
+    expect(fresh.querySelector('.amount')!.textContent).toBe('50');
+    expect(old.classList.contains('is-zapped')).toBe(false);
+    expect(document.querySelectorAll('svg.strike')).toHaveLength(1);
+  });
   it('totales acumulados: el número parpadea hasta que el backfill termina', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addZap(zap(1, 1, NOW - 3600, 2_100_000));
@@ -157,7 +170,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const s = mkStore();
     s.addPost(post(1));
     const ind: string[] = [];
-    feedFor(s).setIndicator((e) => ind.push(e.type));
+    feedFor(s).onMiss((e) => ind.push(e.type));
     s.addZap(zap(1, 1, NOW - 1));
     expect(ind).toEqual(['zap']);
     expect(feedFor(s).pending).toHaveLength(1);
@@ -167,10 +180,20 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     expect(document.querySelector('svg.strike')).not.toBeNull();
     expect(feedFor(s).pending).toHaveLength(0);
   });
+  it('zap con otra escena: al entrar a últimos zaps se repite ahí con el rayo', () => {
+    const s = mkStore();
+    s.addPost(post(1));
+    s.addZap(zap(1, 1, NOW - 1));
+    const r = document.createElement('div');
+    latestZapsScene(s).render(r);
+    expect(r.querySelector('.zap-list li')!.classList.contains('is-zapped')).toBe(true);
+    expect(document.querySelector('svg.strike')).not.toBeNull();
+    expect(feedFor(s).pending).toHaveLength(0);
+  });
   it('post nuevo con otra escena: indicador 💬 abajo y se resalta al llegar a posts', () => {
     const s = mkStore();
     const ind: string[] = [];
-    feedFor(s).setIndicator((e) => ind.push(e.type));
+    feedFor(s).onMiss((e) => ind.push(e.type));
     s.addPost(post(5, NOW - 1));
     expect(ind).toEqual(['post']);
     expect(postSc(s).r.querySelector('.is-new')).not.toBeNull();
@@ -179,7 +202,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const s = mkStore();
     s.addPost(post(1));
     const ind: string[] = [];
-    feedFor(s).setIndicator((e) => ind.push(e.type));
+    feedFor(s).onMiss((e) => ind.push(e.type));
     const { r } = postSc(s);
     s.addZap(zap(1, 1, NOW - 1));
     expect(r.querySelector('.is-zapped')).not.toBeNull();
@@ -194,7 +217,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     topSc(s);
     const ind: string[] = [];
-    feedFor(s).setIndicator((e) => ind.push(e.type));
+    feedFor(s).onMiss((e) => ind.push(e.type));
     s.addPost(post(20, NOW - 1)); // the top scene doesn't show new posts
     expect(ind).toEqual(['post']);
   });
