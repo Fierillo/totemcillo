@@ -24,7 +24,7 @@ export function topScene(o: TopOptions): Scene {
           ? `<ol class="top-list" data-fit="list" data-max="3.6" data-maxw="3.6">${rows}</ol>`
           : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps en este período</p>`) + (o.publicUrl ? appQr(o.publicUrl) : '');
         fitRegions(root);
-        marks.consume();
+        marks.consume(root);
       };
       const off = live(o.store, draw);
       return () => { off(); marks.off(); };

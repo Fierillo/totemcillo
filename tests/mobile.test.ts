@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderMobile, isMobileViewport } from '../src/mobile';
 import { ZapStore } from '../src/nostr/store';
 import { Announcement } from '../src/announcement';
@@ -8,6 +8,8 @@ import { feedFor } from '../src/livefeed';
 import { decode } from 'nostr-tools/nip19';
 import { noteUri } from '../src/nostr/link';
 import type { InvoiceRequester } from '../src/zap-dialog';
+
+afterEach(() => document.querySelectorAll('svg.strike').forEach((e) => e.remove()));
 import { profiles } from '../src/nostr/profiles';
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');
@@ -246,7 +248,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       s.addZap({ id: hex(9), postId: hex(1), sender: hex(8), msats: 21_000, comment: '', created_at: Math.floor(Date.now() / 1000) });
       await vi.waitFor(() => expect(document.querySelector('dialog')).toBeNull());
       expect(root.querySelector('.m-post.is-zapped')).not.toBeNull();
-      expect(root.querySelector('.m-post.is-zapped .m-total .bolt')).not.toBeNull();
+      expect(document.querySelector('svg.strike')).not.toBeNull();
     } finally { off(); }
   });
 
@@ -353,7 +355,7 @@ describe('animaciones móviles', () => {
       s.addZap(zap());
       const card = root.querySelector(`.m-post[data-id="${hex(1)}"]`)!;
       expect(card.classList.contains('is-zapped')).toBe(true);
-      expect(card.querySelector('.m-total svg.bolt')).not.toBeNull();
+      expect(document.querySelector('svg.strike')).not.toBeNull();
       expect(card.querySelector('.m-total')!.textContent).toContain('210');
       expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
     } finally { off(); }

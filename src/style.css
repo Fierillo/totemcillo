@@ -72,10 +72,8 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: 1rem; line-height: 1.45; }
 .m-post-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; }
 .m-total { color: var(--accent); font: 600 .85rem ui-monospace, monospace; position: relative; width: fit-content; }
-/* Mobile zap bolt: right of the total, never over text. */
 .is-mobile .m-post.is-new { animation: slide-in-x .5s ease-out both, glow 2.5s ease-out; } /* sideways: doesn't cover the heading */
 @keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
-.m-total .bolt { left: calc(100% + .5em); right: auto; top: -5%; height: 110%; }
 .m-list { list-style: none; padding: 0; margin: 0; }
 .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
 .m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
@@ -163,7 +161,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   0%, 40% { box-shadow: inset 0 0 0 2px var(--accent), 0 0 1.2em rgba(199, 255, 91, .45); background: rgba(199, 255, 91, .08); }
   100% { box-shadow: inset 0 0 0 2px transparent, 0 0 0 transparent; background: transparent; }
 }
-.is-zapped { animation: zap-shake .45s steps(6) .12s, zap-flash 2s ease-out; }
+.is-zapped { animation: zap-shake .45s steps(6) .1s, zap-flash 2s ease-out .1s; } /* .1s: when the strike's leader lands */
 .post-list, .top-list { padding: 0 .3em; }
 @keyframes zap-flash {
   0% { background: rgba(255, 238, 120, .55); }
@@ -176,21 +174,29 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   20% { transform: translateX(-.25em); } 40% { transform: translateX(.22em); }
   60% { transform: translateX(-.15em); } 80% { transform: translateX(.1em); }
 }
-.bolt { position: absolute; right: 18%; top: -40%; height: 180%; width: auto; pointer-events: none; fill: #ffe86b;
-  filter: drop-shadow(0 0 .4em #fff6a8) drop-shadow(0 0 1em var(--accent)); opacity: 0; animation: strike 1.6s ease-out forwards; }
-@keyframes strike {
-  0% { opacity: 0; transform: translateY(-40%) scaleY(.4); }
-  10% { opacity: 1; transform: none; } 18% { opacity: .3; } 26% { opacity: 1; }
-  100% { opacity: 0; }
-}
-.is-zapped .row-total, .is-zapped .m-total { animation: total-pop 1.2s ease-out .15s; }
+/* Real lightning onto the zapped row (path drawn by src/strike.ts, --leader = LEADER_MS, 433ms = STRIKE_MS):
+   the leader grows top→bottom, branches sprout as it passes, then a return-stroke flash + impact glow, one flicker, fade. */
+.strike { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 45; pointer-events: none; fill: none; stroke-linecap: round; stroke-linejoin: round;
+  animation: strike-life 433ms linear forwards; }
+.strike path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.strike .glow { stroke: var(--accent); stroke-width: 18; opacity: .45; filter: blur(7px);
+  animation: strike-lead var(--leader) ease-in forwards, strike-glow .2s ease-out var(--leader) forwards; }
+.strike .core { stroke: #f6ffe6; stroke-width: 3; filter: drop-shadow(0 0 3px #f6ffe6) drop-shadow(0 0 10px var(--accent));
+  animation: strike-lead var(--leader) ease-in forwards, strike-core .2s ease-out var(--leader) forwards; }
+.strike .branch { stroke: #ecffcc; stroke-width: 2.5; filter: drop-shadow(0 0 6px var(--accent)); animation: strike-lead 47ms ease-out forwards; }
+.strike .impact { fill: var(--accent); filter: blur(14px); opacity: 0; transform-box: fill-box; transform-origin: center; animation: strike-impact .23s ease-out var(--leader) forwards; }
+@keyframes strike-lead { to { stroke-dashoffset: 0; } }
+@keyframes strike-core { 0% { stroke-width: 9; } 100% { stroke-width: 4; } }
+@keyframes strike-glow { 0% { stroke-width: 36; opacity: 1; } 100% { stroke-width: 20; opacity: .5; } }
+@keyframes strike-impact { 0% { opacity: .95; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.8); } }
+@keyframes strike-life { 0%, 45% { opacity: 1; } 50% { opacity: .3; } 56% { opacity: 1; } 100% { opacity: 0; } } /* flicker ≈ 200–240ms */
+.is-zapped .row-total, .is-zapped .m-total { animation: total-pop 1.2s ease-out .1s; }
 @keyframes total-pop { 0%, 30% { color: #fff6a8; text-shadow: 0 0 .6em #ffe86b; } 100% { text-shadow: 0 0 0 transparent; } } /* color only: the size never changes */
 @media (prefers-reduced-motion: reduce) {
   .is-new, .is-mobile .m-post.is-new { animation: glow 2.5s ease-out; }
   .is-zapped { animation: zap-flash 2s ease-out; }
   .is-zapped .row-total, .is-zapped .m-total { animation: none; }
-  .bolt { animation: strike-soft 1.6s ease-out forwards; }
-  @keyframes strike-soft { 0%, 30% { opacity: .9; } 100% { opacity: 0; } }
+  .strike { display: none; } /* just the row highlight, no strike */
   .pending { animation: pending-pulse 1.2s ease-in-out infinite; }
   @keyframes pending-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 }

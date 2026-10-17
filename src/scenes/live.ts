@@ -1,6 +1,7 @@
 import type { LiveEvent, ZapStore } from '../nostr/store';
 import { feedFor } from '../livefeed';
 import { profiles } from '../nostr/profiles';
+import { strike } from '../strike';
 
 /** Draws now; coalesces store/profile/resize bursts to at most ten updates per second. */
 export function live(store: ZapStore, draw: () => void): () => void {
@@ -20,11 +21,9 @@ export function live(store: ZapStore, draw: () => void): () => void {
   return () => { off(); offP(); window.removeEventListener('resize', schedule); clearTimeout(timer); };
 }
 
-export const BOLT = '<svg class="bolt" viewBox="0 0 24 48" aria-hidden="true"><path d="M15 0 3 27h9L8 48l14-30h-9l5-18z"/></svg>';
-
 /**
  * One-shot animation marks for a scene: live events whose target is on screen
- * (or pending when entering the scene) mark the row (is-new / is-zapped) for the next draw.
+ * (or pending when entering the scene) mark the row (is-new / is-zapped) for the next draw; zapped rows also get a lightning strike.
  */
 export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'][], visible: (postId: string) => boolean) {
   const feed = feedFor(store);
@@ -45,9 +44,13 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
     },
     attrs(id: string) {
       const m = marks.get(id);
-      return { cls: m ? ` ${[...m].join(' ')}` : '', bolt: m?.has('is-zapped') ? BOLT : '' };
+      return { cls: m ? ` ${[...m].join(' ')}` : '' };
     },
-    consume() { marks.clear(); },
+    /** Call after drawing: strikes the zapped rows now on screen in `root`, then forgets the marks. */
+    consume(root: ParentNode) {
+      root.querySelectorAll('.is-zapped').forEach((el) => strike(el));
+      marks.clear();
+    },
     off,
   };
 }

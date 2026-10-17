@@ -25,7 +25,7 @@ const mem = (data: unknown) => { const m = new Map([['totemcillo:v1', JSON.strin
 const mkStore = (storage?: any) => new ZapStore(storage, { clock: () => NOW });
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => { profiles.clear(); vi.useRealTimers(); });
+afterEach(() => { profiles.clear(); vi.useRealTimers(); document.querySelectorAll('svg.strike').forEach((e) => e.remove()); });
 
 describe('store: eventos en vivo (no historial)', () => {
   it('emite post/zap sólo si son recientes (≤ liveWindowSec) y nuevos', () => {
@@ -84,7 +84,7 @@ describe('animación de post nuevo en la lista', () => {
 });
 
 describe('animación de zap (rayo) en la fila visible', () => {
-  it('lista de posts: la fila zapeada recibe is-zapped con un rayo SVG y el total actualizado', () => {
+  it('lista de posts: la fila zapeada recibe is-zapped, un rayo real cae sobre ella y el total se actualiza', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addPost(post(2));
     const root = document.createElement('div');
@@ -92,7 +92,7 @@ describe('animación de zap (rayo) en la fila visible', () => {
     s.addZap(zap(1, 1, NOW - 1, 2_100_000));
     const r = root.querySelector(`.post-row[data-id="${hex(1)}"]`)!;
     expect(r.classList.contains('is-zapped')).toBe(true);
-    expect(r.querySelector('svg.bolt')).not.toBeNull();
+    expect(document.querySelector('svg.strike')).not.toBeNull();
     expect(r.querySelector('.row-total')!.textContent).toContain('2.100');
     expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
   });
@@ -122,7 +122,7 @@ describe('animación de zap (rayo) en la fila visible', () => {
     s.addZap(zap(2, 1, NOW - 1));
     const li = root.querySelector(`li[data-id="${hex(1)}"]`)!;
     expect(li.classList.contains('is-zapped')).toBe(true);
-    expect(li.querySelector('svg.bolt')).not.toBeNull();
+    expect(document.querySelector('svg.strike')).not.toBeNull();
   });
   it('zap a un post que no está en pantalla: nada se anima', () => {
     const s = mkStore();
@@ -164,7 +164,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const { r } = postSc(s);
     const row = r.querySelector(`.post-row[data-id="${hex(1)}"]`)!;
     expect(row.classList.contains('is-zapped')).toBe(true);
-    expect(row.querySelector('svg.bolt')).not.toBeNull();
+    expect(document.querySelector('svg.strike')).not.toBeNull();
     expect(feedFor(s).pending).toHaveLength(0);
   });
   it('post nuevo con otra escena: indicador 💬 abajo y se resalta al llegar a posts', () => {

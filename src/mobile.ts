@@ -16,7 +16,7 @@ const empty = (t: string) => `<p class="muted m-empty">${t}</p>`;
 const skel = (cls: string) => `<span class="skel ${cls}" aria-hidden="true"></span>`;
 const SKEL_POST = `<article class="m-post m-skel-post" aria-hidden="true">${skel('m-skel-avatar')}${skel('m-skel-line')}${skel('m-skel-line m-skel-short')}</article>`;
 const SKEL_ROWS = `<div class="m-skel-rows" aria-hidden="true">${skel('m-skel-line')}${skel('m-skel-line m-skel-short')}${skel('m-skel-line')}</div>`;
-const NO_MARKS = { cls: '', bolt: '' };
+const NO_MARKS = { cls: '' };
 
 /** Mobile feed with persistent section tabs, no rotation or QR. */
 export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, ann: Announcement, requestInvoice?: InvoiceRequester): () => void {
@@ -25,15 +25,15 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
   let selected = 'posts';
   let closeZap: (() => void) | undefined;
   const panel = (id: string, title: string, body: string) => `<section class="m-section" id="mobile-${id}" role="tabpanel" aria-labelledby="tab-${id}" ${selected === id ? '' : 'hidden'}><h2>${title}</h2>${body}</section>`;
-  // Same live animations as the kiosk (new post / zap bolt) on the Posts cards.
+  // Same live animations as the kiosk (new post / zap strike) on the Posts cards.
   const marks = liveMarks(store, 'mobile', ['post', 'zap'], (id) => recentPosts(store, MAX).some((x) => x.postId === id));
   /** Post card shared by Posts and the rankings (`rank` adds the #N position). */
-  const card = (s: PostStats, m: { cls: string; bolt: string }, rank?: number) => {
+  const card = (s: PostStats, m: { cls: string }, rank?: number) => {
     const web = noteUri(s.post!, cfg.relays, 'https://njump.me/{nevent}');
     return `<article class="m-post${m.cls}" data-id="${esc(s.postId)}">
         <div class="m-meta">${rank ? `<b class="m-rank">#${rank}</b>` : ''}${authorHtml(s.post!.pubkey)}<span class="muted">${ago(s.post!.created_at)}</span></div>
         <p class="m-excerpt">${esc(s.post!.content)}</p>
-        <div class="m-post-footer"><div class="m-total">⚡ ${pending(`${sats(s.msats)} sats`, store.ready)}${m.bolt}</div>
+        <div class="m-post-footer"><div class="m-total">⚡ ${pending(`${sats(s.msats)} sats`, store.ready)}</div>
         ${web ? `<div class="m-actions"><button class="zap-btn" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog">⚡ Zapear</button><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}
         </div>
       </article>`;
@@ -55,7 +55,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
       + panel('top', 'Top 10 zaps · histórico', topAll || (loading ? SKEL_POST.repeat(2) : empty('Todavía no hay zaps en este período')))
       + panel('recent', `Top 10 zaps · últimas ${cfg.topRecentHours} horas`, topRecent || (loading ? SKEL_POST.repeat(2) : empty('Todavía no hay zaps en este período')));
     if (focused) root.querySelector<HTMLButtonElement>(`[data-tab="${focused}"]`)?.focus({ preventScroll: true });
-    marks.consume();
+    marks.consume(root);
   };
   const select = (id: string) => {
     if (!tabs.some((t) => t.id === id) || selected === id) return;
