@@ -1,85 +1,103 @@
-# totemcillo
+<div align="center">
 
-**La Crypta**'s totem screen for **LABITCONF**: shows Nostr notes tagged `#lacrypta` and `#labitconf` live, along with the zaps they receive.
+# ⚡ totemcillo
 
-![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+**La Crypta**'s totem screen for **LABITCONF**: live Nostr notes and the zaps they receive.
+
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
 ![nostr-tools](https://img.shields.io/badge/nostr--tools-8E44AD?logo=nostr&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
-![Upstash Redis](https://img.shields.io/badge/Upstash_Redis-00E9A3?logo=upstash&logoColor=black)
 ![pnpm](https://img.shields.io/badge/pnpm-F69220?logo=pnpm&logoColor=white)
-![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white)
 
-## Features
+<img src="docs/totem-top10.webp" alt="Totem showing the all-time Top 10 zaps" width="820">
 
-- **Rotating scenes**: recent posts, latest zaps, all-time Top 10, recent-hours Top 10, announcement and video.
-- **Live animations** when a post or zap arrives (on mobile too).
-- **Nostr profiles**: alias and avatar instead of npub.
-- **QR** to the app on posts, tops and announcement.
-- **Mobile view** on the same URL, with a ⚡ Zap button.
-- **Admin** (`/admin`, password protected): announcement, durations, video mode and ← → arrows.
-- Zaps validated per NIP-57; only posts and zaps since `startLine` count (editable in `/admin`; defaults in `shared/settings.ts`).
+</div>
 
-## Running
+## What it does
+
+- Shows notes tagged `#lacrypta` and `#labitconf` live, with their zap totals.
+- Rotates scenes: latest posts, latest zaps, two Top 10s, an announcement and a video.
+- Every totem shows the same scene at the same time (server clock).
+- The same URL on a phone shows a mobile view with a ⚡ Zap button.
+
+## How it works
+
+**A post appears:** anyone can get on the screen by posting on Nostr with the hashtag.
+
+```mermaid
+%%{init: {"sequence": {"mirrorActors": false}}}%%
+sequenceDiagram
+  actor Person
+  participant Relays as Nostr relays
+  participant Totem
+  Person->>Relays: Posts a note with the hashtag
+  Relays->>Totem: New note
+  Note over Totem: Skips hidden posts<br/>and banned authors
+  alt Posts scene on screen
+    Note over Totem: The post slides in at the top
+  else Other scene on screen
+    Note over Totem: A new-post icon pops up
+  end
+```
+
+**A zap is counted:** only real payments add sats.
+
+```mermaid
+%%{init: {"sequence": {"mirrorActors": false}}}%%
+sequenceDiagram
+  actor Person
+  participant Wallet
+  participant Relays as Nostr relays
+  participant Totem
+  Person->>Wallet: Zaps a post
+  Wallet->>Relays: Signed zap receipt
+  Relays->>Totem: Zap receipt
+  Note over Totem: Checks signatures, amount<br/>and that the wallet is allowed
+  alt Valid
+    Note over Totem: Adds the sats, plays a lightning<br/>animation and updates the Top 10s
+  else Fake or not allowed
+    Note over Totem: Ignored
+  end
+```
+
+**An organizer changes something:** every screen follows within about 21 seconds.
+
+```mermaid
+%%{init: {"sequence": {"mirrorActors": false}}}%%
+sequenceDiagram
+  actor Organizer
+  participant Admin as /admin
+  participant Server as Server + Redis
+  participant Totem as Every totem
+  Organizer->>Admin: Edits announcement,<br/>durations or moderation
+  Admin->>Server: Saves the change
+  loop Every 21 seconds
+    Totem->>Server: Anything new?
+  end
+  Server-->>Totem: New settings and schedule
+  Note over Totem: All screens show the same<br/>scene at the same time
+```
+
+## Getting started
 
 ```bash
 pnpm install
 pnpm dev      # http://localhost:5173 and /admin
-pnpm test     # vitest
-pnpm build    # dist/
+pnpm test
+pnpm build
 ```
-
-Dev listens on `0.0.0.0:5173`, so a phone on the same local network can open `http://<computer-LAN-IP>:5173`. Set `ADMIN_PASSWORD` when using a shared network: the local default is `admin`. Preview listens only on localhost. Neither mode pre-authorizes ngrok domains; do not expose these development servers to the internet.
-
-Environment variables (on Vercel; optional locally):
 
 | Variable | Purpose |
 | --- | --- |
-| `ADMIN_PASSWORD` | Admin panel password (defaults to `admin` locally). |
-| `SESSION_SECRET` | Session signing key, at least 32 characters. |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Both required in production for shared settings, rate limits and session revocation. Missing either makes the API and avatar proxy return 503 (no memory fallback). Dev/preview and tests use local memory. |
+| `ADMIN_PASSWORD` | `/admin` password (`admin` locally if unset) |
+| `SESSION_SECRET` | Session signing key (32+ characters) |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token |
 
-The installed Vercel Upstash integration exposes these as `UPSTASH_REDIS_REST_KV_REST_API_URL` / `UPSTASH_REDIS_REST_KV_REST_API_TOKEN`; those names are also accepted. Before deploying, verify that the REST URL and read/write token are available to the **Production** environment.
+- **Deploy:** Vercel + Upstash; both Redis variables are required in production.
+- **Admin:** `/admin` (password): announcement, scene durations, video, start line, zap providers and moderation.
+- **Dev tools:** `pnpm dev` adds buttons to simulate posts/zaps and step through scenes.
+- **Zaps:** validated per NIP-57, only from an allowlist of LNURL providers.
 
-Locally: `ADMIN_PASSWORD=other pnpm dev`. Deploy: `pnpm dlx vercel --prod`.
-
-## Tests
-
-`pnpm test` runs behavior tests grouped by responsibility in `tests/`. Keep security, money validation and synchronization edge cases here; avoid assertions on source-code text or CSS declarations.
-
-`pnpm test:e2e` checks rendered layout, header, mobile/reduced-motion behavior, video and admin flows in Chrome. Screenshots go to `shots/` (override with `SHOTS`; set `CHROME` for a different executable).
-
-## Nostr overload protection
-
-Relay events are checked locally for the requested hashtags/post IDs, the start line and a maximum future clock skew of two minutes. Oversized events are rejected before application-level signature validation. Each feed admits at most 100 notes and 100 receipts per second; duplicate retained events do not spend that budget.
-
-There is one active zap subscription for the retained posts (500 by default), with four concurrent receipt validations and at most 128 queued receipts. LNURL HTTP requests time out after five seconds, including body reading. Under sustained overload, excess events are dropped rather than queued indefinitely; this feed is best-effort, not a lossless payment ledger. Scene, mobile and moderation redraws are coalesced to at most ten updates per second after the initial render.
-
-Before contacting an LNURL endpoint, the client checks its hostname against the current admin provider list (exact domain or subdomain). Only HTTPS on the standard port, without URL credentials, is accepted. All HTTP redirects are rejected, including between authorized providers; an LNURL endpoint that requires a redirect will not validate. Provider changes invalidate the resolver cache, and pending results are checked against the current list before being returned.
-
-These limits bound application work, not raw WebSocket traffic or the relay library's parsing/verification. They do not prevent valid spam/Sybil posts; moderation is still needed.
-
-When the post history reaches its capacity, posts excluded by moderation or the start line are evicted before visible posts, along with their associated zaps. This prevents an already banned author's flood from displacing visible history. Moderated posts remain available for undo while there is room; once evicted, they and their zaps are no longer retained locally.
-
-## How sync works
-
-Settings and moderation saves use an atomic Redis version check. Concurrent changes are reapplied to the latest settings instead of overwriting each other. Retries are bounded; persistent contention returns 503 without saving a stale copy. Existing stored settings need no migration.
-
-`public/config.json` contains static client configuration: relays, hashtags, post length, recent ranking window, public URL, polling interval and video asset. Announcement, start line, scene durations and video scheduling are managed by `/admin`, persisted by the server, with defaults in `shared/settings.ts`.
-
-The **server clock** is the single source of truth. From a stored `epoch` and the scene durations, the server computes which scene is on (and, for video, at which second). Screens only read:
-
-- `GET /api/kiosk` returns the schedule; `GET /api/time` corrects local clock drift.
-- Every **21 s** (`settingsPollMs`) they check `GET /api/version` and reload the schedule only if it changed.
-- Admin arrows and duration changes re-anchor the schedule; every screen shows the same thing.
-
-## Roadmap
-
-- [x] Scenes, mobile view and admin panel
-- [x] Fixed post cutoff via `startLine`
-- [x] Deterministic server schedule (`/api/kiosk`, `/api/time`, `/api/version`)
-- [x] Full video or synced clips
-- [x] Live post and zap animations
-- [x] Nostr profile alias and avatar
-- [x] QR on every scene
-- [ ] Optional anonymous zap via wallet invoice
+<div align="center"><sub>ISC © 2026 Fierillo · Built for <b>La Crypta</b> 🧡</sub></div>
