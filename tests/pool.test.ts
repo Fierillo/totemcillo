@@ -116,19 +116,20 @@ describe('startNostr', () => {
     } finally { h.close(); }
   });
   it('una ráfaga firmada de un autor baneado no expulsa el post legítimo del historial ni del filtro de zaps', () => {
-    const p = mockPool(), store = new ZapStore();
+    // Small cap (production default is 500) so the burst needs few real signatures.
+    const p = mockPool(), store = new ZapStore(undefined, { maxPosts: 20 });
     const good = keys();
     const legitimate = sign(good.sk, { kind: 1, created_at: 1, content: 'legítimo', tags: [['t', 'lacrypta']] });
     store.setModeration({ hiddenPosts: [], bannedPubkeys: [author.pk] });
     const feed = startNostr(cfg, store, p, 1500, resolverFor(null));
     try {
       p.subs[0].h.onevent(legitimate);
-      for (let i = 0; i < 510; i++) {
+      for (let i = 0; i < 30; i++) {
         if (i % 50 === 0) vi.advanceTimersByTime(1000);
         p.subs[0].h.onevent(note(`spam ${i}`));
       }
       expect(store.latestPosts(10).map((post) => post.id)).toEqual([legitimate.id]);
-      expect(store.posts.size).toBe(500);
+      expect(store.posts.size).toBe(20);
       vi.advanceTimersByTime(1500);
       const active = p.subs.filter((s) => s.filter.kinds[0] === 9735 && !s.close.mock.calls.length);
       expect(active).toHaveLength(1);
