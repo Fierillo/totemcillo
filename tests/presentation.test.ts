@@ -57,6 +57,13 @@ describe('fitList', () => {
     fitList(one, 20, listMeasurer(1));
     expect(one.children).toHaveLength(1);
   });
+  it('con mínimo achica el tamaño hasta que entren todos; solo en el mínimo saca items', () => {
+    const ul = list(10);
+    expect(fitList(ul, 20, listMeasurer(110), 8)).toEqual({ size: 11, removed: 0 });
+    expect(ul.children).toHaveLength(10);
+    const tight = list(10);
+    expect(fitList(tight, 20, listMeasurer(50), 8)).toEqual({ size: 8, removed: 4 });
+  });
 });
 
 describe('fitRegions', () => {
@@ -68,6 +75,13 @@ describe('fitRegions', () => {
     expect(root.querySelector('p')!.style.fontSize).toBe('25px');
     expect(root.querySelector('ul')!.style.fontSize).toBe('40px');
     expect(root.querySelector('span')!.style.fontSize).toBe('');
+  });
+  it('una lista con data-min (px) se achica para mostrar todos los items', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<ul data-fit="list" data-max="4" data-min="10"><li></li><li></li></ul>';
+    fitRegions(root, { setSize: domMeasurer.setSize, fits: (el) => size(el) * el.children.length * 10 <= 600 }, 1000);
+    expect(root.querySelector('ul')!.style.fontSize).toBe('30px');
+    expect(root.querySelectorAll('li')).toHaveLength(2);
   });
 });
 

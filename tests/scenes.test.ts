@@ -488,6 +488,14 @@ describe('ajuste y ciclo de vida', () => {
       cleanup?.();
     }
   });
+  it('solo los top 10 se achican para mostrar las 10 entradas (data-min); posts y zaps sacan filas', () => {
+    const s = new ZapStore(); s.addPost(post(1, 1)); s.addZap(zap(1, 1, 2));
+    for (const [scene, list, min] of [[postScene(s), '.post-list', undefined], [latestZapsScene(s), '.zap-list', undefined], [top10HistoricoScene(s), '.top-list', '12'], [top10Ultimas3hScene(s, 3, () => 3 * 1000), '.top-list', '12']] as const) {
+      const root = document.createElement('div'), cleanup = scene.render(root);
+      expect(root.querySelector<HTMLElement>(list)!.dataset.min).toBe(min);
+      cleanup?.();
+    }
+  });
   it('live redibuja en cambios y resize, y se desuscribe al limpiar', () => {
     const s = new ZapStore(), draw = vi.fn(), off = live(s, draw);
     expect(draw).toHaveBeenCalledTimes(1);

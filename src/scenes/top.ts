@@ -21,7 +21,7 @@ export function topScene(o: TopOptions): Scene {
         const rows = list.map((s, i) => postRow(s, marks.attrs(s.postId), o.store.ready, i + 1)).join('');
         root.innerHTML = `<h1 class="top-title" data-fit="text" data-max="6" data-min="20">${esc(o.title)}</h1>
 ` + (rows
-          ? `<ol class="top-list" data-fit="list" data-max="3.6" data-maxw="3.6">${rows}</ol>`
+          ? `<ol class="top-list" data-fit="list" data-max="3.6" data-maxw="3.6" data-min="12">${rows}</ol>`
           : `<p class="empty-msg" data-fit="text" data-max="6" data-min="16">Todavía no hay zaps en este período</p>`) + (o.publicUrl ? appQr(o.publicUrl) : '');
         fitRegions(root);
         marks.consume(root);
