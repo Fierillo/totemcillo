@@ -100,4 +100,17 @@ pnpm build
 - **Dev tools:** `pnpm dev` adds buttons to simulate posts/zaps and step through scenes.
 - **Zaps:** validated per NIP-57, only from an allowlist of LNURL providers.
 
+## 📍 Roadmap
+
+- [x] Scenes, mobile view and admin panel
+- [x] Fixed post cutoff via `startLine`
+- [x] Deterministic server schedule (`/api/kiosk`, `/api/time`, `/api/version`)
+- [x] Full video or synced clips
+- [x] Live post and zap animations
+- [x] Nostr profile alias and avatar
+- [x] QR on every scene
+- [x] Optional anonymous zap via wallet invoice
+- [ ] Allow images in posts
+- [ ] Filter posts by Web of Trust (WoT)
+
 <div align="center"><sub>ISC © 2026 Fierillo · Built for <b>La Crypta</b> 🧡</sub></div>
