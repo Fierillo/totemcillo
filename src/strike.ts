@@ -2,6 +2,8 @@
 export const LEADER_MS = 100;
 /** Total life of a strike: leader, return stroke, one flicker and fade (CSS keyframes use the same length). */
 export const STRIKE_MS = 433;
+/** Life of the "+N sats" label left at the impact point (it outlives the bolt so it can be read). */
+export const GAIN_MS = 1200;
 
 type Pt = [number, number];
 const r1 = (v: number) => Math.round(v * 10) / 10;
@@ -24,7 +26,7 @@ function jagged(a: Pt, b: Pt, rnd: () => number, levels: number): Pt[] {
  * Real-looking lightning: a jagged streak that grows from the top of the viewport onto the target's top edge,
  * plus one or two short branches that sprout when the leader passes their fork. A fresh shape every time (Math.random); removes itself after `ms`.
  */
-export function strike(target: Element, rnd = Math.random, ms = STRIKE_MS): SVGSVGElement | null {
+export function strike(target: Element, rnd = Math.random, ms = STRIKE_MS, gain?: string): SVGSVGElement | null {
   if (target.closest('[hidden]')) return null;
   const doc = target.ownerDocument;
   const { innerWidth: w, innerHeight: h } = doc.defaultView!;
@@ -48,5 +50,13 @@ export function strike(target: Element, rnd = Math.random, ms = STRIKE_MS): SVGS
     + `<circle class="impact" cx="${r1(end[0])}" cy="${r1(end[1])}" r="40"/>`;
   doc.body.append(svg);
   setTimeout(() => svg.remove(), ms);
+  if (gain) {
+    const label = doc.createElement('div');
+    label.className = 'strike-gain';
+    label.textContent = gain;
+    Object.assign(label.style, { left: `${r1(end[0])}px`, top: `${r1(end[1])}px`, animationDelay: `${LEADER_MS}ms` });
+    doc.body.append(label);
+    setTimeout(() => label.remove(), GAIN_MS);
+  }
   return svg;
 }

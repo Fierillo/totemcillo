@@ -36,7 +36,7 @@ export class LiveFeed {
     const out: LiveEvent[] = [];
     this.pending = this.pending.filter((p) => {
       if (!kinds.includes(p.type)) return true;
-      if (visibleIds.has(p.postId)) { out.push({ type: p.type, postId: p.postId }); return false; }
+      if (visibleIds.has(p.postId)) { out.push({ type: p.type, postId: p.postId, msats: p.msats }); return false; }
       p.checked.add(name);
       return !TARGET_SCENES[p.type].every((n) => p.checked.has(n));
     });

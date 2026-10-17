@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LEADER_MS, strike, STRIKE_MS } from '../src/strike';
+import { GAIN_MS, LEADER_MS, strike, STRIKE_MS } from '../src/strike';
 
 /** Row on screen: happy-dom has no layout, so the bounding rect is stubbed (the layout engine is the boundary). */
 const row = (rect = { left: 100, top: 500, width: 200, height: 50 }) => {
@@ -59,6 +59,21 @@ describe('rayo real sobre el post zapeado', () => {
     expect(document.querySelector('svg.strike')).toBeNull();
     expect(STRIKE_MS).toBeGreaterThan(LEADER_MS);
     expect(STRIKE_MS).toBeLessThanOrEqual(700);
+  });
+
+  it('con monto: "+N sats" nace en el punto de impacto y dura un poco más que el rayo', () => {
+    vi.useFakeTimers();
+    strike(row(), () => 0.5, STRIKE_MS, '+21 sats');
+    const gain = document.querySelector<HTMLElement>('.strike-gain')!;
+    expect(gain.textContent).toBe('+21 sats');
+    expect([gain.style.left, gain.style.top]).toEqual(['200px', '500px']); // impact point
+    expect(gain.style.animationDelay).toBe(`${LEADER_MS}ms`); // shows up when the leader lands
+    vi.advanceTimersByTime(STRIKE_MS);
+    expect(gain.isConnected).toBe(true);
+    vi.advanceTimersByTime(GAIN_MS - STRIKE_MS);
+    expect(document.querySelector('.strike-gain')).toBeNull();
+    strike(row());
+    expect(document.querySelector('.strike-gain')).toBeNull(); // no amount, no label
   });
 
   it('no cae sobre un post oculto (pestaña inactiva del móvil)', () => {

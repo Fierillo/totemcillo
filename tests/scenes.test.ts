@@ -25,7 +25,7 @@ const mem = (data: unknown) => { const m = new Map([['totemcillo:v1', JSON.strin
 const mkStore = (storage?: any) => new ZapStore(storage, { clock: () => NOW });
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => { profiles.clear(); vi.useRealTimers(); document.querySelectorAll('svg.strike').forEach((e) => e.remove()); });
+afterEach(() => { profiles.clear(); vi.useRealTimers(); document.querySelectorAll('svg.strike, .strike-gain').forEach((e) => e.remove()); });
 
 describe('store: eventos en vivo (no historial)', () => {
   it('emite post/zap sólo si son recientes (≤ liveWindowSec) y nuevos', () => {
@@ -108,6 +108,16 @@ describe('animación de zap (rayo) en la fila visible', () => {
     expect(fresh.querySelector('.amount')!.textContent).toBe('50');
     expect(old.classList.contains('is-zapped')).toBe(false);
     expect(document.querySelectorAll('svg.strike')).toHaveLength(1);
+  });
+  it('el rayo deja "+N sats" con lo que sumó el zap (en vivo y al reponer un pendiente)', () => {
+    const s = mkStore();
+    s.addPost(post(1));
+    s.addZap(zap(1, 1, NOW - 1, 5_000_000)); // off-scene: pending
+    postScene(s, { publicUrl: 'https://x/' }).render(document.createElement('div'));
+    expect(document.querySelector('.strike-gain')!.textContent).toBe('+5.000 sats');
+    document.querySelectorAll('.strike-gain').forEach((e) => e.remove());
+    s.addZap(zap(2, 1, NOW - 1, 21_000)); // live, on screen
+    expect(document.querySelector('.strike-gain')!.textContent).toBe('+21 sats');
   });
   it('totales acumulados: el número parpadea hasta que el backfill termina', () => {
     const s = mkStore();
