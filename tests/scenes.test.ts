@@ -224,15 +224,22 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     for (let i = 0; i < 15; i++) s.addZap(zap(i, 1, NOW - 1));
     expect(feedFor(s).pending).toHaveLength(10);
   });
-  it('showIndicator apila íconos chicos en la franja y los quita a ~1,5 s', () => {
+  it('showIndicator muestra solo posts (el zap ya tiene su ráfaga grande) y los quita a ~1,5 s', () => {
     const strip = document.createElement('div');
     showIndicator(strip, { type: 'zap', postId: 'x' });
     showIndicator(strip, { type: 'post', postId: 'y' });
-    expect(strip.querySelectorAll('.live-ind')).toHaveLength(2);
-    expect(strip.querySelector('.live-ind.zap svg')).not.toBeNull();
+    expect(strip.querySelectorAll('.live-ind')).toHaveLength(1);
     expect(strip.querySelector('.live-ind.post svg')).not.toBeNull();
     vi.advanceTimersByTime(1700);
     expect(strip.querySelectorAll('.live-ind')).toHaveLength(0);
+  });
+
+  it('showIndicator ubica el post al azar en la franja baja, levemente inclinado', () => {
+    const strip = document.createElement('div');
+    const at = (r: number) => { showIndicator(strip, { type: 'post', postId: 'y' }, 1500, () => r); return (strip.lastElementChild as HTMLElement).style; };
+    const lo = at(0), hi = at(1);
+    expect([lo.left, lo.bottom, lo.getPropertyValue('--tilt')]).toEqual(['5%', '6vh', '-12deg']);
+    expect([hi.left, hi.bottom, hi.getPropertyValue('--tilt')]).toEqual(['85%', '22vh', '12deg']);
   });
 });
 

@@ -37,7 +37,7 @@ if (isMobileViewport()) {
 } else {
   // The server is the source of truth: the totem computes the schedule it defines. Arrows: /admin.
   const strip = document.getElementById('live-strip');
-  if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // ⚡/💬 at the bottom if the target is not on screen
+  if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // 💬 in the lower band if the post is not on screen
   // One schedule load + a version check every settingsPollMs (includes the announcement).
   void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate }).start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());

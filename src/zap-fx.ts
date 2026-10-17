@@ -4,10 +4,10 @@ import { sats } from './util';
 export const FX_MS = 3000;
 
 /**
- * Bolt + sats at the bottom of the screen over whatever is on scene rotation, mobile tabs or empty state.
- * One element: a burst coalesces on the latest zap (new random horizontal spot each time) and hides itself when done.
+ * Bolt + sats in the lower band of the screen over whatever is on scene rotation, mobile tabs or empty state.
+ * One element: a burst coalesces on the latest zap (new random spot and slight tilt each time) and hides itself when done.
  */
-export function zapFx(store: ZapStore, host: HTMLElement = document.body, ms = FX_MS): () => void {
+export function zapFx(store: ZapStore, host: HTMLElement = document.body, ms = FX_MS, rnd = Math.random): () => void {
   let el: HTMLElement | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const off = store.onLive((e: LiveEvent) => {
@@ -20,7 +20,10 @@ export function zapFx(store: ZapStore, host: HTMLElement = document.body, ms = F
       (el.firstElementChild as HTMLElement).style.animationDuration = `${ms}ms`;
       host.append(el);
     }
-    el.style.left = `${20 + Math.random() * 60}%`; // random horizontal spot on every zap
+    // Random spot on every zap; centered on `left`, so 20–80% keeps the burst inside the viewport.
+    el.style.left = `${20 + rnd() * 60}%`;
+    el.style.bottom = `${5 + rnd() * 10}vh`;
+    el.style.setProperty('--tilt', `${-8 + rnd() * 16}deg`);
     el.querySelector('.zap-fx-sats')!.textContent = `${sats(e.msats)} sats`;
     el.classList.remove('is-on');
     void el.offsetWidth; // restart the keyframes on a burst

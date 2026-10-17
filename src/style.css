@@ -95,11 +95,11 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-skel-short { width: 55%; }
 .m-skel-rows { padding: .4rem 0; }
 
-/* Zap burst: bolt + sats at the bottom over whatever scene is on screen (random horizontal spot) */
-.zap-fx { position: fixed; bottom: 7vh; left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none; }
+/* Zap burst: bolt + sats in the lower band over whatever scene is on screen (random spot and tilt set from JS) */
+.zap-fx { position: fixed; bottom: 7vh; left: 50%; transform: translateX(-50%) rotate(var(--tilt, 0deg)); z-index: 40; pointer-events: none; }
 .zap-fx-burst { display: grid; justify-items: center; gap: .6rem; opacity: 0; }
-.zap-fx svg { width: clamp(4rem, 13vw, 8.5rem); fill: var(--accent); filter: drop-shadow(0 0 1.5rem #a3e63599); }
-.zap-fx-sats { font-size: clamp(2rem, 6.5vw, 4.5rem); font-weight: 900; color: var(--fg); text-shadow: 0 0 1.5rem #000, 0 0 .5rem var(--accent); }
+.zap-fx svg { width: clamp(2rem, 4.5vw, 3.5rem); fill: var(--accent); filter: drop-shadow(0 0 1.5rem #a3e63599); }
+.zap-fx-sats { font-size: clamp(1.2rem, 2.6vw, 2rem); font-weight: 900; color: var(--fg); text-shadow: 0 0 1.5rem #000, 0 0 .5rem var(--accent); }
 .zap-fx.is-on .zap-fx-burst { animation: zap-fx 3s ease both; }
 @keyframes zap-fx {
   0% { opacity: 0; transform: translateY(45%) scale(.35); }
@@ -195,11 +195,10 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   @keyframes pending-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 }
 
-/* Notification strip beside the repo link in the bottom band. */
+/* Off-scene new-post icons: each one at a random spot/tilt in the lower band (set from JS). */
 #live-strip { position: absolute; right: 48px; bottom: .4em; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
-.live-ind { display: block; height: 1.4em; animation: ind-pop 1.5s ease-out forwards; }
+.live-ind { position: fixed; display: block; height: clamp(2.5rem, 4vw, 4rem); rotate: var(--tilt, 0deg); animation: ind-pop 1.5s ease-out forwards; }
 .live-ind svg { height: 100%; width: auto; display: block; }
-.live-ind.zap svg { fill: #ffe86b; filter: drop-shadow(0 0 .35em #ffe86b); }
 .live-ind.post svg { fill: var(--accent); filter: drop-shadow(0 0 .35em var(--accent)); }
 @keyframes ind-pop { 0% { opacity: 0; transform: translateY(60%); } 15% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
 .is-mobile #live-strip { display: none; }

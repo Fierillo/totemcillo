@@ -30,18 +30,19 @@ describe('animación de zap', () => {
     } finally { stop(); }
   });
 
-  it('aparece con posición horizontal al azar en cada zap (el anclaje inferior va en CSS)', () => {
+  it('aparece en un lugar al azar de la franja baja, levemente inclinada, en cada zap', () => {
     const s = store();
-    const stop = zapFx(s);
+    let r = 0;
+    const stop = zapFx(s, document.body, 3000, () => r);
     try {
-      const rnd = vi.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValueOnce(1);
       s.addZap(zap(1, 21_000));
       const fx = document.querySelector<HTMLElement>('.zap-fx')!;
-      expect(fx.style.left).toBe('20%');
+      expect([fx.style.left, fx.style.bottom, fx.style.getPropertyValue('--tilt')]).toEqual(['20%', '5vh', '-8deg']);
+      r = 1;
       s.addZap(zap(2, 21_000));
-      expect(fx.style.left).toBe('80%');
+      expect([fx.style.left, fx.style.bottom, fx.style.getPropertyValue('--tilt')]).toEqual(['80%', '15vh', '8deg']);
       expect(document.querySelectorAll('.zap-fx').length).toBe(1);
-    } finally { stop(); vi.restoreAllMocks(); }
+    } finally { stop(); }
   });
 
   it('ignora zaps fuera de la ventana en vivo y los duplicados', () => {
