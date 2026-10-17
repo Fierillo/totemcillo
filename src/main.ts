@@ -21,7 +21,8 @@ const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefin
 // Moderation, providers and start line come from the server; if the line moves earlier, refetch from the relays.
 const moderate = (m: Moderation) => { store.setModeration(m); feed.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
 const announcement = new Announcement(DEFAULT_SETTINGS.announcement);
-if (import.meta.env.DEV) void import('./demo').then((m) => m.installDemo(window, store)); // window.__totemDemo.post()/zap()
+// Dev only (tree-shaken from production): window.__totemDemo.post()/zap() and the "+ post" / "+ zap" buttons.
+if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store), import.meta.env.DEV));
 const scene = document.getElementById('scene')!;
 const app = document.getElementById('app')!;
 zapFx(store); // ⚡ + sats whenever a zap arrives, regardless of the scene on screen
