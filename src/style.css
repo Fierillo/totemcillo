@@ -135,7 +135,7 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zap-list { list-style: none; min-height: 0; overflow: hidden; }
 .zap-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1em; align-items: center; padding: .35em 0; border-bottom: 1px solid #222; }
-.amount { color: var(--accent); font-weight: 900; font-size: 1.3em; text-align: right; white-space: nowrap; overflow: hidden; }
+.amount { color: var(--accent); font-weight: 900; text-align: right; white-space: nowrap; overflow: hidden; }
 .who { min-width: 0; overflow: hidden; overflow-wrap: anywhere; font-size: .7em; } /* sender + message at 70%; the amount keeps the list size */
 .who small { display: block; color: var(--muted); font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zap-list li > .muted { white-space: nowrap; }
