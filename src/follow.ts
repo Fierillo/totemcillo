@@ -2,7 +2,8 @@ import type { Scene } from './scenes/types';
 import type { Announcement } from './announcement';
 import type { Moderation } from './nostr/store';
 import { moderationOf } from './moderation-lists';
-import { positionAt, type ScheduleInputs } from '../shared/schedule';
+import { positionAt, shiftSchedule, type ScheduleInputs } from '../shared/schedule';
+import type { Action } from '../shared/settings';
 
 export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[]; zapProviders?: string[]; startLine?: string }
 export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
@@ -31,6 +32,9 @@ export class Follower {
   private poller: ReturnType<typeof setInterval> | null = null;
   private fetchFn: typeof fetch;
   private clock: () => number;
+  /** Dev arrows: local time shift onto the chosen scene; while paused the clock doesn't advance the rotation. */
+  private shift = 0;
+  paused = false;
 
   constructor(private root: HTMLElement, private scenes: Scene[], private o: FollowerOptions = {}) {
     this.fetchFn = o.fetchFn ?? ((i, init) => fetch(i, init));
@@ -101,13 +105,29 @@ export class Follower {
     } catch { /* ignore */ }
   }
 
-  private now() { return this.clock() + this.offset; }
+  private now() { return this.clock() + this.offset + this.shift; }
+
+  /** Dev only, this screen only (nothing is written to the server): shows the previous/next scene of the rotation and stops following the clock. */
+  step(action: Action) {
+    if (!this.inputs) return;
+    // Same target as the /admin arrows: shifting epoch back by Δ equals looking Δ ahead in time.
+    this.shift += (this.inputs.epoch ?? 0) - shiftSchedule(this.inputs, this.now(), action).epoch!; // shiftSchedule always sets epoch
+    this.paused = true;
+    this.tick();
+  }
+
+  /** Back to the scene the clock says now. */
+  resume() {
+    this.shift = 0;
+    this.paused = false;
+    this.tick();
+  }
 
   private tick() {
     if (!this.inputs) return;
     if (this.timer) clearTimeout(this.timer);
     const p = positionAt(this.inputs, this.now());
-    this.timer = setTimeout(() => this.tick(), Math.max(0, p.sceneEndsAt - this.now()) + 20);
+    if (!this.paused) this.timer = setTimeout(() => this.tick(), Math.max(0, p.sceneEndsAt - this.now()) + 20);
     const key = `${p.cycle}:${p.index}:${p.sceneStartedAt}`;
     const scene = this.scenes[p.index];
     if (key === this.key || !scene || scene.name !== p.scene) return;

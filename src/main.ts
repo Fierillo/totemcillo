@@ -21,8 +21,9 @@ const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefin
 // Moderation, providers and start line come from the server; if the line moves earlier, refetch from the relays.
 const moderate = (m: Moderation) => { store.setModeration(m); feed.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
 const announcement = new Announcement(DEFAULT_SETTINGS.announcement);
-// Dev only (tree-shaken from production): window.__totemDemo.post()/zap() and the "+ post" / "+ zap" buttons.
-if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store), import.meta.env.DEV));
+let follower: Follower | undefined; // totem only: mobile doesn't follow the clock
+// Dev only (tree-shaken from production): window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
+if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store), import.meta.env.DEV, follower));
 const scene = document.getElementById('scene')!;
 const app = document.getElementById('app')!;
 zapFx(store); // ⚡ + sats whenever a zap arrives, regardless of the scene on screen
@@ -39,6 +40,7 @@ if (isMobileViewport()) {
   const strip = document.getElementById('live-strip');
   if (strip) feedFor(store).setIndicator((e) => showIndicator(strip, e)); // 💬 in the lower band if the post is not on screen
   // One schedule load + a version check every settingsPollMs (includes the announcement).
-  void new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate }).start();
+  follower = new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate });
+  void follower.start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
