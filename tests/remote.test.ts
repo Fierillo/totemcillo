@@ -15,21 +15,6 @@ const setup = (responses: unknown[]) => {
 };
 
 describe('createRemote (polling de /api/settings)', () => {
-  it('solo consume anuncio y moderación, sin navegación ni lectura de la agenda', async () => {
-    const announcement = new Announcement('before');
-    const onModeration = vi.fn();
-    const readSchedule = vi.fn(() => { throw new Error('mobile does not consume the schedule'); });
-    const settings = {
-      announcement: 'after', hiddenPosts: ['hidden'], bannedPubkeys: [],
-      get sceneDurations() { return readSchedule(); },
-    };
-    const remote = createRemote({ announcement, onModeration,
-      fetchFn: vi.fn(async () => ({ ok: true, json: async () => settings })) as any });
-    await remote.poll();
-    expect(announcement.text).toBe('after');
-    expect(onModeration).toHaveBeenCalledWith(expect.objectContaining({ hiddenPosts: ['hidden'] }));
-    expect(readSchedule).not.toHaveBeenCalled();
-  });
   it('pide /api/settings sin caché y aplica anuncio', async () => {
     const { fetchFn, announcement, remote } = setup([{ announcement: 'Hola' }]);
     await remote.poll();

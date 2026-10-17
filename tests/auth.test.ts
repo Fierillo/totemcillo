@@ -72,7 +72,8 @@ describe('memoryStorage', () => {
   });
 });
 
-it('Upstash usa un único script atómico y distingue conflicto de guardado exitoso', async () => {
+// Argument contract only: Redis is mocked, so the Lua script never runs here.
+it('Upstash: compareAndSet envía clave, versión esperada (-1 si no hay) y JSON al script, y traduce 1/0 a true/false', async () => {
   const evaluate = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
   vi.doMock('@upstash/redis', () => ({ Redis: class { eval = evaluate; } }));
   try {

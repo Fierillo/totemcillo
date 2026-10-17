@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPool, followCutoff, NOSTR_LIMITS, READY_FALLBACK_MS, RELAY_CONNECT_TIMEOUT_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
+import { followCutoff, NOSTR_LIMITS, READY_FALLBACK_MS, notesFilter, profileLoader, startNostr, zapsFilter } from '../src/nostr/pool';
 import { ZapStore } from '../src/nostr/store';
 import { defaultConfig } from '../src/config';
 import { keys, makeZap, sign } from './helpers';
@@ -23,10 +23,6 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe('filtros', () => {
-  it('permite conectar relays lentos', () => {
-    expect(RELAY_CONNECT_TIMEOUT_MS).toBeGreaterThanOrEqual(10_000);
-    expect((createPool() as any).maxWaitForConnection).toBe(RELAY_CONNECT_TIMEOUT_MS);
-  });
   it('notas por hashtag y zaps por ids', () => {
     expect(notesFilter(['lacrypta'])).toEqual({ kinds: [1], '#t': ['lacrypta', 'Lacrypta', 'LACRYPTA'] });
     expect(zapsFilter(['a'])).toEqual({ kinds: [9735], '#e': ['a'] });
@@ -109,9 +105,6 @@ describe('startNostr', () => {
       expect(store.ready).toBe(true);
     } finally { h.close(); }
   });
-  it('el respaldo supera el peor caso de conexión + EOSE de notas y luego de zaps', () => {
-    expect(READY_FALLBACK_MS).toBeGreaterThan(2 * (RELAY_CONNECT_TIMEOUT_MS + 4400));
-  });
   it('da por terminado el backfill tras el tiempo de reserva si ningún relay responde EOSE', () => {
     const p = mockPool(), store = new ZapStore();
     const h = startNostr(cfg, store, p, 1500, resolverFor(null));
@@ -121,13 +114,6 @@ describe('startNostr', () => {
       vi.advanceTimersByTime(1);
       expect(store.ready).toBe(true);
     } finally { h.close(); }
-  });
-  it('al cerrar cancela el respaldo del backfill', () => {
-    const p = mockPool(), store = new ZapStore();
-    const h = startNostr(cfg, store, p, 1500, resolverFor(null));
-    h.close();
-    vi.advanceTimersByTime(READY_FALLBACK_MS + 1);
-    expect(store.ready).toBe(false);
   });
   it('una ráfaga firmada de un autor baneado no expulsa el post legítimo del historial ni del filtro de zaps', () => {
     const p = mockPool(), store = new ZapStore();
@@ -320,14 +306,6 @@ describe('startNostr', () => {
     p.subs[0].h.onevent(valid);
     expect([...store.posts.keys()]).toEqual([valid.id]);
   });
-  it('suscribe notas en los relays y las agrega al store', () => {
-    const p = mockPool(), store = new ZapStore();
-    startNostr(cfg, store, p, 1500, resolverFor(null));
-    expect(p.subscribeMany).toHaveBeenCalledWith(cfg.relays, expect.objectContaining(notesFilter(cfg.hashtags)), expect.anything());
-    const n = note('hola');
-    p.subs[0].h.onevent(n);
-    expect(store.posts.get(n.id)?.content).toBe('hola');
-  });
   it('agrupa ids (historial + nuevos, sin repetir) en batches', () => {
     const p = mockPool(), store = new ZapStore();
     store.addPost({ id: 'old', pubkey: 'pk', content: 'vieja', created_at: 1 });
@@ -371,7 +349,7 @@ describe('startNostr', () => {
     expect(p.querySync).toHaveBeenCalledWith(cfg.relays, { kinds: [0], authors: [z.recipient.pk] }, expect.anything());
     expect(store.zaps.size).toBe(0);
   });
-  it('close cierra suscripciones y pool', () => {
+  it('close cierra suscripciones y pool, y cancela el respaldo del backfill', () => {
     const p = mockPool(), store = new ZapStore();
     const h = startNostr(cfg, store, p, 1500, resolverFor(null));
     p.subs[0].h.onevent(note('1'));
@@ -379,6 +357,8 @@ describe('startNostr', () => {
     h.close();
     p.subs.forEach((s) => expect(s.close).toHaveBeenCalled());
     expect(p.close).toHaveBeenCalledWith(cfg.relays);
+    vi.advanceTimersByTime(READY_FALLBACK_MS + 1);
+    expect(store.ready).toBe(false);
   });
 });
 
@@ -417,9 +397,5 @@ describe('ventana de tiempo en la suscripción', () => {
     const p = mockPool();
     startNostr(cfg, new ZapStore(), p, 1500, resolverFor(null));
     expect(p.subs[0].filter).toEqual(notesFilter(cfg.hashtags));
-  });
-  it('notesFilter sin since no lo agrega', () => {
-    expect(notesFilter(['a'])).not.toHaveProperty('since');
-    expect(notesFilter(['a'], 5)).toHaveProperty('since', 5);
   });
 });

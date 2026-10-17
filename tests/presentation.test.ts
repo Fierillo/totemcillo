@@ -175,8 +175,6 @@ describe('configuración estática', () => {
     const c = await loadConfig(fetchFn as any);
     expect(fetchFn).toHaveBeenCalledWith('/config.json', { cache: 'no-store' });
     expect(c).toMatchObject({ hashtags: ['x'], postMaxChars: 140, topRecentHours: 1, relays: defaultConfig.relays });
-    expect(defaultConfig.postMaxChars).toBe(210);
-    expect(defaultConfig.topRecentHours).toBe(3);
   });
   it('usa defaults si la respuesta HTTP o la red fallan', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});

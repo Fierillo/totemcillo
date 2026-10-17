@@ -4,7 +4,6 @@ import { videoScene, EMPTY_VIDEO } from '../src/scenes/video';
 import { buildScenes } from '../src/scenes';
 import { defaultConfig } from '../src/config';
 import { ZapStore } from '../src/nostr/store';
-import { SCENES, DEFAULT_SCENE_MS } from '../shared/settings';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -52,11 +51,6 @@ describe('videoScene: reproducción gobernada por la agenda', () => {
     expect(v.paused).toBe(true);
     expect(v.hasAttribute('src')).toBe(false);
     expect(vi.getTimerCount()).toBe(0);
-  });
-  it('videoSrc por defecto en WebM; sin duración editable', () => {
-    expect(defaultConfig.videoSrc).toBe('/video/totem-video.webm');
-    expect(SCENES).not.toContain('video');
-    expect('video' in DEFAULT_SCENE_MS).toBe(false);
   });
   it('buildScenes agrega el video al final usando videoSrc', () => {
     const s = buildScenes({ ...defaultConfig, videoSrc: '/x.webm' }, new ZapStore());

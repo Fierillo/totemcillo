@@ -93,22 +93,7 @@ describe('renderAvatar', () => {
 });
 
 describe('límite de descargas por IP', () => {
-  it('el proxy de producción responde 503 sin caché si falta URL o token de Redis', async () => {
-    try {
-      for (const [url, token] of [['', ''], ['https://redis.example.invalid', ''], ['', 'test-token']]) {
-        vi.stubEnv('UPSTASH_REDIS_REST_URL', url);
-        vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', token);
-        vi.resetModules();
-        const { default: production } = await import('../server/avatar');
-        const headers: Record<string, string> = {};
-        const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
-        await production({ method: 'GET', url: '/api/avatar', headers: {}, socket: {} } as any, res);
-        expect(res.statusCode).toBe(503);
-        expect(headers['cache-control']).toBe('no-store');
-        expect(JSON.parse(res.end.mock.calls[0][0])).toEqual({ error: 'servicio no disponible' });
-      }
-    } finally { vi.unstubAllEnvs(); }
-  });
+  // The production 503 without Redis config is covered by the table test in api.test.ts.
   const run = async (storage: ReturnType<typeof memoryStorage>, ip: string, fetcher: Fetcher, method = 'GET') => {
     const headers: Record<string, string> = {};
     const res: any = { statusCode: 0, setHeader: (k: string, v: string) => { headers[k] = v; }, end: vi.fn() };
@@ -154,11 +139,8 @@ describe('límite de descargas por IP', () => {
 });
 
 describe('devAvatarFetcher (solo pnpm dev, opt-in)', () => {
-  it('sin la variable no hay excepción: se usa el fetcher seguro por defecto', () => {
-    expect(devAvatarFetcher({})).toBeUndefined();
-    expect(devAvatarFetcher({ TOTEM_DEV_AVATAR_ANY_IP: '0' })).toBeUndefined();
-  });
-  it('con TOTEM_DEV_AVATAR_ANY_IP=1 devuelve un fetcher que no filtra IPs resueltas', () => {
-    expect(typeof devAvatarFetcher({ TOTEM_DEV_AVATAR_ANY_IP: '1' })).toBe('function');
+  it('solo con TOTEM_DEV_AVATAR_ANY_IP=1 reemplaza el fetcher seguro por defecto', () => {
+    for (const env of [{}, { TOTEM_DEV_AVATAR_ANY_IP: '0' }, { TOTEM_DEV_AVATAR_ANY_IP: 'true' }]) expect(devAvatarFetcher(env)).toBeUndefined();
+    expect(devAvatarFetcher({ TOTEM_DEV_AVATAR_ANY_IP: '1' })).toBeInstanceOf(Function);
   });
 });

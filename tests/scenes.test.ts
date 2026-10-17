@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore, type LiveEvent } from '../src/nostr/store';
-import { postScene, MAX_POSTS, QR_CAPTION } from '../src/scenes/post';
+import { postScene, QR_CAPTION } from '../src/scenes/post';
 import { topScene } from '../src/scenes/top';
 import { top10HistoricoScene } from '../src/scenes/top10Historico';
 import { top10Ultimas3hScene } from '../src/scenes/top10Ultimas3h';
@@ -250,12 +250,11 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     for (const n of ['top10Historico', 'top10Ultimas3h']) { const r = document.createElement('div'); (topScene({ name: n, title: 'T', store: s, since: () => NOW + 10 }).render(r) as () => void)(); }
     expect(feedFor(s).pending).toHaveLength(0);
   });
-  it(`la cola tiene tope (${10})`, () => {
-    expect(MAX_PENDING).toBe(10);
+  it(`la cola tiene tope (${MAX_PENDING})`, () => {
     const s = mkStore();
     s.addPost(post(1));
-    for (let i = 0; i < 15; i++) s.addZap(zap(i, 1, NOW - 1));
-    expect(feedFor(s).pending).toHaveLength(10);
+    for (let i = 0; i < MAX_PENDING + 5; i++) s.addZap(zap(i, 1, NOW - 1));
+    expect(feedFor(s).pending).toHaveLength(MAX_PENDING);
   });
   it('showIndicator muestra solo posts (el zap ya tiene su ráfaga grande) y los quita a ~1,5 s', () => {
     const strip = document.createElement('div');
@@ -299,7 +298,6 @@ describe('renderizado de posts', () => {
   it('lista los seis más recientes, de forma determinística entre renderizados', () => {
     const s = many(8), a = document.createElement('div'), b = document.createElement('div');
     const cleanups = [postScene(s, { publicUrl: URL }).render(a), postScene(s, { publicUrl: URL }).render(b)];
-    expect(MAX_POSTS).toBe(6);
     expect(excerpts(a)).toEqual(['post 8', 'post 7', 'post 6', 'post 5', 'post 4', 'post 3']);
     expect(a.innerHTML).toBe(b.innerHTML);
     cleanups.forEach((cleanup) => cleanup?.());

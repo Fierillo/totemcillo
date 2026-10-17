@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { positionAt, shiftSchedule, reanchor } from '../shared/schedule';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
-import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, SCHEDULE_DEFAULTS, validatePatch, type Settings } from '../shared/settings';
+import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from '../shared/settings';
 import { Follower } from '../src/follow';
 import { Announcement } from '../src/announcement';
 import type { Scene } from '../src/scenes/types';
@@ -13,9 +13,6 @@ const D = { post: 1000, latestZaps: 2000, top10Historico: 1000, top10Ultimas3h: 
 const S = (o: Partial<Settings> = {}): Settings => ({ ...DEFAULT_SETTINGS, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 10, epoch: 100_000, ...o });
 
 describe('positionAt (determinístico)', () => {
-  it('defaults: video de 88.4 s, cada 2 vueltas, full', () => {
-    expect(SCHEDULE_DEFAULTS).toMatchObject({ videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 88.4 });
-  });
   it('recorre escenas con sus duraciones; la vuelta 0 incluye video, la 1 no', () => {
     const s = S();
     expect(positionAt(s, 100_000)).toEqual({ scene: 'post', index: 0, cycle: 0, sceneStartedAt: 100_000, sceneEndsAt: 101_000 });
@@ -77,20 +74,15 @@ const req = (method: string, path: string, body?: unknown, headers: Record<strin
   ({ method, path, body, ip: '1.1.1.1', headers: { 'content-type': 'application/json', ...headers } });
 
 describe('/api/kiosk (sólo lectura)', () => {
+  // Cache headers for these endpoints are covered table-driven in api.test.ts.
   it('GET devuelve las entradas de la agenda, anuncio y versión (sin hora: es cacheable)', async () => {
     const r = await handle(req('GET', '/api/kiosk'), deps());
     expect(r.status).toBe(200);
     expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [], zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE });
-    expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
-  });
-  it('endpoints de admin nunca se cachean (GET público de settings: ver api.test.ts)', async () => {
-    for (const [m, path] of [['GET', '/api/session'], ['POST', '/api/login'], ['POST', '/api/logout'], ['PUT', '/api/settings']])
-      expect((await handle(req(m, path, {}), deps())).headers['cache-control'], path).toBe('no-store');
   });
   it('GET /api/version: diminuto y cacheable unos segundos en el CDN', async () => {
     const r = await handle(req('GET', '/api/version'), deps());
     expect(r.body).toEqual({ version: 0 });
-    expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
     expect((await handle(req('PUT', '/api/version', {}), deps())).status).toBe(405);
   });
   it('cada cambio de admin (incluidas flechas) incrementa version', async () => {

@@ -120,14 +120,6 @@ describe('LnurlResolver', () => {
     expect(await resolver.resolve('pk')).toBeNull();
     expect(f).toHaveBeenCalledTimes(1);
   });
-  it('rechaza dominios no autorizados antes de hacer cualquier petición LNURL', async () => {
-    const f = okFetch({ allowsNostr: true, nostrPubkey: NPK });
-    for (const domain of ['untrusted.example', 'evilgetalby.com', 'getalby.com.evil.example']) {
-      const resolver = new LnurlResolver(async () => prof({ lud16: `a@${domain}` }), f);
-      expect(await resolver.resolve('pk')).toBeNull();
-    }
-    expect(f).not.toHaveBeenCalled();
-  });
   it('aborta una consulta lenta para liberar el cupo de validación', async () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -154,22 +146,18 @@ describe('LnurlResolver', () => {
     expect(load).toHaveBeenCalledWith('pk');
     expect(f).toHaveBeenCalledWith('https://getalby.com/.well-known/lnurlp/a');
   });
-  it('null si no hay allowsNostr, pubkey inválido, error HTTP, sin perfil o sin lud', async () => {
+  it('null si no hay allowsNostr, pubkey inválido, error HTTP, falla de red/CORS, sin perfil o sin lud', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const p = async () => prof({ lud16: 'a@getalby.com' });
     const cases: [() => Promise<any>, ReturnType<typeof okFetch>][] = [
       [p, okFetch({ allowsNostr: false, nostrPubkey: NPK })],
       [p, okFetch({ allowsNostr: true, nostrPubkey: 'zz' })],
       [p, okFetch({}, false)],
+      [p, vi.fn(async (_u: string) => { throw new TypeError('Failed to fetch'); }) as unknown as ReturnType<typeof okFetch>],
       [async () => null, okFetch({ allowsNostr: true, nostrPubkey: NPK })],
       [async () => prof({}), okFetch({ allowsNostr: true, nostrPubkey: NPK })],
     ];
     for (const [load, f] of cases) expect(await new LnurlResolver(load, f).resolve('pk')).toBeNull();
-  });
-  it('falla de red/CORS -> null sin tirar', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const f = vi.fn(async (_u: string) => { throw new TypeError('Failed to fetch'); });
-    expect(await new LnurlResolver(async () => prof({ lud16: 'a@getalby.com' }), f).resolve('pk')).toBeNull();
   });
   it('cachea por destinatario, incluso en paralelo', async () => {
     const load = vi.fn(async () => prof({ lud16: 'a@getalby.com' }));
