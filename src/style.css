@@ -147,7 +147,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .top-list { list-style: none; min-height: 0; overflow: hidden; }
 .top-list .post-row { grid-template-columns: auto minmax(0, 1fr) auto; }
 .rank { color: var(--accent); font-weight: 900; }
-.top-list .excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+.top-list .excerpt { white-space: nowrap; text-overflow: ellipsis; } /* one line, cut with … at the row-main edge (where "hace X" ends) */
 
 /* Video */
 .scene-video { padding: 0; background: #000; display: grid; }
