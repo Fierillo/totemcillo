@@ -11,6 +11,7 @@ import { noteUri } from '../src/nostr/link';
 import { openZapDialog, type InvoiceRequester } from '../src/zap-dialog';
 
 afterEach(() => document.querySelectorAll('svg.strike').forEach((e) => e.remove()));
+afterEach(() => localStorage.clear()); // pending invoices persist across mounts
 import { profiles } from '../src/nostr/profiles';
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');

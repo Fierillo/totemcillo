@@ -4,8 +4,44 @@ import { noteUri } from './nostr/link';
 import { feedFor } from './livefeed';
 import { esc } from './util';
 import { renderSVG } from 'uqr';
+import { bech32 } from '@scure/base';
 
 export type InvoiceRequester = (post: Post, sats: number) => Promise<string>;
+
+/** Invoice shown but not paid yet: survives a reload (Android kills the tab while the user is in the wallet). */
+export interface PendingZap { postId: string; pubkey: string; sats: number; invoice: string; createdAt: number; expiresAt: number }
+export const PENDING_ZAP_KEY = 'totemcillo:pending-zap';
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+/** Unix expiry of a bolt11 (timestamp + `x` tag, 3600 s by default); null if it can't be decoded. */
+export function bolt11Expiry(invoice: string): number | null {
+  const dec = bech32.decodeUnsafe(invoice.toLowerCase() as `${string}1${string}`, 10_000);
+  if (!dec || dec.words.length < 7 + 104) return null;
+  const w = dec.words, int = (from: number, len: number) => w.slice(from, from + len).reduce((n, x) => n * 32 + x, 0);
+  const ts = int(0, 7);
+  let expiry = 3600;
+  for (let i = 7; i + 3 <= w.length - 104;) {
+    const len = int(i + 1, 2);
+    if (w[i] === 6) expiry = int(i + 3, len);
+    i += 3 + len;
+  }
+  return ts + expiry;
+}
+
+const storage = (): Storage | undefined => { try { return globalThis.localStorage; } catch { return undefined; } };
+export const clearPendingZap = () => { try { storage()?.removeItem(PENDING_ZAP_KEY); } catch { /* storage unavailable */ } };
+const savePendingZap = (p: PendingZap) => { try { storage()?.setItem(PENDING_ZAP_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } };
+
+/** The pending invoice if still valid; corrupt or expired entries are discarded. */
+export function loadPendingZap(): PendingZap | null {
+  let p: any = null;
+  try { p = JSON.parse(storage()?.getItem(PENDING_ZAP_KEY) ?? 'null'); } catch { /* corrupt */ }
+  const ok = p && typeof p.postId === 'string' && typeof p.pubkey === 'string' && typeof p.invoice === 'string'
+    && [p.sats, p.createdAt, p.expiresAt].every((n) => typeof n === 'number' && Number.isFinite(n)) && p.expiresAt > nowSec();
+  if (ok) return p as PendingZap;
+  if (storage()?.getItem(PENDING_ZAP_KEY) != null) clearPendingZap();
+  return null;
+}
 
 /** Legacy copy inside the modal (the rest of the document is inert while it is open). */
 function legacyCopy(text: string, host: HTMLElement): boolean {
@@ -47,7 +83,7 @@ async function copyText(text: string, host: HTMLElement): Promise<boolean> {
 }
 
 /** Kept outside the live feed so incoming events cannot dismiss the payment choices. */
-export function openZapDialog(post: Post, relays: string[], requestInvoice?: InvoiceRequester, store?: ZapStore, opts: { onPaid?: () => void } = {}): () => void {
+export function openZapDialog(post: Post, relays: string[], requestInvoice?: InvoiceRequester, store?: ZapStore, opts: { onPaid?: () => void; resume?: PendingZap } = {}): () => void {
   const dialog = document.createElement('dialog');
   dialog.className = 'zap-dialog';
   dialog.setAttribute('aria-labelledby', 'zap-title');
@@ -64,7 +100,54 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
   const submit = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
   const error = dialog.querySelector<HTMLElement>('[role="alert"]')!;
   let busy = false;
+  let closing = false;
   let offLive: (() => void) | undefined;
+  /** Invoice state (fresh or restored after a reload): persisted until paid or Cancelar. */
+  const showInvoice = (p: PendingZap) => {
+    const invoice = p.invoice;
+    const result = dialog.querySelector<HTMLElement>('[data-invoice]')!;
+    result.innerHTML = `<p class="zap-note">Pago anónimo en Nostr · ${esc(String(p.sats))} sats</p>
+      <button type="button" class="wallet-qr" data-copy aria-label="Copiar factura">${renderSVG(invoice.toUpperCase(), { ecc: 'M', border: 2 })}</button>
+      <p class="zap-note" role="status"></p>
+      <a class="zap-btn" data-open-wallet href="lightning:${esc(invoice)}">Abrir wallet</a>
+      <p class="zap-note">No es una confirmación de pago. El total se actualizará cuando llegue el recibo del proveedor.</p>`;
+    result.querySelector<HTMLButtonElement>('[data-copy]')!.addEventListener('click', async () => {
+      const status = result.querySelector<HTMLElement>('[role="status"]')!;
+      if (await copyText(invoice, dialog)) {
+        status.textContent = 'Factura copiada';
+        return;
+      }
+      status.textContent = 'No se pudo copiar con un toque. Seleccioná la factura para copiarla.';
+      let manual = result.querySelector<HTMLTextAreaElement>('[data-manual]');
+      if (!manual) {
+        manual = document.createElement('textarea');
+        manual.setAttribute('data-manual', '');
+        manual.readOnly = true;
+        manual.spellcheck = false;
+        manual.value = invoice;
+        status.after(manual);
+      }
+      manual.focus();
+      manual.select();
+      manual.setSelectionRange(0, invoice.length);
+    });
+    form.hidden = true;
+    result.hidden = false;
+    result.querySelector<HTMLAnchorElement>('[data-open-wallet]')!.focus();
+    savePendingZap(p);
+    if (!store) return;
+    const paid = () => { if (!closing) { close(); opts.onPaid?.(); } };
+    // Payment done: the receipt for this post arrives live → dismiss so the comment animation shows.
+    // Watched on the shared feed so `onPaid` runs before it decides where that zap animates (row strike vs burst).
+    const offWatch = feedFor(store).watch((e) => { if (e.type === 'zap' && e.postId === post.id) paid(); });
+    // After a reload the receipt may arrive in the relay backfill, too old to count as "live": any new zap
+    // for this post not older than the invoice (60 s clock slack) is taken as paid. Zaps already known don't count.
+    const known = new Set(store.zaps.keys());
+    const offChange = store.onChange(() => {
+      for (const z of store.zaps.values()) if (!known.has(z.id) && z.postId === post.id && z.created_at >= p.createdAt - 60) return paid();
+    });
+    offLive = () => { offWatch(); offChange(); };
+  };
   dialog.querySelector('[data-wallet]')!.addEventListener('click', () => {
     dialog.querySelector<HTMLElement>('.zap-choices')!.hidden = true;
     form.hidden = false;
@@ -82,38 +165,8 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
       if (!requestInvoice) throw new Error('El pago desde wallet no está disponible. Volvé a cargar la página.');
       const invoice = await requestInvoice(post, Number(amount.value));
       if (!dialog.open) return;
-      const result = dialog.querySelector<HTMLElement>('[data-invoice]')!;
-      result.innerHTML = `<p class="zap-note">Pago anónimo en Nostr · ${esc(amount.value)} sats</p>
-        <button type="button" class="wallet-qr" data-copy aria-label="Copiar factura">${renderSVG(invoice.toUpperCase(), { ecc: 'M', border: 2 })}</button>
-        <p class="zap-note" role="status"></p>
-        <a class="zap-btn" data-open-wallet href="lightning:${esc(invoice)}">Abrir wallet</a>
-        <p class="zap-note">No es una confirmación de pago. El total se actualizará cuando llegue el recibo del proveedor.</p>`;
-      result.querySelector<HTMLButtonElement>('[data-copy]')!.addEventListener('click', async () => {
-        const status = result.querySelector<HTMLElement>('[role="status"]')!;
-        if (await copyText(invoice, dialog)) {
-          status.textContent = 'Factura copiada';
-          return;
-        }
-        status.textContent = 'No se pudo copiar con un toque. Seleccioná la factura para copiarla.';
-        let manual = result.querySelector<HTMLTextAreaElement>('[data-manual]');
-        if (!manual) {
-          manual = document.createElement('textarea');
-          manual.setAttribute('data-manual', '');
-          manual.readOnly = true;
-          manual.spellcheck = false;
-          manual.value = invoice;
-          status.after(manual);
-        }
-        manual.focus();
-        manual.select();
-        manual.setSelectionRange(0, invoice.length);
-      });
-      form.hidden = true;
-      result.hidden = false;
-      result.querySelector<HTMLAnchorElement>('[data-open-wallet]')!.focus();
-      // Payment done: the receipt for this post arrives live → dismiss so the comment animation shows.
-      // Watched on the shared feed so `onPaid` runs before it decides where that zap animates (row strike vs burst).
-      if (store) offLive = feedFor(store).watch((e) => { if (e.type === 'zap' && e.postId === post.id) { close(); opts.onPaid?.(); } });
+      const createdAt = nowSec();
+      showInvoice({ postId: post.id, pubkey: post.pubkey, sats: Number(amount.value), invoice, createdAt, expiresAt: bolt11Expiry(invoice) ?? createdAt + 3600 });
     } catch (e) {
       if (dialog.open) error.textContent = e instanceof Error ? e.message : 'No se pudo generar la factura. Intentá de nuevo.';
     } finally {
@@ -123,8 +176,7 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
       amount.disabled = false;
     }
   });
-  let closing = false;
-  const close = () => { closing = true; offLive?.(); offLive = undefined; if (dialog.open) dialog.close(); dialog.remove(); };
+  const close = () => { closing = true; clearPendingZap(); offLive?.(); offLive = undefined; if (dialog.open) dialog.close(); dialog.remove(); };
   dialog.querySelector('[data-close]')!.addEventListener('click', close);
   // Only a paid receipt or Cancelar close it: the user leaves for the wallet and comes back.
   // Escape / Android back fire 'cancel' (ignored); Chrome may skip it without user activation and close anyway → reopen.
@@ -132,5 +184,10 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
   dialog.addEventListener('close', () => { if (!closing && dialog.isConnected) dialog.showModal(); });
   document.body.append(dialog);
   dialog.showModal();
+  if (opts.resume) {
+    dialog.querySelector<HTMLElement>('.zap-choices')!.hidden = true;
+    amount.value = String(opts.resume.sats);
+    showInvoice(opts.resume);
+  }
   return close;
 }

@@ -7,7 +7,7 @@ import { EMPTY_ANUNCIO } from './scenes/anuncio';
 import { ago, esc, pending, sats } from './util';
 import { authorHtml } from './nostr/profiles';
 import { live, liveMarks } from './scenes/live';
-import { openZapDialog, type InvoiceRequester } from './zap-dialog';
+import { loadPendingZap, openZapDialog, type InvoiceRequester } from './zap-dialog';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
 
@@ -87,5 +87,8 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
   root.addEventListener('click', click);
   root.addEventListener('keydown', keydown);
   const offs = [live(store, draw), ann.onChange(draw), marks.off];
+  // Reopen an unpaid invoice from before a reload (same invoice, no new request).
+  const resume = loadPendingZap();
+  if (resume) closeZap = openZapDialog({ id: resume.postId, pubkey: resume.pubkey, content: '', created_at: 0 }, cfg.relays, requestInvoice, store, { resume, onPaid: () => select('posts', resume.postId) });
   return () => { offs.forEach((f) => f()); closeZap?.(); root.removeEventListener('click', click); root.removeEventListener('keydown', keydown); };
 }
