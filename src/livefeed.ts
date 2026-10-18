@@ -16,15 +16,20 @@ export class LiveFeed {
   pending: Pending[] = [];
   private handlers = new Set<Handler>();
   private misses = new Set<(e: LiveEvent) => void>();
+  private watchers = new Set<(e: LiveEvent) => void>();
 
   constructor(store: ZapStore, private max = MAX_PENDING) { store.onLive((e) => this.onLive(e)); }
 
   /** Called for live events whose target is not on screen (the one place that decides on-screen vs off-screen). */
   onMiss(fn: (e: LiveEvent) => void): () => void { this.misses.add(fn); return () => { this.misses.delete(fn); }; }
 
+  /** Called for every live event before deciding on-screen vs off-screen (e.g. to switch to the scene that shows it first). */
+  watch(fn: (e: LiveEvent) => void): () => void { this.watchers.add(fn); return () => { this.watchers.delete(fn); }; }
+
   attach(h: Handler): () => void { this.handlers.add(h); return () => { this.handlers.delete(h); }; }
 
   private onLive(e: LiveEvent) {
+    this.watchers.forEach((fn) => fn(e));
     for (const h of this.handlers) if (h.kinds.includes(e.type) && h.visible(e.postId)) { h.mark(e); return; }
     this.misses.forEach((fn) => fn(e));
     this.pending.push({ ...e, checked: new Set() });

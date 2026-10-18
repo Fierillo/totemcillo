@@ -1,6 +1,7 @@
 import type { Post } from './nostr/types';
 import type { ZapStore } from './nostr/store';
 import { noteUri } from './nostr/link';
+import { feedFor } from './livefeed';
 import { esc } from './util';
 import { renderSVG } from 'uqr';
 
@@ -46,7 +47,7 @@ async function copyText(text: string, host: HTMLElement): Promise<boolean> {
 }
 
 /** Kept outside the live feed so incoming events cannot dismiss the payment choices. */
-export function openZapDialog(post: Post, relays: string[], requestInvoice?: InvoiceRequester, store?: ZapStore): () => void {
+export function openZapDialog(post: Post, relays: string[], requestInvoice?: InvoiceRequester, store?: ZapStore, opts: { onPaid?: () => void } = {}): () => void {
   const dialog = document.createElement('dialog');
   dialog.className = 'zap-dialog';
   dialog.setAttribute('aria-labelledby', 'zap-title');
@@ -110,7 +111,8 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
       result.hidden = false;
       result.querySelector<HTMLAnchorElement>('[data-open-wallet]')!.focus();
       // Payment done: the receipt for this post arrives live → dismiss so the comment animation shows.
-      offLive = store?.onLive((e) => { if (e.type === 'zap' && e.postId === post.id) close(); });
+      // Watched on the shared feed so `onPaid` runs before it decides where that zap animates (row strike vs burst).
+      if (store) offLive = feedFor(store).watch((e) => { if (e.type === 'zap' && e.postId === post.id) { close(); opts.onPaid?.(); } });
     } catch (e) {
       if (dialog.open) error.textContent = e instanceof Error ? e.message : 'No se pudo generar la factura. Intentá de nuevo.';
     } finally {

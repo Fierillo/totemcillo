@@ -222,6 +222,21 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     expect(ind).toEqual([]);
     expect(feedFor(s).pending).toHaveLength(0);
   });
+  it('watch corre antes de decidir en pantalla/fuera (aunque se suscriba después) y deja de correr al desuscribirse', () => {
+    const s = mkStore();
+    s.addPost(post(1));
+    const seen: string[] = [];
+    let onScreen = false;
+    feedFor(s).onMiss(() => seen.push('miss'));
+    feedFor(s).attach({ name: 't', kinds: ['zap'], visible: () => onScreen, mark: () => seen.push('mark') });
+    const off = feedFor(s).watch((e) => { seen.push(`watch:${e.type}`); onScreen = true; }); // e.g. switches to the scene that shows it
+    s.addZap(zap(1, 1, NOW - 1));
+    expect(seen).toEqual(['watch:zap', 'mark']);
+    expect(feedFor(s).pending).toHaveLength(0);
+    off(); onScreen = false; seen.length = 0;
+    s.addZap(zap(2, 1, NOW - 1));
+    expect(seen).toEqual(['miss']);
+  });
   it('escena visible pero sin esa fila (ej. top sin el post): indicador + pendiente', () => {
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));

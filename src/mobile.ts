@@ -57,17 +57,23 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
     if (focused) root.querySelector<HTMLButtonElement>(`[data-tab="${focused}"]`)?.focus({ preventScroll: true });
     marks.consume(root);
   };
-  const select = (id: string) => {
-    if (!tabs.some((t) => t.id === id) || selected === id) return;
-    selected = id;
-    draw();
-    root.querySelector<HTMLButtonElement>(`[data-tab="${id}"]`)?.focus({ preventScroll: true });
-    window.scrollTo(0, 0);
+  /** Switches tab; `reveal` scrolls that post's card into view (if listed there) instead of going to the top. */
+  const select = (id: string, reveal?: string) => {
+    if (!tabs.some((t) => t.id === id) || (selected === id && !reveal)) return;
+    if (selected !== id) {
+      selected = id;
+      draw();
+      root.querySelector<HTMLButtonElement>(`[data-tab="${id}"]`)?.focus({ preventScroll: true });
+    }
+    const card = reveal ? [...root.querySelectorAll<HTMLElement>(`#mobile-${id} .m-post`)].find((el) => el.dataset.id === reveal) : undefined;
+    if (card) card.scrollIntoView({ block: 'center' });
+    else window.scrollTo(0, 0);
   };
   const click = (e: MouseEvent) => {
     const postId = (e.target as Element).closest<HTMLElement>('[data-zap]')?.dataset.zap;
     const post = postId && store.posts.get(postId);
-    if (post) { closeZap?.(); closeZap = openZapDialog(post, cfg.relays, requestInvoice, store); }
+    // Paid: back to Posts with the card in view before the feed decides where the zap animates (strike there, not the burst).
+    if (post) { closeZap?.(); closeZap = openZapDialog(post, cfg.relays, requestInvoice, store, { onPaid: () => select('posts', post.id) }); }
     const id = (e.target as Element).closest<HTMLElement>('[data-tab]')?.dataset.tab;
     if (id) select(id);
   };
