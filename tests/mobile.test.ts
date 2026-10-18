@@ -508,3 +508,77 @@ describe('pago confirmado desde el modal móvil', () => {
     expect(manual).not.toHaveBeenCalled();
   });
 });
+
+describe('el modal de zap solo se cierra al pagar o con Cancelar', () => {
+  const now = () => Math.floor(Date.now() / 1000);
+  const open = (s = store(), onPaid = vi.fn()) => {
+    const close = openZapDialog(s.posts.get(hex(1))!, defaultConfig.relays, vi.fn().mockResolvedValue('lnbc210n1ptestinvoice'), s, { onPaid });
+    const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+    return { s, onPaid, close, dialog };
+  };
+  const toInvoice = async (dialog: HTMLDialogElement) => {
+    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
+  };
+  const cancelBtn = (dialog: HTMLDialogElement) => [...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === 'Cancelar');
+  const stillOpen = (dialog: HTMLDialogElement) => { expect(dialog.isConnected).toBe(true); expect(dialog.open).toBe(true); };
+  afterEach(() => document.querySelectorAll('dialog').forEach((d) => d.remove()));
+
+  it('no tiene ✕: un botón rojo Cancelar abajo de todo, visible en elegir, monto y factura', async () => {
+    const { dialog, onPaid } = open();
+    expect(dialog.querySelector('[aria-label="Cerrar"]')).toBeNull();
+    expect(dialog.querySelector('header button')).toBeNull();
+    const visible = () => {
+      const btn = cancelBtn(dialog)!;
+      expect(btn).toBeDefined();
+      expect(btn.closest('[hidden]')).toBeNull();
+      expect(btn.classList.contains('zap-cancel')).toBe(true);
+      expect(dialog.lastElementChild).toBe(btn);
+    };
+    visible(); // payment choices
+    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+    visible(); // amount form
+    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
+    visible(); // invoice
+    cancelBtn(dialog)!.click();
+    expect(document.querySelector('dialog')).toBeNull();
+    expect(onPaid).not.toHaveBeenCalled();
+  });
+  it('Escape / gesto atrás (evento cancel) no lo cierra', async () => {
+    const { dialog } = open();
+    await toInvoice(dialog);
+    const cancel = new Event('cancel', { cancelable: true });
+    dialog.dispatchEvent(cancel);
+    expect(cancel.defaultPrevented).toBe(true);
+    stillOpen(dialog);
+  });
+  it('si el navegador lo cierra igual (atrás sin activación del usuario), se vuelve a abrir y sigue esperando el pago', async () => {
+    const { s, dialog, onPaid } = open();
+    await toInvoice(dialog);
+    dialog.close(); // what Chrome's CloseWatcher does when it skips the cancel event
+    await vi.waitFor(() => stillOpen(dialog));
+    expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull(); // same invoice, not reset
+    s.addZap({ id: hex(70), postId: hex(1), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() });
+    expect(onPaid).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('dialog')).toBeNull();
+  });
+  it('salir a la wallet y volver (visibilidad, foco, resize, pagehide/pageshow) no lo cierra', async () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), vi.fn().mockResolvedValue('lnbc210n1ptestinvoice'));
+    try {
+      root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
+      const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+      await toInvoice(dialog);
+      dialog.querySelector<HTMLAnchorElement>('[data-open-wallet]')!.dispatchEvent(new Event('blur'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      for (const type of ['blur', 'pagehide', 'pageshow', 'focus', 'resize']) window.dispatchEvent(new Event(type));
+      document.dispatchEvent(new Event('visibilitychange'));
+      await new Promise((r) => setTimeout(r, 150)); // let coalesced redraws run
+      stillOpen(dialog);
+      expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull();
+    } finally { off(); root.remove(); }
+  });
+});

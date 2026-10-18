@@ -51,13 +51,14 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
   const dialog = document.createElement('dialog');
   dialog.className = 'zap-dialog';
   dialog.setAttribute('aria-labelledby', 'zap-title');
-  dialog.innerHTML = `<header><h2 id="zap-title">Zapear este post</h2><button type="button" data-close aria-label="Cerrar">✕</button></header>
+  dialog.innerHTML = `<header><h2 id="zap-title">Zapear este post</h2></header>
     <div class="zap-choices"><a data-nostr-client href="${esc(noteUri(post, relays, 'nostr:{nevent}')!)}">Zapear desde cliente de Nostr<small>Usá tu perfil y tu cliente habitual.</small></a>
     <button type="button" data-wallet>Zapear desde wallet<small>Pago anónimo en Nostr: no se vinculará tu perfil.</small></button></div>
     <form hidden><p class="zap-note">Pago anónimo en Nostr: no se vinculará tu perfil. Tu wallet y el proveedor pueden registrar el pago.</p>
     <label>Monto (sats)<input name="sats" type="number" inputmode="numeric" min="1" step="1" value="21" required></label>
     <button class="zap-btn" type="submit">Generar factura</button></form>
-    <p class="zap-error" role="alert"></p><div data-invoice hidden></div>`;
+    <p class="zap-error" role="alert"></p><div data-invoice hidden></div>
+    <button type="button" class="zap-cancel" data-close>Cancelar</button>`;
   const form = dialog.querySelector('form')!;
   const amount = form.querySelector<HTMLInputElement>('input')!;
   const submit = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
@@ -122,10 +123,13 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
       amount.disabled = false;
     }
   });
-  const cleanup = () => { offLive?.(); offLive = undefined; };
-  const close = () => { cleanup(); if (dialog.open) dialog.close(); dialog.remove(); };
+  let closing = false;
+  const close = () => { closing = true; offLive?.(); offLive = undefined; if (dialog.open) dialog.close(); dialog.remove(); };
   dialog.querySelector('[data-close]')!.addEventListener('click', close);
-  dialog.addEventListener('close', () => { cleanup(); dialog.remove(); });
+  // Only a paid receipt or Cancelar close it: the user leaves for the wallet and comes back.
+  // Escape / Android back fire 'cancel' (ignored); Chrome may skip it without user activation and close anyway → reopen.
+  dialog.addEventListener('cancel', (e) => e.preventDefault());
+  dialog.addEventListener('close', () => { if (!closing && dialog.isConnected) dialog.showModal(); });
   document.body.append(dialog);
   dialog.showModal();
   return close;
