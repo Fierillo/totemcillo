@@ -1,12 +1,12 @@
 import type { Post } from './nostr/types';
-import type { ZapStore } from './nostr/store';
+import { MAX_COMMENT, type ZapStore } from './nostr/store';
 import { noteUri } from './nostr/link';
 import { feedFor } from './livefeed';
 import { esc } from './util';
 import { renderSVG } from 'uqr';
 import { bech32 } from '@scure/base';
 
-export type InvoiceRequester = (post: Post, sats: number) => Promise<string>;
+export type InvoiceRequester = (post: Post, sats: number, message?: string) => Promise<string>;
 
 /** Invoice shown but not paid yet: survives a reload (Android kills the tab while the user is in the wallet). */
 export interface PendingZap { postId: string; pubkey: string; sats: number; invoice: string; createdAt: number; expiresAt: number }
@@ -92,11 +92,13 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
     <button type="button" data-wallet>Zapear desde wallet<small>Pago anónimo en Nostr: no se vinculará tu perfil.</small></button></div>
     <form hidden><p class="zap-note">Pago anónimo en Nostr: no se vinculará tu perfil. Tu wallet y el proveedor pueden registrar el pago.</p>
     <label>Monto (sats)<input name="sats" type="number" inputmode="numeric" min="1" step="1" value="21" required></label>
+    <label>Mensaje (opcional)<input name="message" type="text" maxlength="${MAX_COMMENT}" autocomplete="off" placeholder="Se publica con el zap, como anónimo"></label>
     <button class="zap-btn" type="submit">Generar factura</button></form>
     <p class="zap-error" role="alert"></p><div data-invoice hidden></div>
     <button type="button" class="zap-cancel" data-close>Cancelar</button>`;
   const form = dialog.querySelector('form')!;
-  const amount = form.querySelector<HTMLInputElement>('input')!;
+  const amount = form.querySelector<HTMLInputElement>('[name="sats"]')!;
+  const message = form.querySelector<HTMLInputElement>('[name="message"]')!;
   const submit = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
   const error = dialog.querySelector<HTMLElement>('[role="alert"]')!;
   let busy = false;
@@ -160,10 +162,12 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
     submit.disabled = true;
     submit.textContent = 'Generando factura…';
     amount.disabled = true;
+    message.disabled = true;
     error.textContent = '';
     try {
       if (!requestInvoice) throw new Error('El pago desde wallet no está disponible. Volvé a cargar la página.');
-      const invoice = await requestInvoice(post, Number(amount.value));
+      const text = message.value.trim();
+      const invoice = await (text ? requestInvoice(post, Number(amount.value), text) : requestInvoice(post, Number(amount.value)));
       if (!dialog.open) return;
       const createdAt = nowSec();
       showInvoice({ postId: post.id, pubkey: post.pubkey, sats: Number(amount.value), invoice, createdAt, expiresAt: bolt11Expiry(invoice) ?? createdAt + 3600 });
@@ -174,6 +178,7 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
       submit.disabled = false;
       submit.textContent = 'Generar factura';
       amount.disabled = false;
+      message.disabled = false;
     }
   });
   const close = () => { closing = true; clearPendingZap(); offLive?.(); offLive = undefined; if (dialog.open) dialog.close(); dialog.remove(); };

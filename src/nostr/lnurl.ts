@@ -2,7 +2,7 @@ import { bech32 } from '@scure/base';
 import type { NostrEvent } from './types';
 import type { LnurlInfo, Resolver } from './verify';
 import { DEFAULT_ZAP_PROVIDERS } from '../../shared/settings';
-import { providerAllowed } from './store';
+import { MAX_COMMENT, providerAllowed } from './store';
 import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import { bolt11ToMsats } from './zap';
 import type { Post } from './types';
@@ -71,7 +71,7 @@ export class LnurlResolver implements Resolver {
   }
 
   /** Only requests an unpaid invoice; the user's wallet pays it, and the receipt updates the feed. */
-  async requestInvoice(post: Pick<Post, 'id' | 'pubkey'>, sats: number, relays: string[]): Promise<string> {
+  async requestInvoice(post: Pick<Post, 'id' | 'pubkey'>, sats: number, relays: string[], message = ''): Promise<string> {
     const amount = sats * 1000;
     if (!Number.isSafeInteger(sats) || sats <= 0 || !Number.isSafeInteger(amount) || !/^[0-9a-f]{64}$/.test(post.id) || !/^[0-9a-f]{64}$/.test(post.pubkey))
       throw new Error('Ingresá un monto entero y positivo en sats.');
@@ -83,7 +83,7 @@ export class LnurlResolver implements Resolver {
     if (!Number.isSafeInteger(info.minSendable) || !Number.isSafeInteger(info.maxSendable) || amount < info.minSendable! || amount > info.maxSendable!)
       throw new Error('El monto está fuera del rango admitido por la wallet del autor.');
     const lnurl = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode(info.url)), 2000);
-    const request = finalizeEvent({ kind: 9734, created_at: Math.floor(Date.now() / 1000), content: '',
+    const request = finalizeEvent({ kind: 9734, created_at: Math.floor(Date.now() / 1000), content: message.trim().slice(0, MAX_COMMENT), // NIP-57: the zap message goes in the request content
       tags: [['p', post.pubkey], ['e', post.id], ['amount', String(amount)], ['relays', ...targets], ['lnurl', lnurl], ['anon']],
     }, generateSecretKey());
     callback.searchParams.set('amount', String(amount));
