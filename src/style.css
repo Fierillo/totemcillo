@@ -65,11 +65,11 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-announcement { padding-top: 1rem; }
 .m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
 .m-post { padding: .8rem 0; border-bottom: 1px solid #222; }
-.m-meta { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .6rem; }
+.m-meta { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .85rem; }
 .m-meta > .author { flex: 0 1 auto; min-width: 0; }
 .m-meta > .muted { flex: 0 0 auto; white-space: nowrap; margin-left: auto; }
 .m-rank { flex: 0 0 auto; color: var(--accent); }
-.m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: .7rem; line-height: 1.45; }
+.m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: 1rem; line-height: 1.45; }
 .m-post-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; }
 .m-total { color: var(--accent); font: 600 .85rem ui-monospace, monospace; position: relative; width: fit-content; }
 .is-mobile .m-post.is-new { animation: slide-in-x .5s ease-out both, glow 2.5s ease-out; } /* sideways: doesn't cover the heading */
