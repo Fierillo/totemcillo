@@ -24,7 +24,7 @@ const zaps = Array.from({ length: 40 }, (_, i) => ({
   comment: 'Comentario larguísimo de prueba para el tótem '.repeat(6).slice(0, 280), created_at: now - i * 10,
 }));
 zaps.push({ id: hex(999), postId: hex(2), sender: 'cd'.repeat(32), msats: 1e12, domain: 'getalby.com', comment: 'zap a post viejo', created_at: now - 25 * 3600 });
-const cfg = { relays: [], hashtags: ['lacrypta', 'labitconf'] };
+const cfg = { relays: [], hashtags: ['lacrypta'] };
 const sceneDurations = { post: 3000, latestZaps: 3000, top10Historico: 3000, top10Ultimas3h: 60000, anuncio: 3000 };
 
 
@@ -155,7 +155,7 @@ function checkHeader() {
   const logo = header?.querySelector('img'), cta = header?.querySelector('.cta');
   if (!header || !logo || !cta) return ['falta header, logo o invitación a publicar'];
   if (!logo.complete || !logo.naturalWidth || logo.alt !== 'La Crypta') problems.push('logo sin cargar o sin texto alternativo');
-  if (!/Nostr/.test(cta.textContent) || !['#lacrypta', '#labitconf'].every((tag) => cta.textContent.includes(tag))) problems.push('faltan instrucciones de publicación');
+  if (!/Nostr/.test(cta.textContent) || !cta.textContent.includes('#lacrypta')) problems.push('faltan instrucciones de publicación');
   const h = header.getBoundingClientRect(), l = logo.getBoundingClientRect(), c = cta.getBoundingClientRect();
   for (const r of [l, c]) if (r.left < h.left - 1 || r.right > h.right + 1 || r.top < h.top - 1 || r.bottom > h.bottom + 1) problems.push('contenido fuera del header');
   if (l.right > c.left + 1 && l.bottom > c.top + 1 && l.top < c.bottom - 1) problems.push('logo e instrucciones superpuestos');
@@ -314,7 +314,7 @@ try {
     const zapDialog = page.getByRole('dialog');
     if (!(await zapDialog.locator('[data-nostr-client]').getAttribute('href'))?.startsWith('nostr:nevent')) problems.push('móvil: falta la opción de cliente Nostr');
     if (!(await zapDialog.innerText()).includes('Pago anónimo en Nostr')) problems.push('móvil: falta el aviso de pago anónimo');
-    await zapDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+    await zapDialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
     // Reduced motion must suppress movement, even if decorative glow remains.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const movement = await page.evaluate(async () => {
@@ -330,7 +330,7 @@ try {
 
   // Empty states: empty store, every scene in turn
   const empties = [
-    ['post', 'Todavía no hay posts con #lacrypta / #labitconf'],
+    ['post', 'Todavía no hay posts con #lacrypta'],
     ['latestZaps', 'Todavía no hay zaps'],
     ['top10Historico', 'Todavía no hay zaps en este período'],
     ['top10Ultimas3h', 'Todavía no hay zaps en este período'],

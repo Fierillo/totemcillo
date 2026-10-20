@@ -13,7 +13,7 @@ const mockPool = (profiles: any[] = []) => {
     close: vi.fn(),
   };
 };
-const cfg = { ...defaultConfig, hashtags: ['LaCrypta', 'labitconf'] };
+const cfg = { ...defaultConfig, hashtags: ['LaCrypta'] };
 const author = keys();
 const note = (content: string, kind = 1) => sign(author.sk, { kind, created_at: 5, content, tags: [['t', 'lacrypta']] });
 const resolverFor = (pk: string | null) => ({ resolve: vi.fn(async (_p: string) => pk) });
@@ -28,7 +28,17 @@ describe('filtros', () => {
     expect(zapsFilter(['a'])).toEqual({ kinds: [9735], '#e': ['a'] });
   });
   it('incluye minúscula, original, Capitalizada y MAYÚSCULA sin duplicados', () => {
-    expect(notesFilter(['LaCrypta', 'labitconf'])['#t']).toEqual(['lacrypta', 'LaCrypta', 'Lacrypta', 'LACRYPTA', 'labitconf', 'Labitconf', 'LABITCONF']);
+    expect(notesFilter(['LaCrypta'])['#t']).toEqual(['lacrypta', 'LaCrypta', 'Lacrypta', 'LACRYPTA']);
+  });
+  it('el tótem sólo sigue #lacrypta: #labitconf no publica en el tablero', () => {
+    expect(defaultConfig.hashtags).toEqual(['lacrypta']);
+    const p = mockPool(), store = new ZapStore();
+    startNostr(defaultConfig, store, p, 1500, resolverFor(null));
+    p.subs[0].h.onevent(sign(author.sk, { kind: 1, created_at: 5, content: 'sólo labitconf', tags: [['t', 'labitconf']] }));
+    expect(store.posts.size).toBe(0);
+    const valid = note('válido');
+    p.subs[0].h.onevent(valid);
+    expect([...store.posts.keys()]).toEqual([valid.id]);
   });
 });
 

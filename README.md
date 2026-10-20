@@ -16,7 +16,7 @@
 
 ## What it does
 
-- Shows notes tagged `#lacrypta` and `#labitconf` live, with their zap totals.
+- Shows notes tagged `#lacrypta` live, with their zap totals.
 - Rotates scenes: latest posts, latest zaps, two Top 10s, an announcement and a video.
 - Every totem shows the same scene at the same time (server clock).
 - The same URL on a phone shows a mobile view with a ⚡ Zap button.

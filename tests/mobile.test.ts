@@ -267,7 +267,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     const s = new ZapStore();
     s.setReady();
     renderMobile(root, s, defaultConfig, new Announcement(''));
-    expect(root.textContent).toContain('Todavía no hay posts con #lacrypta / #labitconf');
+    expect(root.textContent).toContain('Todavía no hay posts con #lacrypta');
     expect(root.textContent).toContain('Todavía no hay zaps');
   });
 });

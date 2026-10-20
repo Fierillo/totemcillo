@@ -302,7 +302,7 @@ describe('renderizado de posts', () => {
     const s = new ZapStore(), root = document.createElement('div');
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
     expect(root.querySelector('h1')!.textContent).toBe('Últimos posts');
-    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay posts con #lacrypta / #labitconf');
+    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay posts con #lacrypta');
     expect(root.querySelectorAll('figure.qr')).toHaveLength(1);
     s.addPost({ ...post(1, 1), content: 'llegó' });
     expect(root.querySelector('h1')!.textContent).toBe('Últimos posts');

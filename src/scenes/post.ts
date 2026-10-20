@@ -8,7 +8,7 @@ import { authorHtml } from '../nostr/profiles';
 
 export interface PostSceneOptions { publicUrl: string }
 
-export const EMPTY_POSTS = 'Todavía no hay posts con #lacrypta / #labitconf';
+export const EMPTY_POSTS = 'Todavía no hay posts con #lacrypta';
 export const MAX_POSTS = 6;
 export const QR_CAPTION = 'Escaneá y abrí esto en tu celular';
 

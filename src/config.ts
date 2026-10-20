@@ -15,7 +15,7 @@ export interface Config {
 
 export const defaultConfig: Config = {
   relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'],
-  hashtags: ['lacrypta', 'labitconf'],
+  hashtags: ['lacrypta'],
   postMaxChars: 210,
   topRecentHours: 3,
   publicUrl: '',
