@@ -188,7 +188,7 @@ describe('caché pública y lecturas privadas', () => {
   it.each(['/api/kiosk', '/api/version', '/api/settings'])('%s sin query usa caché CDN corta sin Vary: Cookie', async (path) => {
     const r = await handle(req('GET', path), deps());
     expect(r.status).toBe(200);
-    expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=5, stale-while-revalidate=5');
+    expect(r.headers['cache-control']).toBe('public, max-age=0, s-maxage=20, stale-while-revalidate=20');
     expect(r.headers.vary ?? '').not.toMatch(/cookie/i);
   });
   it.each([['GET', '/api/session'], ['POST', '/api/login'], ['POST', '/api/logout'], ['PUT', '/api/settings']])('endpoints de admin nunca se cachean: %s %s', async (method, path) => {
@@ -211,9 +211,9 @@ describe('caché pública y lecturas privadas', () => {
     expect(res.statusCode).toBe(308);
     expect(headers.location).toBe('/api/kiosk');
   });
-  it('settings autenticados y la sesión usan lecturas privadas y frescas', async () => {
+  it('GET /api/settings es público aun con sesión; la sesión usa lecturas privadas y frescas', async () => {
     const d = deps(), { cookie } = await login(d);
-    expect((await handle(req('GET', '/api/settings', undefined, { cookie }), d)).headers['cache-control']).toBe('private, no-store');
+    expect((await handle(req('GET', '/api/settings', undefined, { cookie }), d)).headers['cache-control']).toMatch(/^public, max-age=0, s-maxage=\d+/);
     const r = await handle(req('GET', '/api/session', undefined, { cookie }), d);
     expect(r.body).toMatchObject({ authed: true, settings: { announcement: expect.any(String) } });
     expect(r.headers['cache-control']).toBe('private, no-store');

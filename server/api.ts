@@ -13,7 +13,13 @@ export interface Deps { storage: Storage; env: Env; now: () => number }
 export const COOKIE = 'totem_session';
 const SESSION_TTL = 3600;
 /** CDN cache (Vercel) for the totem's public GETs; the browser does not cache (max-age=0). */
-const CDN = 'public, max-age=0, s-maxage=5, stale-while-revalidate=5';
+const CDN = 'public, max-age=0, s-maxage=20, stale-while-revalidate=20';
+/**
+ * Public GETs (phones, the totem) are served from a per-instance settings snapshot: Redis is read at most once per
+ * warm function instance every PUBLIC_SNAPSHOT_MS, never per visitor; the CDN (s-maxage) absorbs most requests before that.
+ */
+export const PUBLIC_SNAPSHOT_MS = 20_000;
+const snapshots = new WeakMap<Storage, { at: number; settings: Settings }>();
 const RATE = { max: 10, windowSec: 600 };
 /** Public GETs cached by the CDN: Vercel keys the cache on the full URL, so a query would bypass it. */
 const CANONICAL = new Set(['/api/kiosk', '/api/version', '/api/settings']);
@@ -46,6 +52,14 @@ async function readSettings(d: Deps): Promise<Settings> {
   return settingsWithDefaults(await d.storage.get<Settings>(KEY));
 }
 
+async function publicSettings(d: Deps): Promise<Settings> {
+  const s = snapshots.get(d.storage);
+  if (s && d.now() - s.at < PUBLIC_SNAPSHOT_MS) return s.settings;
+  const settings = await readSettings(d);
+  snapshots.set(d.storage, { at: d.now(), settings });
+  return settings;
+}
+
 async function updateSettings(d: Deps, change: (cur: Settings) => { ok: true; settings: Settings } | { ok: false; error: string }): Promise<ApiResponse> {
   for (let attempt = 0; attempt < 8; attempt++) {
     const stored = await d.storage.get<Settings>(KEY);
@@ -53,7 +67,10 @@ async function updateSettings(d: Deps, change: (cur: Settings) => { ok: true; se
     const result = change(cur);
     if (!result.ok) return json(400, { error: result.error });
     const next = { ...result.settings, version: (cur.version ?? 0) + 1 };
-    if (await d.storage.compareAndSet(KEY, stored ? (stored.version ?? 0) : null, next)) return json(200, next);
+    if (await d.storage.compareAndSet(KEY, stored ? (stored.version ?? 0) : null, next)) {
+      snapshots.set(d.storage, { at: d.now(), settings: next }); // this instance serves the change right away
+      return json(200, next);
+    }
   }
   return json(503, { error: 'cambios concurrentes, probá de nuevo' });
 }
@@ -73,9 +90,9 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
     return { status: 308, body: null, headers: { location: path, 'cache-control': REDIRECT_CACHE } };
   switch (route) {
     case 'GET /api/settings':
-      // Same content for everyone; with a session it is marked private (no Vary: Cookie: Vercel won't cache that).
-      // The admin panel reads fresh settings through /api/session instead, so a CDN copy never goes stale there.
-      return json(200, await readSettings(d), { 'cache-control': (await authed(req, d)) ? PRIVATE : CDN });
+      // Same public snapshot for everyone (a session cookie changes nothing: no revocation read per poll).
+      // The admin panel reads fresh settings through /api/session instead.
+      return json(200, await publicSettings(d), { 'cache-control': CDN });
     case 'PUT /api/settings': {
       if (!(await authed(req, d))) return json(401, { error: 'no autorizado' });
       if (!(req.headers['content-type'] ?? '').startsWith('application/json')) return json(415, { error: 'se espera JSON' });
@@ -97,14 +114,14 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
     }
     case 'GET /api/kiosk': {
       // Public, read-only: schedule inputs; the totem computes the scenes locally.
-      const st = await readSettings(d);
+      const st = await publicSettings(d);
       // No time inside, so the CDN can cache it. Always the bare path; a stale copy is retried by the totem.
       return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0,
         hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [], zapProviders: st.zapProviders ?? DEFAULT_ZAP_PROVIDERS, startLine: st.startLine ?? DEFAULT_START_LINE }, { 'cache-control': CDN });
     }
     case 'GET /api/version':
       // Cheap check, cacheable for a few seconds on the CDN (many screens → few reads). No query (see CANONICAL).
-      return json(200, { version: (await readSettings(d)).version ?? 0 }, { 'cache-control': CDN });
+      return json(200, { version: (await publicSettings(d)).version ?? 0 }, { 'cache-control': CDN });
     case 'GET /api/time':
       // Server time to correct the totem's clock: never cached and never touches Redis.
       return json(200, { now: d.now() });
