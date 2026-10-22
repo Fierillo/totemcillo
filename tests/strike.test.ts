@@ -58,7 +58,6 @@ describe('rayo real sobre el post zapeado', () => {
     vi.advanceTimersByTime(STRIKE_MS);
     expect(document.querySelector('svg.strike')).toBeNull();
     expect(STRIKE_MS).toBeGreaterThan(LEADER_MS);
-    expect(STRIKE_MS).toBeLessThanOrEqual(700);
   });
 
   it('con monto: "+N sats" nace en el punto de impacto y dura un poco más que el rayo', () => {

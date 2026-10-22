@@ -1,9 +1,9 @@
 /** Leader: the channel grows from the top to the post in this time; then the return stroke flashes. */
-export const LEADER_MS = 100;
+export const LEADER_MS = 250;
 /** Total life of a strike: leader, return stroke, one flicker and fade (CSS keyframes use the same length). */
-export const STRIKE_MS = 433;
+export const STRIKE_MS = 1080;
 /** Life of the "+N sats" label left at the impact point (it outlives the bolt so it can be read). */
-export const GAIN_MS = 1200;
+export const GAIN_MS = 2400;
 
 type Pt = [number, number];
 const r1 = (v: number) => Math.round(v * 10) / 10;
