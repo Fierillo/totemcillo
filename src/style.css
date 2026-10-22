@@ -1,4 +1,4 @@
-:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; }
+:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; --ease-out-soft: cubic-bezier(.22, 1, .36, 1); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; cursor: none;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(14px, min(1.6vw, 2.6vh), 40px); }
@@ -25,7 +25,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .scene-post { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
 .posts, .empty-state { min-width: 0; min-height: 0; overflow: hidden; }
 .post-list { list-style: none; min-height: 0; overflow: hidden; height: 100%; }
-.post-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8em; align-items: start; padding: .55em 0; border-bottom: 1px solid #222; min-width: 0; }
+.post-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8em; align-items: start; padding: .55em .9em; border-bottom: 1px solid #222; min-width: 0; }
 .row-main { min-width: 0; overflow: hidden; font-size: .7em; } /* message (name, avatar, text) at 70% of the list size; totals keep it */
 .row-meta { display: flex; justify-content: space-between; gap: 1em; min-width: 0; }
 .row-meta .author { color: var(--accent); font-weight: 700; }
@@ -64,7 +64,7 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-section { margin-bottom: 1.5rem; }
 .m-announcement { padding-top: 1rem; }
 .m-section h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: .6rem; }
-.m-post { padding: .8rem 0; border-bottom: 1px solid #222; }
+.m-post { padding: .8rem .75rem; border-bottom: 1px solid #222; }
 .m-meta { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .85rem; }
 .m-meta > .author { flex: 0 1 auto; min-width: 0; }
 .m-meta > .muted { flex: 0 0 auto; white-space: nowrap; margin-left: auto; }
@@ -72,7 +72,7 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: 1rem; line-height: 1.45; }
 .m-post-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; }
 .m-total { color: var(--accent); font: 600 .85rem ui-monospace, monospace; position: relative; width: fit-content; }
-.is-mobile .m-post.is-new { animation: slide-in-x .5s ease-out both, glow 2.5s ease-out; } /* sideways: doesn't cover the heading */
+.is-mobile .m-post.is-new { animation: slide-in-x 1.3s var(--ease-out-soft) both, glow 3.5s ease-out; } /* sideways: doesn't cover the heading */
 @keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
 .m-list { list-style: none; padding: 0; margin: 0; }
 .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
@@ -156,7 +156,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 
 /* Live animations (new post / zap): only transform/opacity/box-shadow, no layout changes. */
 .post-row { position: relative; }
-.is-new { animation: slide-in .5s ease-out both, glow 2.5s ease-out; }
+.is-new { animation: slide-in 1.3s var(--ease-out-soft) both, glow 3.5s ease-out; }
 @keyframes slide-in { from { transform: translateY(-60%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes glow {
   0%, 40% { box-shadow: inset 0 0 0 2px var(--accent), 0 0 1.2em rgba(199, 255, 91, .45); background: rgba(199, 255, 91, .08); }
@@ -213,7 +213,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .is-new, .is-mobile .m-post.is-new { animation: glow 2.5s ease-out; }
+  .is-new, .is-mobile .m-post.is-new { animation: glow 3.5s ease-out; }
   .is-zapped { animation: zap-flash 2s ease-out; }
   .is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { animation: none; }
   .strike { display: none; } /* just the row highlight, no strike */
