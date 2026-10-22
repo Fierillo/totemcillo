@@ -268,10 +268,9 @@ it('dev permite la red local, preview usa loopback y ambos rechazan túneles no 
   }
 }, 15_000);
 
-// Table: every production entry point (API and avatar proxy) fails closed without full Redis config.
+// Table: the production API fails closed without full Redis config. The avatar proxy no longer needs Redis (see below).
 const productionEntries = [
   ['API', () => import('../server/node'), '/api/session'],
-  ['proxy de avatares', () => import('../server/avatar'), '/api/avatar'],
 ] as const;
 const incompleteRedis = [['', ''], ['https://redis.example.invalid', ''], ['', 'test-token']] as const;
 it.each(productionEntries.flatMap(([name, load, url]) => incompleteRedis.map(([redisUrl, token]) => [name, load, url, redisUrl, token] as const)))(
@@ -289,6 +288,18 @@ it.each(productionEntries.flatMap(([name, load, url]) => incompleteRedis.map(([r
       expect(JSON.parse(res.end.mock.calls[0][0])).toEqual({ error: 'servicio no disponible' });
     } finally { vi.unstubAllEnvs(); }
   });
+
+it.each(incompleteRedis)('producción (proxy de avatares) no depende de Redis: sin URL/token (%j, %j) valida la URL en vez de dar 503', async (redisUrl, token) => {
+  try {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', redisUrl);
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', token);
+    vi.resetModules();
+    const { default: production } = await import('../server/avatar');
+    const res: any = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() };
+    await production({ method: 'GET', url: '/api/avatar', headers: {}, socket: {} } as any, res);
+    expect(res.statusCode).toBe(400);
+  } finally { vi.unstubAllEnvs(); }
+});
 
 it('producción vuelve a funcionar con ajustes de Redis cuando se completa la configuración', async () => {
   const get = vi.fn(async () => ({ announcement: 'ajuste compartido' }));

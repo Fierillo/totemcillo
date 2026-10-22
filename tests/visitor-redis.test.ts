@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { handle, PUBLIC_SNAPSHOT_MS, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
+import vercelAvatar from '../server/avatar';
 
 // Rule: an open phone must never make the server read Redis; only the snapshot refresh (bounded in time) does.
 const PASS = 'clave-de-prueba';
@@ -47,5 +48,15 @@ describe('visitantes (móvil / público) no consumen Redis', () => {
     const n = total();
     expect((await handle(req('GET', '/api/settings'), d)).body).toMatchObject({ announcement: 'nuevo' });
     expect(total()).toBe(n);
+  });
+
+  it('el proxy de avatares en producción no usa Redis (límite por instancia): sin credenciales de Redis no da 503', async () => {
+    const saved = { ...process.env };
+    for (const k of Object.keys(process.env)) if (/UPSTASH|KV_REST/.test(k)) delete process.env[k];
+    try {
+      const res: any = { statusCode: 0, headers: {} as Record<string, string>, setHeader(k: string, v: string) { this.headers[k] = v; }, end() {} };
+      await vercelAvatar({ method: 'GET', url: '/api/avatar?url=nope', headers: {}, socket: {} } as any, res);
+      expect(res.statusCode).toBe(400);
+    } finally { Object.assign(process.env, saved); }
   });
 });
