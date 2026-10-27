@@ -15,10 +15,10 @@ export const domMeasurer: Measurer = {
   setSize: (el, px) => { el.style.fontSize = `${px}px`; },
 };
 
-export interface FitRange { max: number; min: number }
+interface FitRange { max: number; min: number }
 
 /** Largest integer in [lo, hi] satisfying ok (monotonic), or null. */
-function largest(lo: number, hi: number, ok: (n: number) => boolean): number | null {
+export function largest(lo: number, hi: number, ok: (n: number) => boolean): number | null {
   let best: number | null = null;
   lo = Math.ceil(lo);
   hi = Math.floor(hi);
@@ -32,11 +32,19 @@ function largest(lo: number, hi: number, ok: (n: number) => boolean): number | n
 const originals = new WeakMap<HTMLElement, string>();
 
 /** Shrinks the font until the text fits; if it still doesn't at the minimum, truncates by words with '…'. */
-export function fitText(el: HTMLElement, { max, min }: FitRange, m: Measurer = domMeasurer) {
+/** Puts back the element's full text (as first seen by fitText or here) and returns it. */
+export function untruncate(el: HTMLElement) {
   if (!originals.has(el)) originals.set(el, el.textContent ?? '');
   const full = originals.get(el)!;
-  el.textContent = full;
-  const size = largest(min, max, (s) => { m.setSize(el, s); return m.fits(el); });
+  if (el.textContent !== full) el.textContent = full;
+  return full;
+}
+
+export function fitText(el: HTMLElement, { max, min }: FitRange, m: Measurer = domMeasurer) {
+  const full = untruncate(el);
+  const ok = (s: number) => { m.setSize(el, s); return m.fits(el); };
+  const top = Math.floor(max);
+  const size = top >= Math.ceil(min) && ok(top) ? top : largest(min, top - 1, ok); // most messages fit at the max: one measure
   if (size !== null) {
     m.setSize(el, size);
     return { size, truncated: false };
