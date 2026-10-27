@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "pnpm build && node scripts/check-layout.mjs"
+    "test:e2e": "pnpm build && node scripts/check-layout.mjs",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@scure/base": "^2.4.0",
@@ -19,11 +20,16 @@
     "uqr": "^0.1.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitest/coverage-v8": "^5.0.4",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
     "happy-dom": "^21.0.1",
     "playwright-core": "^1.64.0",
-    "typescript": "^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.72.0",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },
