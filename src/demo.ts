@@ -1,6 +1,7 @@
 import type { ZapStore } from './nostr/store';
 import { recentPosts } from './scenes/post';
 import type { Follower } from './follow';
+import { bootSplash } from './mobile-splash';
 
 const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join('');
 
@@ -57,7 +58,7 @@ export function demoButtons(doc: Document, demo: Demo, dev: boolean, follower?: 
   const bar = doc.createElement('div');
   bar.className = 'demo-buttons';
   // Inline styles keep every trace of this dev tool out of the production CSS.
-  bar.style.cssText = 'position:fixed;bottom:.5rem;left:.5rem;z-index:50;display:flex;gap:.4rem;';
+  bar.style.cssText = 'position:fixed;bottom:.5rem;left:.5rem;z-index:101;display:flex;gap:.4rem;';
   let play: HTMLButtonElement | undefined;
   // ▷ reloj is enabled (and lit) only while the arrows have the clock paused.
   const sync = () => {
@@ -112,6 +113,14 @@ export function demoButtons(doc: Document, demo: Demo, dev: boolean, follower?: 
     doc.addEventListener('keydown', esc);
   });
   zapBtn.setAttribute('aria-pressed', 'false');
+  // "splash": the mobile loading screen, held until this button or the screen itself is tapped again.
+  let splash: ReturnType<typeof bootSplash> | undefined;
+  const hide = () => { splash?.close(); splash = undefined; };
+  add('splash', () => {
+    if (splash) return hide();
+    splash = bootSplash(doc, { min: 0, max: Infinity }, () => false, () => {});
+    doc.querySelector('.m-splash:last-of-type')?.addEventListener('click', hide);
+  });
   if (follower) {
     add('◀', () => follower.step('prev'));
     add('▶', () => follower.step('next'));

@@ -32,6 +32,17 @@ describe('botones de simulación (solo desarrollo)', () => {
     expect(s.posts.size).toBe(1);
     expect(live).toEqual(['post']);
   });
+  it('"splash" muestra la pantalla de carga hasta tocar el botón o la pantalla', () => {
+    demoButtons(document, installDemo({}, new ZapStore(undefined, { clock: () => NOW }), () => NOW), true);
+    const splash = () => document.querySelector<HTMLElement>('.m-splash');
+    button('splash').click();
+    expect(splash()).not.toBeNull();
+    button('splash').click();
+    expect(splash()).toBeNull();
+    button('splash').click();
+    splash()!.click();
+    expect(splash()).toBeNull();
+  });
   it('"+ post" y "+ post ⚡" ciclan textos de largos distintos (todos con #lacrypta) para ver cómo cambian las cajas', () => {
     const s = new ZapStore(undefined, { clock: () => NOW });
     demoButtons(document, installDemo({}, s, () => NOW), true);
