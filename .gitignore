@@ -4,3 +4,4 @@ dist
 coverage
 shots
 public/video/*.mp4
+.previews/

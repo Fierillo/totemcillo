@@ -9,8 +9,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "pnpm build && node scripts/check-layout.mjs",
-    "lint": "eslint ."
+    "test:e2e": "pnpm build && node --test --test-concurrency=1 \"e2e/*.e2e.mjs\"",
+    "lint": "eslint .",
+    "test:layout": "pnpm build && node --test --test-concurrency=1 \"layout/*.layout.mjs\""
   },
   "dependencies": {
     "@scure/base": "^2.4.0",
