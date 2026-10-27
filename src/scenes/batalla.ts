@@ -5,17 +5,30 @@ import { BOLT, boltSats } from '../bolt';
 import { zappability, type CanZap } from '../zapcache';
 import { live, liveMarks } from './live';
 import { appQr } from './post';
-import { truncateText } from '../text';
+import { fitText } from '../fit';
 
 export const MAX_BARS = 50; // as many as fit; the store ranks up to this many
-/** The post's text is the protagonist: up to this many characters (2–3 lines). */
-export const BAR_CHARS = 140;
+/** Legible floor of a bar's message (px): it shrinks down to it, using its bar's whole height, before it's truncated. */
+export const BAR_MSG_MIN_PX = 14;
 /** Minimum height per bar (px): short windows show fewer bars instead of clipping the text. */
 export const BAR_MIN_PX = 46; // 1 line of 14px text (+padding) + neon line + 11px sats
 export const BAR_GAP = 8; // fixed space between bars
 const GLOBO_MS = 6000;
 const HINCHADA_MS = 1200;
 const AVISO_MS = 4000;
+
+/** A bar's message: the font its bar allows (CSS), shrunk down to BAR_MSG_MIN_PX until it fits the bar's height; only then truncated with '…'. */
+function fitMessage(li: HTMLElement) {
+  const msg = li.querySelector<HTMLElement>('.bar-msg'), text = li.querySelector<HTMLElement>('.bar-text');
+  if (!msg || !text) return;
+  msg.style.fontSize = '';
+  const max = parseFloat(getComputedStyle(msg).fontSize) || BAR_MSG_MIN_PX;
+  const { truncated } = fitText(text, { max, min: Math.min(max, BAR_MSG_MIN_PX) }, {
+    setSize: (_, px) => { msg.style.fontSize = `${px}px`; },
+    fits: () => msg.scrollHeight <= msg.clientHeight + 1,
+  });
+  msg.toggleAttribute('data-cut', truncated); // the layout check: cut here only at the floor, with the bar's whole height
+}
 
 /**
  * Zap battle: the most zapped posts of the last `hours` as bars that grow and swap places live (keyed DOM, so CSS
@@ -66,12 +79,13 @@ export function batallaScene(store: ZapStore, hours = 3, publicUrl?: string, can
           li.style.setProperty('--rank', String(i));
           if (marks.attrs(s.postId).cls.includes('is-zapped')) li.classList.add('is-zapped');
           li.querySelector('.bar-label')!.innerHTML = `<span class="rank">#${i + 1}</span>${authorHtml(s.post!.pubkey)}`;
-          li.querySelector('.bar-text')!.textContent = truncateText(s.post!.content.trim().replace(/\s+/g, ' '), BAR_CHARS);
+          li.querySelector('.bar-text')!.textContent = s.post!.content.trim().replace(/\s+/g, ' ');
           li.querySelector<HTMLElement>('.bar-fill')!.style.width = `${Math.round((s.msats / max) * 10000) / 100}%`;
           li.querySelector('.bar-sats')!.innerHTML = boltSats(s.msats, store.ready);
         });
         ol.style.setProperty('--n', String(fitN));
         ol.style.setProperty('--gap', `${BAR_GAP}px`);
+        ol.querySelectorAll<HTMLElement>(':scope > li').forEach(fitMessage);
         // Overtake notice: a bar that climbed over the one that held its new place.
         for (const [id, i] of next) {
           const was = ranks.get(id);

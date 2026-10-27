@@ -49,12 +49,33 @@ export function check(scene) {
     if (qr && !/Escaneá.*celular|Abrí.*celular|Escaneá y abrí/i.test(qr.textContent)) P.push('QR sin leyenda para el celular');
     const rows = [...document.querySelectorAll('.post-row')];
     if (!rows.length) P.push('no hay filas de posts');
-    const MIN_FILL = .85; // the boxes fill the list: little free space below them
-    if (rows.length && list) {
+    // The boxes fill the list: masonry boxes keep their content's height, so the free space below them stays under one more box
+    // (as tall as the tallest shown, plus a gap), unless they already have the largest font.
+    const fill = () => { // its own function: check stays simple
       const top = Math.min(...rows.map((r) => r.offsetTop)), bottom = Math.max(...rows.map((r) => r.offsetTop + r.offsetHeight)); // layout boxes, without the float
       const css = getComputedStyle(list), room = list.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom);
-      if ((bottom - top) / room < MIN_FILL) P.push(`las cajas cubren sólo ${Math.round(((bottom - top) / room) * 100)}% del alto de la lista`);
-    }
+      const cap = Math.floor(Math.min(Number(list.dataset.max) * innerHeight, Number(list.dataset.maxw ?? Infinity) * innerWidth) / 100);
+      const gap = parseFloat(css.rowGap) || 0, tallest = Math.max(...rows.map((r) => r.offsetHeight));
+      if (room - (bottom - top) > tallest + gap && parseFloat(list.style.fontSize) < cap) P.push(`las cajas dejan ${Math.round(room - (bottom - top))}px libres abajo (entra otra caja de ${tallest}px)`);
+    };
+    // No hole a left-out message fits in: fitBoxes reports the shortest box it left out (data-left-out px, 0 if none);
+    // a column still open for the reading order (its bottom at or below the last box's top) can't have that much room.
+    const holes = () => {
+      if (list.dataset.leftOut === undefined) return P.push('la lista no informa las cajas que dejó afuera (data-left-out)');
+      const out = Number(list.dataset.leftOut), css = getComputedStyle(list), gap = parseFloat(css.rowGap) || 0, pad = parseFloat(css.paddingLeft);
+      if (!out) return;
+      const w = parseFloat(list.style.getPropertyValue('--col-w')), n = Math.round((list.clientWidth - pad - parseFloat(css.paddingRight) + gap) / (w + gap));
+      const L = list.getBoundingClientRect(), qr = q('figure.qr').getBoundingClientRect(), y0 = L.top + parseFloat(css.paddingTop);
+      const room = list.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom), last = rows.at(-1).offsetTop;
+      for (let c = 0; c < n; c++) {
+        const x = pad + c * (w + gap), mine = rows.filter((r) => Math.abs(r.offsetLeft - x) < 2);
+        const bottom = Math.max(0, ...mine.map((r) => r.offsetTop - parseFloat(css.paddingTop) + r.offsetHeight + gap));
+        const left = L.left + x, under = left + w > qr.left - gap && left < qr.right + gap && qr.top - gap < y0 + room;
+        const limit = under ? Math.min(room, qr.top - gap - y0) : room;
+        if (bottom + parseFloat(css.paddingTop) >= last && limit - bottom >= out) P.push(`columna ${c}: quedan ${Math.round(limit - bottom)}px libres y una caja de ${out}px quedó afuera`);
+      }
+    };
+    if (rows.length && list) { fill(); holes(); }
     rows.forEach((row, i) => {
       inside(`fila ${i}`, row, list);
       disjoint([[`fila ${i}`, row], ['QR', qr]]);
@@ -66,7 +87,15 @@ export function check(scene) {
       if (fs(excerpt) < floor) P.push(`fila ${i}: letra del mensaje ${fs(excerpt)}px < ${floor}px`);
       const total = row.querySelector('.row-total');
       if (total && excerpt && fs(total) > fs(row.querySelector('.row-meta')) + .5) P.push(`fila ${i}: sats (${fs(total)}px) más grandes que el mensaje`);
-      if (total && row.querySelector('.row-meta') && !row.querySelector('.row-meta').contains(total)) P.push(`fila ${i}: los sats no están en la cabecera`);
+      const age = row.querySelector('.ago'); // the time is never cut
+      if (age && age.scrollWidth > age.clientWidth + 1) P.push(`fila ${i}: hora truncada`);
+      const mid = (e) => { const r = e.getBoundingClientRect(); return (r.top + r.bottom) / 2; };
+      const name = row.querySelector('.alias') ?? row.querySelector('.author');
+      if (age && name && Math.abs(mid(age) - mid(name)) > 2) P.push(`fila ${i}: la hora no está alineada con el nombre`);
+      const main = row.querySelector('.row-main'); // the corner time and sats can't be clipped by it
+      if (main && getComputedStyle(main).overflow !== 'visible') for (const [n, el] of [['hora', row.querySelector('.ago')], ['sats', total]]) if (el) inside(`${n} fila ${i}`, el, main);
+      if (total && !total.parentElement.matches('.row-foot')) P.push(`fila ${i}: los sats no están al pie`);
+      if (total && excerpt && total.getBoundingClientRect().top < excerpt.getBoundingClientRect().bottom - 1) P.push(`fila ${i}: los sats no van debajo del mensaje`);
       if (excerpt?.textContent.includes('POST VIEJO')) P.push('muestra un post fuera de la ventana de 24 h');
       noOverflow(`fila ${i} extracto`, excerpt);
       clippedGlyphs(`fila ${i} extracto`, excerpt); clippedGlyphs(`fila ${i} autor`, row.querySelector('.row-meta'));
@@ -93,6 +122,10 @@ export function check(scene) {
       if (lbl && getComputedStyle(lbl).display !== 'none' && fs(lbl) < 11) P.push(`autor barra ${i}: letra ${fs(lbl)}px < 11px`);
       const ms = getComputedStyle(msg), lh = parseFloat(ms.lineHeight), inner = msg.clientHeight - parseFloat(ms.paddingTop) - parseFloat(ms.paddingBottom), lines = inner / lh;
       if (lines < .9 || Math.abs(inner - Math.round(lines) * lh) > 1) P.push(`mensaje barra ${i} recortado en vertical (${msg.clientHeight}px, línea ${lh}px)`);
+      // fit order: shrink the font → use the bar's whole height → truncate last. A cut message is at the 14px floor and fills its bar down to the line.
+      const cut = msg.hasAttribute('data-cut') || msg.scrollHeight > msg.clientHeight + 1; // cut by the fit (the store's own length cap aside)
+      if (cut && fs(msg) > 14.5) P.push(`mensaje barra ${i} truncado a ${fs(msg)}px (antes debía achicar la letra)`);
+      if (cut && track && track.getBoundingClientRect().top - msg.getBoundingClientRect().bottom > lh) P.push(`mensaje barra ${i} truncado con alto libre en su barra`);
       clippedGlyphs(`mensaje barra ${i}`, msg); clippedGlyphs(`sats barra ${i}`, li.querySelector('.bar-sats'));
       inside(`mensaje barra ${i}`, msg, li); disjoint([[`mensaje barra ${i}`, msg], [`línea barra ${i}`, track]]);
       if (li.scrollHeight > li.clientHeight + 1) P.push(`barra ${i} desborda en vertical`);

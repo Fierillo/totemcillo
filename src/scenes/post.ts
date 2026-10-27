@@ -3,11 +3,12 @@ import type { Scene } from './types';
 import type { PostStats, ZapStore } from '../nostr/store';
 import { live, liveMarks, rowEffects } from './live';
 import { domMeasurer, fitRegions, largest, fitText, untruncate, type Measurer } from '../fit';
-import { ago, esc, sats } from '../util';
+import { age, esc, sats } from '../util';
 import type { Zap } from '../nostr/types';
 import { authorHtml } from '../nostr/profiles';
 import { BOLT, BOLT_OFF, boltSats } from '../bolt';
 import { zappability, type CanZap } from '../zapcache';
+import { masonry } from '../masonry';
 
 interface PostSceneOptions { publicUrl: string;
   /** Optional: authors that can't receive zaps get the red struck bolt and no sats. */
@@ -16,7 +17,7 @@ interface PostSceneOptions { publicUrl: string;
 export const EMPTY_POSTS = 'Todavía no hay posts con #lacrypta';
 /** Most boxes asked from the store; the fit keeps as many as fit at the legible font (like the battle's bars). */
 export const MAX_BOXES = 24;
-/** A message shrinks down to this share of the list font (never below BOX_MIN_PX) before its box grows to two rows: 60% keeps it readable next to its neighbours. */
+/** A message shrinks down to this share of the list font (never below BOX_MIN_PX) before its box grows taller: 60% keeps it readable next to its neighbours. */
 export const BOX_MIN_RATIO = 0.6;
 /** Legible floor (px): 12px still reads at arm's length on a totem screen; no message goes below it. */
 export const BOX_MIN_PX = 12;
@@ -41,9 +42,10 @@ interface RowOptions { cls: string; ready: boolean; zap: { off: boolean; cls: st
 /** A post as a message box: author, age, excerpt and its bolt (red when off, blinking while pending, else live sats). */
 const postRow = (s: PostStats, { cls, ready, zap }: RowOptions) => `<li class="post-row${cls}" data-id="${esc(s.postId)}">
       <div class="row-main">
-        <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${ago(s.post!.created_at)}</span>${zap.off ? `<span class="row-total is-unzappable${zap.cls}" aria-label="No se puede zapear">${BOLT_OFF}</span>` : zap.cls.includes('bolt-pending') ? `<span class="row-total${zap.cls}" aria-label="Verificando si se puede zapear">${BOLT}</span>`
-        : `<span class="row-total${zap.cls}">${boltSats(s.msats, ready, '<small> sats</small>')}</span>`}</div>
+        <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${age(s.post!.created_at)}</span></div>
         <p class="excerpt" data-clip>${esc(s.post!.content.trim())}</p>
+        <div class="row-foot">${zap.off ? `<span class="row-total is-unzappable${zap.cls}" aria-label="No se puede zapear">${BOLT_OFF}</span>` : zap.cls.includes('bolt-pending') ? `<span class="row-total${zap.cls}" aria-label="Verificando si se puede zapear">${BOLT}</span>`
+        : `<span class="row-total${zap.cls}">${boltSats(s.msats, ready)}</span>`}</div>
       </div>
     </li>`;
 
@@ -60,19 +62,21 @@ export function appQr(publicUrl: string): string {
 
 /** A long zap comment as a message: who zapped, when, the comment and that zap's sats (no strike: it's not a post). */
 const zapRow = (z: Zap, cls = '') => `<li class="post-row msg-zap${cls}" data-zap="${esc(z.id)}"><div class="row-main">
-        <div class="row-meta">${authorHtml(z.sender)}<span class="ago muted">${ago(z.created_at)} · zap</span><span class="row-total">${BOLT} ${sats(z.msats)}<small> sats</small></span></div>
+        <div class="row-meta">${authorHtml(z.sender)}<span class="ago muted">${age(z.created_at)} · zap</span></div>
         <p class="excerpt" data-clip>${esc(z.comment.trim())}</p>
+        <div class="row-foot"><span class="row-total">${BOLT} ${sats(z.msats)}</span></div>
       </div>
     </li>`;
 
 /**
  * Sets the box font and fits each message, per box: shrink its font (down to BOX_MIN_RATIO of the list's) in one cell,
- * else grow the box to two rows at the largest font that fits, else truncate there; its header (and sats) follows it.
+ * else grow the box (taller, up to its max lines) at the largest font that fits, else truncate there; its header and its sats line follow it.
  */
 function sizeBoxes(ul: HTMLElement, size: number, m: Measurer) {
   m.setSize(ul, size);
+  columns(ul); // the text wraps at the column width
   const min = Math.max(BOX_MIN_PX, Math.floor(size * BOX_MIN_RATIO));
-  ul.dataset.boxMin = String(min); // the layout check tries two-row boxes in one cell at it
+  ul.dataset.boxMin = String(min); // the layout check tries tall boxes at their normal height at it
   const excerpts = [...ul.querySelectorAll<HTMLElement>('.excerpt')];
   // Batched: every message at the list font in one cell, then a single read; only the ones that don't fit go down the ladder.
   excerpts.forEach((el) => { el.closest('.post-row')?.classList.remove('is-long'); untruncate(el); m.setSize(el, size); });
@@ -85,81 +89,80 @@ function sizeBoxes(ul: HTMLElement, size: number, m: Measurer) {
     }
   });
   excerpts.forEach((el) => {
-    const meta = el.parentElement?.querySelector<HTMLElement>('.row-meta');
-    if (meta) m.setSize(meta, parseFloat(el.style.fontSize));
+    el.parentElement?.querySelectorAll<HTMLElement>('.row-meta, .row-foot').forEach((line) => m.setSize(line, parseFloat(el.style.fontSize)));
   });
 }
 
-/** Column ends (px from the list's content edge) for a computed grid-template-columns. */
-const trackEnds = (tracks: string, gap: number) => {
-  let at = -gap;
-  return tracks.split(' ').filter((t) => t.endsWith('px')).map((t) => (at += gap + parseFloat(t)));
-};
+/** Narrowest column, in list ems (more columns, none oversized). */
+const BOX_MIN_EM = 14;
+const px = (v: string) => parseFloat(v) || 0;
 
-/** The QR slot spans the last tracks the QR covers (bottom right), so the boxes take the rest, above it too. */
-function placeQrSlot(root: HTMLElement, ul: HTMLElement) {
-  const slot = ul.querySelector<HTMLElement>('.qr-slot'), qr = root.querySelector('.qr')?.getBoundingClientRect();
-  if (!slot) return;
-  const css = getComputedStyle(ul), list = ul.getBoundingClientRect();
-  const cols = trackEnds(css.gridTemplateColumns, parseFloat(css.columnGap) || 0);
-  const rowGap = parseFloat(css.rowGap) || 0, count = Number(ul.style.getPropertyValue('--rows')) || 1;
-  const rowH = (ul.clientHeight - (parseFloat(css.paddingTop) || 0) - (parseFloat(css.paddingBottom) || 0) - (count - 1) * rowGap) / count;
-  const rows = Array.from({ length: count }, (_, k) => (k + 1) * rowH + k * rowGap); // the equal rows of a list that fits
-  const x = list.left + (parseFloat(css.paddingLeft) || 0), y = list.top + (parseFloat(css.paddingTop) || 0);
-  const spanX = cols.filter((end) => x + end > (qr?.left ?? Infinity)).length, spanY = rows.filter((end) => y + end > (qr?.top ?? Infinity)).length;
-  slot.hidden = !spanX || !spanY || spanX >= cols.length; // portrait: the QR sits below the list
-  if (slot.hidden) return;
-  slot.style.gridColumn = `span ${spanX} / -1`;
-  slot.style.gridRow = `span ${spanY} / -1`;
+/** Splits the list's width into the most columns at least BOX_MIN_EM wide and sets their width (--col-w) before measuring the text. */
+function columns(ul: HTMLElement) {
+  const css = getComputedStyle(ul), gap = px(css.rowGap);
+  const width = ul.clientWidth - px(css.paddingLeft) - px(css.paddingRight);
+  const count = Math.max(1, Math.floor((width + gap) / (BOX_MIN_EM * px(ul.style.fontSize) + gap)));
+  const w = Math.max(0, (width - (count - 1) * gap) / count);
+  ul.style.setProperty('--col-w', `${w}px`);
+  return { count, w, gap, css };
 }
 
-/** Every visible box starts inside the explicit rows (none spilled into the zero-height overflow rows). */
-const placedAll = (ul: HTMLElement) => {
-  const bottom = ul.clientHeight - (parseFloat(getComputedStyle(ul).paddingBottom) || 0);
-  return [...ul.querySelectorAll<HTMLElement>('.post-row:not([hidden])')].every((b) => b.offsetTop < bottom - 1);
-};
-
-/** Spreads the boxes over the fewest rows that hold them (the rows share the list's height); false if no row count fits. */
-function arrange(root: HTMLElement, ul: HTMLElement, fits: () => boolean) {
-  const cells = ul.querySelectorAll('.post-row:not([hidden])').length + ul.querySelectorAll('.post-row.is-long:not([hidden])').length;
-  const cols = trackEnds(getComputedStyle(ul).gridTemplateColumns, 0).length || 1;
-  for (let rows = Math.max(1, Math.ceil(cells / cols)); rows <= cells; rows++) { // fewer rows can't hold every cell
-    ul.style.setProperty('--rows', String(rows));
-    placeQrSlot(root, ul);
-    if (fits()) return true;
-    if (placedAll(ul)) return false; // every box already sits in a row and still doesn't fit: more (shorter) rows won't help
-  }
-  return false;
+/** The room each column has (px): the full height, or down to just above the QR for the columns it covers (bottom right). */
+function limits(root: HTMLElement, ul: HTMLElement, { count, w, gap, css }: ReturnType<typeof columns>) {
+  const q = root.querySelector('.qr')?.getBoundingClientRect(), list = ul.getBoundingClientRect();
+  const x = list.left + px(css.paddingLeft), y = list.top + px(css.paddingTop);
+  const room = ul.clientHeight - px(css.paddingTop) - px(css.paddingBottom);
+  return Array.from({ length: count }, (_, c) => {
+    const left = x + c * (w + gap);
+    const under = q?.width && left + w > q.left - gap && left < q.right + gap && q.top - gap < y + room;
+    return under ? Math.max(0, Math.min(room, q.top - gap - y)) : room;
+  });
 }
 
 /**
- * Fills the list area with boxes: keeps the boxes that fit at the comfortable font (data-floor px, or data-comfort vh if bigger), dropping the oldest,
- * then grows the font as much as they still fit, up to data-max vh / data-maxw vw; the grid stretches them to fill the rest.
+ * Masonry: each candidate box (not [hidden]), as tall as its content, goes in order to the lowest open column it fits (see masonry);
+ * the ones that fit no column get data-out. Returns how many are placed, or -1 if some placed box overflows.
+ */
+function arrange(root: HTMLElement, ul: HTMLElement, fits: () => boolean) {
+  const cols = columns(ul), boxes = [...ul.querySelectorAll<HTMLElement>('.post-row:not([hidden])')];
+  boxes.forEach((b) => { b.removeAttribute('data-out'); });
+  const heights = boxes.map((b) => b.offsetHeight);
+  const spots = masonry(heights, limits(root, ul, cols), cols.gap);
+  boxes.forEach((b, i) => {
+    const spot = spots[i];
+    if (!spot) { b.dataset.out = String(heights[i]); return; }
+    b.style.left = `${px(cols.css.paddingLeft) + spot.col * (cols.w + cols.gap)}px`;
+    b.style.top = `${px(cols.css.paddingTop) + spot.top}px`;
+  });
+  return fits() ? spots.filter(Boolean).length : -1;
+}
+
+/**
+ * Fills the list area with boxes: at the comfortable font (data-floor px, or data-comfort vh if bigger) every message that fits a column
+ * goes in, in order (a tall one that fits nowhere is left out, the next ones keep filling the holes); then the font grows as much as
+ * no box drops out, up to data-max vh / data-maxw vw. Each box keeps its content's height. data-left-out: the shortest box left out (px, 0 if none).
  */
 export function fitBoxes(root: HTMLElement, m: Measurer = domMeasurer, vh = window.innerHeight, vw = window.innerWidth) {
   const ul = root.querySelector<HTMLElement>('.post-list');
   if (!ul) return;
   const boxFits = m.fitsBox ?? m.fits;
-  const qr = root.querySelector('.qr');
-  const clear = (box: HTMLElement) => { // its layout spot (not the float) stays off the QR
-    const q = qr?.getBoundingClientRect(), o = box.offsetParent?.getBoundingClientRect();
-    if (!q?.width || !o) return true;
-    const x = o.left + box.offsetLeft, y = o.top + box.offsetTop;
-    return x + box.offsetWidth <= q.left || x >= q.right || y + box.offsetHeight <= q.top || y >= q.bottom;
-  };
-  const fits = () => boxFits(ul) && [...ul.querySelectorAll<HTMLElement>('.post-row:not([hidden])')].every((b) => boxFits(b) && clear(b)); // no box taller than its rows nor on the QR
+  const fits = () => boxFits(ul) && [...ul.querySelectorAll<HTMLElement>('.post-row:not([hidden]):not([data-out])')].every((b) => boxFits(b)); // masonry already keeps them apart and off the QR
   const floor = Math.max(Number(ul.dataset.floor), Math.floor((Number(ul.dataset.comfort ?? 0) * vh) / 100));
   const cap = Math.max(floor, Math.floor(Math.min(Number(ul.dataset.max) * vh, Number(ul.dataset.maxw ?? Infinity) * vw) / 100));
-  sizeBoxes(ul, floor, m);
   const all = [...ul.querySelectorAll<HTMLElement>('.post-row')];
   const keep = (k: number) => all.forEach((box, i) => { box.hidden = i >= k; });
-  const kept = largest(1, all.length, (k) => { keep(k); return arrange(root, ul, fits); }) ?? 1;
+  sizeBoxes(ul, floor, m);
+  const kept = largest(1, all.length, (k) => { keep(k); return arrange(root, ul, fits) >= 0; }) ?? 1;
   all.slice(kept).forEach((box) => box.remove()); // the oldest that don't fit
   keep(kept);
-  const tryAt = (s: number) => { sizeBoxes(ul, s, m); return arrange(root, ul, fits); };
+  const need = Math.max(1, arrange(root, ul, fits));
+  const tryAt = (s: number) => { sizeBoxes(ul, s, m); return arrange(root, ul, fits) >= need; };
   const best = largest(floor, cap, tryAt) ?? largest(BOX_MIN_PX, floor - 1, tryAt) ?? BOX_MIN_PX; // a tiny window: down to the legible floor
   sizeBoxes(ul, best, m);
-  if (!arrange(root, ul, fits)) squeeze(ul, m);
+  if (arrange(root, ul, fits) < 1) { squeeze(ul, m); arrange(root, ul, fits); }
+  const out = [...ul.querySelectorAll<HTMLElement>('.post-row[data-out]')];
+  ul.dataset.leftOut = String(Math.min(...out.map((b) => Number(b.dataset.out))) || 0);
+  out.forEach((b) => b.remove()); // the ones that don't fit aren't shown
 }
 
 /** Last resort (a tiny window): each message keeps only the whole lines its box has room for, truncated with '…'. */
@@ -167,7 +170,8 @@ function squeeze(ul: HTMLElement, m: Measurer) {
   ul.querySelectorAll<HTMLElement>('.post-row').forEach((box) => {
     const el = box.querySelector<HTMLElement>('.excerpt'), line = el && parseFloat(getComputedStyle(el).lineHeight);
     if (!el || !line) return;
-    const room = el.clientHeight - Math.max(0, box.scrollHeight - box.clientHeight);
+    const css = getComputedStyle(ul), height = ul.clientHeight - px(css.paddingTop) - px(css.paddingBottom);
+    const room = el.clientHeight - Math.max(0, box.offsetHeight - height); // the box fits the list's height
     el.style.maxHeight = `${Math.max(1, Math.floor(room / line)) * line}px`;
     const size = parseFloat(el.style.fontSize);
     fitText(el, { max: size, min: size }, m);
@@ -193,7 +197,7 @@ function slide(rows: HTMLElement[], before: Map<string, DOMRect>, key: (li: HTML
 }
 
 type Message = { at: number; post?: PostStats; zap?: Zap };
-/** Posts (by last activity) and long zap comments, newest first, at most `n`: the grid's reading order. */
+/** Posts (by last activity) and long zap comments, newest first, at most `n`: the masonry's reading order. */
 export function messages(store: ZapStore, n = MAX_BOXES): Message[] {
   // a post's last activity: its publication or its latest zap (a zap moves it to the top left)
   const posts: Message[] = store.stats().filter((s) => s.post)
@@ -225,7 +229,7 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         const key = (li: HTMLElement) => li.dataset.id ?? `z:${li.dataset.zap}`;
         const before = new Map([...root.querySelectorAll<HTMLElement>('.post-list > .post-row')].map((li) => [key(li), li.getBoundingClientRect()]));
         root.innerHTML = '<h1>Últimos mensajes</h1>' + (list.length
-          ? `<section class="posts"><ul class="post-list" data-boxes data-max="${BOX_MAX_VH}" data-maxw="${BOX_MAX_VW}" data-floor="${BOX_COMFORT_PX}" data-comfort="${BOX_COMFORT_VH}"><li class="qr-slot" aria-hidden="true" hidden></li>${list.map(box).join('')}</ul></section>`
+          ? `<section class="posts"><ul class="post-list" data-boxes data-max="${BOX_MAX_VH}" data-maxw="${BOX_MAX_VW}" data-floor="${BOX_COMFORT_PX}" data-comfort="${BOX_COMFORT_VH}">${list.map(box).join('')}</ul></section>`
           : `<div class="empty-state"><p class="empty-msg" data-fit="text" data-max="7" data-min="16">${EMPTY_POSTS}</p></div>`) + qr();
         root.querySelectorAll<HTMLElement>('.post-list > li').forEach((li, i) => li.style.setProperty('--i', String(i))); // float phase
         fitRegions(root);

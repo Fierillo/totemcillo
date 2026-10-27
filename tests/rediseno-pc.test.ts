@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
 import { postScene, fitBoxes, LONG_COMMENT, MAX_BOXES, BOX_MIN_PX, BOX_COMFORT_PX, BOX_MIN_RATIO } from '../src/scenes/post';
 import { domMeasurer, type Measurer } from '../src/fit';
-import { batallaScene, MAX_BARS, BAR_CHARS, BAR_MIN_PX, BAR_GAP } from '../src/scenes/batalla';
+import { batallaScene, MAX_BARS, BAR_MIN_PX, BAR_GAP } from '../src/scenes/batalla';
 import { buildScenes } from '../src/scenes';
 import { defaultConfig } from '../src/config';
 import { DEFAULT_SCENE_MS, SCENES, SCHEDULE_DEFAULTS } from '../shared/settings';
@@ -47,7 +47,7 @@ describe('Mensajes', () => {
     const rows = [...root.querySelectorAll('.post-row')];
     expect(rows.map((r) => r.querySelector('.excerpt')!.textContent)).toEqual(['post 1', 'x'.repeat(LONG_COMMENT), 'post 2']); // its last zap moved post 1 up
     expect(rows[1].classList.contains('msg-zap')).toBe(true);
-    expect(rows[1].querySelector('.row-total')!.textContent).toContain('21 sats');
+    expect(rows[1].querySelector('.row-total')!.textContent).toContain('21');
     expect(root.querySelector('h1')!.textContent).toBe('Últimos mensajes');
     if (off) off();
   });
@@ -68,13 +68,24 @@ describe('Mensajes como cajas flotantes', () => {
     expect(MAX_BOXES).toBeGreaterThan(9);
     expect(rows).toHaveLength(MAX_BOXES); // happy-dom has no layout: every candidate "fits"
     expect(root.querySelector<HTMLElement>('.post-list')!.dataset.floor).toBe(String(BOX_COMFORT_PX));
-    expect(root.querySelectorAll('.post-list > .qr-slot:not(.post-row)')).toHaveLength(1); // the QR keeps only its own corner of the list
     off();
   });
 
-  it('los sats van en la cabecera de la caja, junto al autor y la hora (sin fila propia)', () => {
+  it('los sats van al pie de la caja, debajo del mensaje (la cabecera queda para el autor y la hora)', () => {
     const { root, off } = scene();
-    for (const row of root.querySelectorAll('.post-list > .post-row')) expect(row.querySelector('.row-meta > .row-total')).not.toBeNull();
+    for (const row of root.querySelectorAll('.post-list > .post-row')) {
+      expect(row.querySelector('.row-meta .row-total')).toBeNull();
+      expect(row.querySelector('.excerpt + .row-foot > .row-total')).not.toBeNull();
+    }
+    off();
+  });
+
+  it('la hora va sin «hace» (p.ej. «1 min»), al final de la cabecera', () => {
+    const { root, off } = scene();
+    for (const row of root.querySelectorAll('.post-list > .post-row')) {
+      const age = row.querySelector('.row-meta > .ago:last-child')!;
+      expect(age.textContent).toMatch(/^\d+ (s|m|h|d)\b/);
+    }
     off();
   });
 
@@ -231,7 +242,7 @@ describe('Mensajes como cajas flotantes', () => {
     zap(s, 12, 21_000); zap(s, 12, 42_000);
     await vi.advanceTimersByTimeAsync(200);
     expect(document.querySelector('svg.strike')).not.toBeNull();
-    expect(root.querySelector(`[data-id="${hex(12)}"] .row-total`)!.textContent).toContain('63 sats');
+    expect(root.querySelector(`[data-id="${hex(12)}"] .row-total`)!.textContent).toContain('63');
     off();
   });
 });
@@ -274,9 +285,9 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     off?.();
   });
 
-  it('el texto del post va antes de la barra (línea fina) y muestra hasta BAR_CHARS caracteres', () => {
+  it('el texto del post va antes de la barra (línea fina) y no lo corta por cantidad de caracteres (sólo si no entra en su barra)', () => {
     const s = mk();
-    s.addPost({ id: hex(1), pubkey: pk('a'), content: 'palabra '.repeat(100), created_at: NOW - 60 });
+    s.addPost({ id: hex(1), pubkey: pk('a'), content: 'palabra '.repeat(25), created_at: NOW - 60 });
     zap(s, 1, 21_000);
     const root = document.createElement('div');
     const off = batallaScene(s, 3, 'https://x/').render(root);
@@ -288,11 +299,9 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     expect(msg.querySelector('.bar-label .rank')!.textContent).toBe('#1');
     expect(li.querySelectorAll(':scope > .bar-label')).toHaveLength(0);
     expect(BAR_MIN_PX).toBeLessThan(72);
-    expect(BAR_CHARS).toBeGreaterThanOrEqual(120);
-    expect([...ex.textContent!].length).toBeLessThanOrEqual(BAR_CHARS + 1);
-    expect([...ex.textContent!].length).toBeGreaterThan(100);
+    expect(ex.textContent).toBe('palabra '.repeat(25).trim()); // happy-dom has no layout: everything "fits"
     expect(ex.compareDocumentPosition(li.querySelector('.bar-track')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(li.querySelector('.bar-sats')!.textContent).toContain('21 sats');
+    expect(li.querySelector('.bar-sats')!.textContent).toContain('21');
     off?.();
   });
 });
@@ -315,7 +324,7 @@ describe('Batalla de zaps', () => {
     expect(b.map((li) => li.dataset.id)).toEqual([hex(1), hex(2)]);
     expect(b[0].querySelector<HTMLElement>('.bar-fill')!.style.width).toBe('100%');
     expect(parseFloat(b[1].querySelector<HTMLElement>('.bar-fill')!.style.width)).toBeCloseTo(66.67, 1);
-    expect(b[1].querySelector('.bar-sats')!.textContent).toContain('20 sats');
+    expect(b[1].querySelector('.bar-sats')!.textContent).toContain('20');
     expect(root.querySelector('figure.qr')).not.toBeNull();
     off();
   });

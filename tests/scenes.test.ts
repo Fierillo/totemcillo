@@ -111,10 +111,10 @@ describe('animación de zap (rayo) en la fila visible', () => {
     const posts = document.createElement('div'), top = document.createElement('div');
     postScene(s, { publicUrl: 'https://x/' }).render(posts);
     bat(s).render(top);
-    expect(posts.querySelector('.row-total .pending')!.textContent).toBe('2.100 sats');
+    expect(posts.querySelector('.row-total .pending')!.textContent).toBe('2.100');
     expect(posts.querySelector('.row-total')!.textContent).toContain('2.100');
-    expect(top.querySelector('.bar-sats .pending')!.textContent).toBe('2.100 sats');
-    expect(top.querySelector('.bar-sats')!.textContent).toBe(' 2.100 sats');
+    expect(top.querySelector('.bar-sats .pending')!.textContent).toBe('2.100');
+    expect(top.querySelector('.bar-sats')!.textContent).toBe(' 2.100');
     s.setReady();
     expect(posts.querySelector('.pending')).toBeNull();
     expect(top.querySelector('.pending')).toBeNull();
@@ -313,7 +313,7 @@ describe('renderizado de posts', () => {
     expect(a.querySelector('.row-total')!.textContent).toContain(sats(4_000_000));
     expect(b.querySelector('.row-total')!.textContent!.trim()).toBe(''); // unzapped: bare bolt, no "0 sats"
     expect(a.querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
-    expect(a.querySelector('.ago')!.textContent).toMatch(/^hace/);
+    expect(a.querySelector('.ago')!.textContent).toMatch(/^\d+ (s|m|h|d)$/); // no «hace» prefix on the totem
     expect(root.textContent).not.toContain('comentario');
     expect(root.querySelector('.row-zaps')).toBeNull();
     cleanup?.();

@@ -31,7 +31,7 @@ describe('desktop/tótem: rayo neón de mobile', () => {
       const total = row(root, 1).querySelector('.row-total')!;
       expect(total.querySelector('svg.m-bolt')).not.toBeNull();
       expect(total.textContent).not.toContain('⚡');
-      expect(total.textContent).toContain('21 sats');
+      expect(total.textContent).toContain('21');
       off?.();
     }
   });
@@ -46,8 +46,19 @@ describe('desktop/tótem: rayo neón de mobile', () => {
     expect(fresh.querySelector('svg.m-bolt')).not.toBeNull();
     expect(fresh.classList.contains('is-unzappable')).toBe(false);
     expect(fresh.textContent!.trim()).toBe('');
-    expect(row(root, 1).querySelector('.row-total')!.textContent).toContain('21 sats');
+    expect(row(root, 1).querySelector('.row-total')!.textContent).toContain('21');
     off?.();
+  });
+
+  it('tótem: rayo + número, sin la palabra «sats» (post, comentario de zap y barra de la batalla)', () => {
+    const st = mk();
+    st.addZap({ id: hex(1003), postId: hex(1), sender: 'c'.repeat(64), msats: 5_000_000, comment: 'c'.repeat(60), created_at: NOW - 5 });
+    const msgs = document.createElement('div'), bat = document.createElement('div');
+    const offs = [postScene(st, { publicUrl: 'https://x/' }).render(msgs), batallaScene(st, 3, undefined, undefined, () => NOW * 1000).render(bat)];
+    const totals = [row(msgs, 1).querySelector('.row-total')!, msgs.querySelector('.msg-zap .row-total')!, bat.querySelector('.bar-sats')!];
+    expect(totals.map((t) => t.textContent!.trim())).toEqual(['5.021', '5.000', '5.021']);
+    totals.forEach((t) => expect(t.querySelector('svg.m-bolt')).not.toBeNull());
+    offs.forEach((off) => off?.());
   });
 
   it('la batalla usa el SVG en el título y en cada barra', () => {
@@ -70,7 +81,7 @@ describe('desktop/tótem: rayo neón de mobile', () => {
       expect(b.querySelector('.m-bolt-x')).not.toBeNull();
       expect(b.textContent).not.toContain('sats');
       expect(row(root, 1).querySelector('.row-total .m-bolt-x')).toBeNull();
-      expect(row(root, 1).textContent).toContain('21 sats');
+      expect(row(root, 1).textContent).toContain('21');
       off?.();
     }
   });

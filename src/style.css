@@ -201,15 +201,14 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 @keyframes aviso-in { from { opacity: 0; transform: translateY(-.4em); } }
 .batalla { list-style: none; position: relative; min-height: 0; height: 100%; }
 .batalla > li { position: absolute; left: 0; right: 0; --slot: calc((100% - (var(--n, 6) - 1) * var(--gap, 8px)) / var(--n, 6)); top: calc(var(--rank, 0) * (var(--slot) + var(--gap, 8px))); height: var(--slot); padding: 0;
-  display: grid; grid-template-rows: auto auto; grid-template-columns: minmax(0, 1fr) auto; column-gap: .6em; gap: .15em; align-content: center; overflow: hidden; container-type: size; transition: top .7s var(--ease-out-soft); }
+  display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr) auto; column-gap: .6em; gap: .15em; /* the message takes the bar's height, the line sits under it */ overflow: hidden; container-type: size; transition: top .7s var(--ease-out-soft); }
 /* Rank + author inline at the start of the message: only color and weight set them apart */
 .bar-label { color: var(--accent); font-weight: 800; margin-right: .4em; }
 .bar-label .rank { margin-right: .3em; }
 .bar-label .avatar { display: inline-block; width: 1em; height: 1em; margin-right: .3em; vertical-align: -.15em; }
 .bar-label .author { display: inline; color: inherit; font-weight: inherit; vertical-align: baseline; }
 /* The message is the protagonist; the bar is a thin neon line under it */
-.bar-msg { grid-column: 1 / -1; overflow: hidden; font-size: clamp(14px, min(18cqh, 3.6cqw), 44px); font-weight: 600; line-height: 1.4; padding-block: .15em; min-height: 1.7em; max-height: 3.1em; color: var(--fg); overflow-wrap: anywhere;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.bar-msg { grid-column: 1 / -1; overflow: hidden; font-size: clamp(14px, min(18cqh, 3.6cqw), 44px); font-weight: 600; line-height: 1.4; padding-block: .15em; min-height: 1.7em; max-height: 100%; align-self: end; color: var(--fg); overflow-wrap: anywhere; } /* as many lines as its bar holds: batalla.ts shrinks the font, then truncates */
 .bar-track { grid-column: 1 / -1; position: relative; display: flex; align-items: center; gap: .5em; min-height: 0; font-size: clamp(11px, 12cqh, 26px); line-height: 1.4; margin-top: .25em; }
 .bar-fill { height: 3px; min-width: .4em; border-radius: 2px; background: linear-gradient(90deg, #6f9a1f, var(--accent)); box-shadow: 0 0 .6em #c7ff5b55; transition: width .7s var(--ease-out-soft); }
 .bar-sats { color: var(--accent); font-weight: 900; white-space: nowrap; }
@@ -220,8 +219,6 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 .2em .8em #000a; animation: globo-in .3s var(--ease-out-soft); }
 @keyframes globo-in { from { opacity: 0; transform: scale(.6); } }
 @media (orientation: portrait) { .batalla-wrap { margin-right: 0; margin-bottom: calc(min(22vh, 42vw) + 2.5em); } }
-/* Short bars (small / low windows): fewer lines instead of clipped glyphs */
-@container (max-height: 90px) { .bar-msg { max-height: 1.7em; } }
 /* Only one bar fits and it is shorter than BAR_MIN_PX: sats beside the text, never shrink the text */
 @container (max-height: 45px) { .bar-msg { grid-column: 1; grid-row: 1; } .bar-track { position: static; grid-column: 2; grid-row: 1; margin-top: 0; } .bar-fill { position: absolute; left: 0; bottom: 0; } }
 @media (prefers-reduced-motion: reduce) { .batalla > li, .bar-fill { transition: none; } .is-hinchada .bar-fill, .globo, .batalla-aviso.is-on { animation: none; } }
@@ -331,27 +328,26 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 @keyframes splash-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .m-splash-bolt .m-bolt { animation: none; } }
 
-/* Messages: floating boxes sized by their content (a long message stretches its box up to --box-max-w and
-   --box-lines lines; then fitBoxes shrinks its font and only then truncates). The QR keeps its own room. */
-.scene-post .posts { margin-right: 0; } /* full width: the list's .qr-slot reserves only the QR's corner */
-.post-list[data-boxes] { --box-min-w: 14em; /* narrower cells (was 16em): more boxes, none oversized */ --box-lines: 3; --box-lh: 1.5em; --box-gap: .6em;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--box-min-w), 100%), 1fr));
-  grid-template-rows: repeat(var(--rows, 1), minmax(0, 1fr)); /* truly equal rows: a tall box can't stretch its track and push the QR's reserved corner off */ grid-auto-rows: 0; grid-auto-flow: row; /* reading order = message order (no dense refill); fitBoxes picks the rows (they share the height); a box past them does not fit */ gap: var(--box-gap); padding: .4em; }
-.post-list[data-boxes] > .post-row { display: block; min-width: 0;
-  padding: .6em .9em; border: 1px solid #2c2c2c; border-radius: .5em;
+/* Messages: floating boxes as tall as their content, stacked in columns (a long message grows its box up to
+   twice --box-lines lines once its font is at the minimum, then truncates). The columns under the QR end above it. */
+.scene-post .posts { margin-right: 0; } /* full width: fitBoxes ends the columns under the QR above it */
+.post-list[data-boxes] { --box-lines: 3; --box-lh: 1.5em; --box-gap: .6em;
+  position: relative; gap: var(--box-gap); padding: .4em; } /* masonry: fitBoxes sets the column width (--col-w) and each box's spot, in message order */
+.post-list[data-boxes] > .post-row { position: absolute; width: var(--col-w); box-sizing: border-box; /* as tall as its content */
+  padding: .35em; border: 1px solid #2c2c2c; /* small: the time and the sats sit in the corners */ border-radius: .5em;
   background: linear-gradient(160deg, #151515, #0c0c0c); box-shadow: 0 .3em 1em rgba(0, 0, 0, .55);
   animation: bob 7s ease-in-out calc(var(--i, 0) * -1.7s) infinite alternate; }
 .post-list[data-boxes] > .post-row:nth-child(3n + 2) { animation-duration: 8.5s; }
 .post-list[data-boxes] > .post-row:nth-child(3n) { animation-duration: 9.6s; }
-.post-list[data-boxes] > .qr-slot { list-style: none; } /* placed by fitBoxes under the QR */
-.post-list[data-boxes] > [hidden] { display: none; } /* the QR slot off, or a box fitBoxes is trying without */
-.post-list[data-boxes] > .post-row.is-long { grid-row: span 2; } /* a long message stretches to two rows before its font shrinks */
-.post-list[data-boxes] > .post-row.is-long .excerpt { max-height: calc((var(--box-lines) * 2 + 1) * var(--box-lh)); }
-.post-list[data-boxes] .row-main { font-size: 1em; } /* the list font is the message font */
-.post-list[data-boxes] .row-meta { gap: .6em; align-items: baseline; }
-.post-list[data-boxes] .row-meta > .author { min-width: 4em; } /* a narrow box keeps the avatar and the start of the name */
-.post-list[data-boxes] .row-meta > .ago { flex: 0 1 auto; min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* the age gives way first */
-.post-list[data-boxes] .row-total { font-size: 1em; } /* sats on the header line, same size as the message */
+.post-list[data-boxes] > [hidden] { display: none; } /* a box fitBoxes is trying without */
+.post-list[data-boxes] > .post-row.is-long .excerpt { /* a long message grows its box (more lines) once its font hit the minimum */ max-height: calc((var(--box-lines) * 2 + 1) * var(--box-lh)); }
+.post-list[data-boxes] .row-main { font-size: 1em; }
+.post-list[data-boxes] .row-meta { margin-top: .15em; } .post-list[data-boxes] .row-meta > .author { margin-left: .45em; } /* the time lines up with the name */ .post-list[data-boxes] .excerpt { margin: .15em .55em 0; } /* the name and the message keep their room from the edges */
+.post-list[data-boxes] .row-meta { gap: .6em; align-items: center; } /* the time lines up with the name */
+.post-list[data-boxes] .row-meta > .author { min-width: 0; flex: 0 1 auto; } /* the name gives way to the time */
+.post-list[data-boxes] .row-foot { display: flex; justify-content: flex-end; line-height: 1.4; } /* the sats: bottom right corner (the box's .35em padding) */
+.post-list[data-boxes] .row-meta > .ago { flex: none; margin-left: auto; white-space: nowrap; } /* top right corner (the box's .35em padding); never cut: the name gives way */
+.post-list[data-boxes] .row-total { font-size: 1em; } /* sats on the foot line, same size as the message */
 .post-list[data-boxes] .excerpt { line-height: var(--box-lh); max-height: calc(var(--box-lines) * var(--box-lh)); } /* 1.5: at the small fonts the glyphs (accents, emoji) are taller than a 1.4 line */
 .post-list[data-boxes] > .post-row.is-new { animation: slide-in 1.3s var(--ease-out-soft) both, glow var(--fx-glow) ease-out; }
 .post-list[data-boxes] > .post-row.is-zapped { animation: zap-shake 1.1s steps(10) var(--fx-leader), zap-flash var(--fx-glow) ease-out var(--fx-leader); }
