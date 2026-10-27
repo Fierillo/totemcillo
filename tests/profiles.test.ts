@@ -16,6 +16,29 @@ const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { profiles.clear(); profiles.configure({ query: undefined, subscribe: undefined, storage: undefined, preload: undefined }); vi.useRealTimers(); });
 
+describe('caché de perfiles: autores sin perfil y fecha del kind 0', () => {
+  it('recuerda en localStorage que un autor no tiene perfil (6 h): en la recarga no vuelve a esqueleto ni consulta', async () => {
+    const s = mem(), pk = 'e'.repeat(64);
+    const a = new ProfileCache({ storage: s, batchMs: 0, query: async () => [] });
+    a.get(pk);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(a.get(pk)).toBeNull();
+    const query = vi.fn(async () => []);
+    const b = new ProfileCache({ storage: s, batchMs: 0, query });
+    expect(b.get(pk)).toBeNull();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('updatedAt(pk) da el created_at del kind 0 conocido (0 si no hay)', async () => {
+    const { sk, pk } = keys();
+    const c = new ProfileCache({ batchMs: 0, query: async () => [meta(sk, { name: 'x' }, 42)] });
+    expect(c.updatedAt(pk)).toBe(0);
+    c.get(pk);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(c.updatedAt(pk)).toBe(42);
+  });
+});
+
 describe('ProfileCache: kind 0 desde relays, en lotes y con caché', () => {
   it('agrupa pedidos en un solo query y usa display_name, si no name; picture sólo https', async () => {
     const a = keys(), b = keys(), c = keys();

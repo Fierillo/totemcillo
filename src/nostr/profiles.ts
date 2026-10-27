@@ -5,8 +5,8 @@ import { isSigned } from './verify';
 import { esc, shortKey } from '../util';
 
 /** What we show from a kind:0 profile: alias (display_name, else name) and picture (https only). */
-export interface Profile { name?: string; picture?: string }
-export interface ProfileOptions {
+interface Profile { name?: string; picture?: string }
+interface ProfileOptions {
   /** Fetches those authors' kind:0 from the relays (client-side; no server or Redis). */
   query?: (authors: string[]) => Promise<NostrEvent[]>;
   storage?: KV; batchMs?: number; retryMs?: number;
@@ -21,6 +21,8 @@ export interface ProfileOptions {
 export const PLACEHOLDER_CLASS = 'avatar-ph';
 const KEY = 'totemcillo:profiles:v1';
 const MAX_STORED = 1000;
+/** How long "this author has no kind:0" is trusted after a reload (the live subscription still catches a new one). */
+const NO_PROFILE_TTL_MS = 6 * 3600e3;
 const BATCH = 100;
 /** Cap on authors kept in the live subscription filter (most recently seen win). */
 const MAX_WATCHED = 500;
@@ -29,7 +31,7 @@ const broken = new Set<string>();
 const str = (x: unknown, max: number) => (typeof x === 'string' && x.trim() ? x.trim().slice(0, max) : undefined);
 
 /** Parses a kind:0's content; null if unusable. */
-export function parseProfile(ev: NostrEvent): Profile | null {
+function parseProfile(ev: NostrEvent): Profile | null {
   try {
     const c = JSON.parse(ev.content);
     if (!c || typeof c !== 'object') return null;
@@ -60,6 +62,8 @@ export class ProfileCache {
   private subTimer: ReturnType<typeof setTimeout> | null = null;
   private settled = new Set<string>();
   private preloading = new Set<string>();
+  /** When each author was found to have no profile (ms). */
+  private noneAt = new Map<string, number>();
 
   constructor(o: ProfileOptions = {}) { this.configure(o); }
 
@@ -68,7 +72,12 @@ export class ProfileCache {
     if (o.storage) this.load();
   }
 
-  clear() { this.unsubscribe(); this.watched.clear(); this.at.clear(); this.map.clear(); this.queued.clear(); this.inflight.clear(); this.failedAt.clear(); this.settled.clear(); this.preloading.clear(); if (this.timer) clearTimeout(this.timer); this.timer = null; }
+  clear() {
+    this.unsubscribe();
+    for (const c of [this.watched, this.at, this.map, this.queued, this.inflight, this.failedAt, this.settled, this.preloading, this.noneAt]) c.clear();
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+  }
 
   /** Profile if already known (avatar preloaded); null if it has none; undefined while loading (and queues it). */
   get(pk: string): Profile | null | undefined {
@@ -90,6 +99,9 @@ export class ProfileCache {
       .finally(() => { this.preloading.delete(src); this.settled.add(src); this.changed(); });
     return false;
   }
+
+  /** created_at of the known kind:0 (0 if none): lets other caches notice a newer profile. */
+  updatedAt(pk: string): number { return this.at.get(pk) ?? 0; }
 
   set(pk: string, p: Profile | null) { this.map.set(pk, p); this.changed(); }
 
@@ -165,7 +177,7 @@ export class ProfileCache {
         const authors = new Set(batch);
         for (const ev of evs) if (authors.has(ev.pubkey)) this.accept(ev);
         for (const pk of batch) {
-          if (!this.map.has(pk)) this.map.set(pk, null);
+          if (!this.map.has(pk)) { this.map.set(pk, null); this.noneAt.set(pk, Date.now()); }
           this.failedAt.delete(pk);
         }
         this.save();
@@ -185,6 +197,8 @@ export class ProfileCache {
       if (!d || typeof d !== 'object') return;
       for (const [pk, v] of Object.entries(d)) {
         if (!/^[0-9a-f]{64}$/.test(pk) || !v || typeof v !== 'object') continue;
+        const none = (v as any).none;
+        if (Number.isFinite(none)) { if (Date.now() - none < NO_PROFILE_TTL_MS) { this.map.set(pk, null); this.noneAt.set(pk, none); } continue; }
         const p = parseProfile({ content: JSON.stringify({ name: (v as any).name, picture: (v as any).picture }) } as NostrEvent);
         if (p) { this.map.set(pk, p); const t = (v as any).at; if (Number.isFinite(t)) this.at.set(pk, t); }
       }
@@ -193,18 +207,18 @@ export class ProfileCache {
 
   private save() {
     if (!this.o.storage) return;
-    const entries = [...this.map].filter(([, p]) => p).slice(-MAX_STORED)
-      .map(([pk, p]) => [pk, this.at.has(pk) ? { ...p, at: this.at.get(pk) } : p]);
+    const entries = [...this.map].filter(([pk, p]) => p || this.noneAt.has(pk)).slice(-MAX_STORED)
+      .map(([pk, p]) => [pk, !p ? { none: this.noneAt.get(pk) } : this.at.has(pk) ? { ...p, at: this.at.get(pk) } : p]);
     try { this.o.storage.setItem(KEY, JSON.stringify(Object.fromEntries(entries))); } catch { /* quota full */ }
   }
 }
 
 /** Avatars always go through our proxy: no stand IP leak, bounded size, small WebP. */
-export const avatarSrc = (picture: string) => `/api/avatar?url=${encodeURIComponent(picture)}`;
+const avatarSrc = (picture: string) => `/api/avatar?url=${encodeURIComponent(picture)}`;
 
-export const AVATAR_TIMEOUT_MS = 4000;
+const AVATAR_TIMEOUT_MS = 4000;
 /** Downloads and decodes the image so it never paints half loaded; slow or broken ones reject. */
-export async function preloadImage(src: string, timeoutMs = AVATAR_TIMEOUT_MS): Promise<void> {
+async function preloadImage(src: string, timeoutMs = AVATAR_TIMEOUT_MS): Promise<void> {
   const img = new Image();
   img.referrerPolicy = 'no-referrer';
   img.src = src;
