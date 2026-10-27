@@ -319,13 +319,13 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .skel-name { width: 6em; height: .9em; }
 @media (prefers-reduced-motion: reduce) { .skel { animation: none; background: #1d2417; } }
 /* Mobile loading screen: covers the UI while it settles, fades out when the feed is ready */
-.m-splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; background: var(--bg); transition: opacity .4s ease; }
+.m-splash { --splash-glow: 0 0 1px rgb(199 255 91 / .95), 0 0 5px rgb(199 255 91 / .6), 0 0 14px rgb(199 255 91 / .3); /* neon: sharp core + thin soft halo */
+  position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; background: var(--bg); transition: opacity .4s ease; }
 .m-splash.is-out { opacity: 0; pointer-events: none; }
-.m-splash-title { margin: 0 0 .4rem; color: #eaffb8; font: 800 2rem system-ui, sans-serif; letter-spacing: .02em; text-shadow: 0 0 2px var(--accent), 0 0 8px var(--accent), 0 0 18px var(--accent); } /* neon, same as the bolt */
-.m-splash-bolt .m-bolt { width: 4.5rem; height: 6rem; animation: splash-pulse 1.2s ease-in-out infinite; }
-.m-splash-tag { margin: 0; color: #eaffb8; font: 800 1.4rem system-ui, sans-serif; text-shadow: 0 0 2px var(--accent), 0 0 8px var(--accent), 0 0 18px var(--accent); } /* neon, same as the title */
+.m-splash-title { overflow: visible; margin: 0 0 .4rem; color: #eaffb8; font: 800 2rem system-ui, sans-serif; letter-spacing: .02em; text-shadow: var(--splash-glow); } /* neon, same as the bolt */
+.m-splash-bolt .m-bolt { filter: drop-shadow(0 0 1px rgb(199 255 91 / .9)) drop-shadow(0 0 6px rgb(199 255 91 / .45)); width: 4.5rem; height: 6rem; animation: bolt-blink 1.2s ease-in-out infinite alternate; } /* same blink as the loading bolts */
+.m-splash-tag { margin: 0; color: #eaffb8; font: 800 1.4rem system-ui, sans-serif; text-shadow: var(--splash-glow); } /* neon, same as the title */
 .m-splash-msg { margin: 0; color: var(--muted); font-size: .85rem; letter-spacing: .05em; }
-@keyframes splash-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .m-splash-bolt .m-bolt { animation: none; } }
 
 /* Messages: floating boxes as tall as their content, stacked in columns (a long message grows its box up to
