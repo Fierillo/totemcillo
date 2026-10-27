@@ -11,7 +11,9 @@ import { createRemote } from './remote';
 import { feedFor, showIndicator } from './livefeed';
 import { isMobileViewport, renderMobile } from './mobile';
 import { zapFx } from './zap-fx';
+import { installFx } from './fx';
 
+installFx(document.documentElement);
 const cfg = await loadConfig();
 const cutoff = postCutoff({ startLine: DEFAULT_START_LINE });
 const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });

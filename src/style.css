@@ -72,7 +72,7 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: 1rem; line-height: 1.45; }
 .m-post-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; }
 .m-total { color: var(--accent); font: 600 .85rem ui-monospace, monospace; position: relative; width: fit-content; }
-.is-mobile .m-post.is-new { animation: slide-in-x 1.3s var(--ease-out-soft) both, glow 3.5s ease-out; } /* sideways: doesn't cover the heading */
+.is-mobile .m-post.is-new { animation: slide-in-x 1.3s var(--ease-out-soft) both, glow var(--fx-glow) ease-out; } /* sideways: doesn't cover the heading */
 @keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
 .m-list { list-style: none; padding: 0; margin: 0; }
 .m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
@@ -156,13 +156,13 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 
 /* Live animations (new post / zap): only transform/opacity/box-shadow, no layout changes. */
 .post-row { position: relative; }
-.is-new { animation: slide-in 1.3s var(--ease-out-soft) both, glow 3.5s ease-out; }
+.is-new { animation: slide-in 1.3s var(--ease-out-soft) both, glow var(--fx-glow) ease-out; }
 @keyframes slide-in { from { transform: translateY(-60%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes glow {
   0%, 40% { box-shadow: inset 0 0 0 2px var(--accent), 0 0 1.2em rgba(199, 255, 91, .45); background: rgba(199, 255, 91, .08); }
   100% { box-shadow: inset 0 0 0 2px transparent, 0 0 0 transparent; background: transparent; }
 }
-.is-zapped { animation: zap-shake 1.1s steps(10) .25s, zap-flash 3.5s ease-out .25s; } /* .25s: when the strike's leader lands */
+.is-zapped { animation: zap-shake 1.1s steps(10) var(--fx-leader), zap-flash var(--fx-glow) ease-out var(--fx-leader); } /* --fx-leader: when the strike's leader lands */
 .post-list, .top-list { padding: 0 .3em; }
 @keyframes zap-flash {
   0% { background: rgba(255, 238, 120, .55); }
@@ -203,8 +203,8 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   75% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, 45%) scale(1); }
 }
-/* Amount pop at the strike's impact (.25s): scale + accent glow; transform only, so the layout never moves. */
-.is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { transform-origin: right center; animation: total-pop 2.2s var(--ease-out-soft) .25s; }
+/* Amount pop at the strike's impact (--fx-leader): scale + accent glow; transform only, so the layout never moves. */
+.is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { transform-origin: right center; animation: total-pop 2.2s var(--ease-out-soft) var(--fx-leader); }
 .is-zapped .m-total { transform-origin: left center; }
 @keyframes total-pop {
   0% { transform: scale(1); }
@@ -213,8 +213,8 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .is-new, .is-mobile .m-post.is-new { animation: glow 3.5s ease-out; }
-  .is-zapped { animation: zap-flash 3.5s ease-out; }
+  .is-new, .is-mobile .m-post.is-new { animation: glow var(--fx-glow) ease-out; }
+  .is-zapped { animation: zap-flash var(--fx-glow) ease-out; }
   .is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { animation: none; }
   .strike { display: none; } /* just the row highlight, no strike */
   .strike-gain { animation: gain-fade 2.3s ease-out forwards; } /* the amount still shows, without moving */
