@@ -54,7 +54,7 @@ describe('desktop/tótem: rayo neón de mobile', () => {
     const st = mk();
     st.addZap({ id: hex(1003), postId: hex(1), sender: 'c'.repeat(64), msats: 5_000_000, comment: 'c'.repeat(60), created_at: NOW - 5 });
     const msgs = document.createElement('div'), bat = document.createElement('div');
-    const offs = [postScene(st, { publicUrl: 'https://x/' }).render(msgs), batallaScene(st, 3, undefined, undefined, () => NOW * 1000).render(bat)];
+    const offs = [postScene(st, { publicUrl: 'https://x/' }).render(msgs), batallaScene(st).render(bat)];
     const totals = [row(msgs, 1).querySelector('.row-total')!, msgs.querySelector('.msg-zap .row-total')!, bat.querySelector('.bar-sats')!];
     expect(totals.map((t) => t.textContent!.trim())).toEqual(['5.021', '5.000', '5.021']);
     totals.forEach((t) => expect(t.querySelector('svg.m-bolt')).not.toBeNull());
@@ -63,7 +63,7 @@ describe('desktop/tótem: rayo neón de mobile', () => {
 
   it('la batalla usa el SVG en el título y en cada barra', () => {
     const root = document.createElement('div');
-    const off = batallaScene(mk(), 3, undefined, undefined, () => NOW * 1000).render(root);
+    const off = batallaScene(mk()).render(root);
     expect(root.querySelector('.bar-sats svg.m-bolt')).not.toBeNull();
     expect(root.querySelector('h1 svg.m-bolt')).not.toBeNull();
     expect(root.querySelector('h1')!.textContent).not.toContain('⚡');

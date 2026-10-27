@@ -104,7 +104,7 @@ export function check(scene) {
     noOverflow('lista de posts', list);
   } else {
     const h1 = need('h1'), ol = need('.batalla');
-    if (h1 && h1.textContent.trim() !== 'Batalla de zaps · últimas 3 horas') P.push(`título "${h1.textContent.trim()}"`);
+    if (h1 && !/^Batalla de zaps · desde \d\d\/\d\d \d\d:\d\d$/.test(h1.textContent.trim())) P.push(`título "${h1.textContent.trim()}"`);
     inside('título', h1, main); inside('batalla', ol, main); disjoint([['título', h1], ['batalla', ol]]);
     if (ol && !ol.children.length) P.push('batalla vacía');
     if (ol && /POST VIEJO|1\.000\.000\.000/.test(ol.textContent)) P.push('la batalla incluye un post vencido');

@@ -100,7 +100,7 @@ export const fiveZaps = five.flatMap((p, i) => Array.from({ length: Math.min(i +
 // `kiosk(page, durations, extra)` serves a stubbed schedule; `show(scene)` re-anchors `epoch` so that
 // scene is on air right now and reloads the page (the totem computes the scene from epoch + server time).
 const ORDER = ['post', 'batalla', 'anuncio', 'video'];
-const START_LINE = new Date((now - 24 * 3600) * 1000).toISOString(); // older fixtures fall before the start line
+export const START_LINE = new Date((now - 24 * 3600) * 1000).toISOString(); // older fixtures fall before the start line
 export async function kiosk(page, durations, extra = {}) {
   const base = await (await fetch(`${BASE}/api/kiosk`)).json();
   const st = { ...base, startLine: START_LINE, ...extra, sceneDurations: durations, epoch: Date.now(), version: 1 };

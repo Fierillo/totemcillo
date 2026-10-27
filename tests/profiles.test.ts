@@ -178,7 +178,7 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
     const roots = [document.createElement('div'), document.createElement('div'), document.createElement('div')];
     const cleanups = [
       postScene(store, { publicUrl: 'https://x/' }).render(roots[0]),
- batallaScene(store, 3, undefined, undefined, () => 102_000).render(roots[1]),
+ batallaScene(store).render(roots[1]),
       renderMobile(roots[2], store, defaultConfig, new Announcement('')),
     ];
     try {

@@ -252,7 +252,7 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     const s = mk();
     for (let i = 1; i <= 30; i++) { post(s, i, 'a'); zap(s, i, i * 1000); }
     const root = document.createElement('div');
-    const off = batallaScene(s, 3, 'https://x/').render(root);
+    const off = batallaScene(s, 'https://x/').render(root);
     const ol = root.querySelector<HTMLElement>('.batalla')!;
     Object.defineProperty(ol, 'clientHeight', { configurable: true, value: 900 });
     zap(s, 1, 1);
@@ -270,7 +270,7 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     const s = mk();
     for (let i = 1; i <= 6; i++) { post(s, i, 'a'); zap(s, i, i * 1000); }
     const root = document.createElement('div');
-    const off = batallaScene(s, 3, 'https://x/').render(root);
+    const off = batallaScene(s, 'https://x/').render(root);
     expect(root.querySelectorAll('.batalla > li')).toHaveLength(6); // fewer posts than places: all of them
     const ol = root.querySelector<HTMLElement>('.batalla')!;
     Object.defineProperty(ol, 'clientHeight', { configurable: true, value: BAR_MIN_PX * 2.5 });
@@ -290,7 +290,7 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     s.addPost({ id: hex(1), pubkey: pk('a'), content: 'palabra '.repeat(25), created_at: NOW - 60 });
     zap(s, 1, 21_000);
     const root = document.createElement('div');
-    const off = batallaScene(s, 3, 'https://x/').render(root);
+    const off = batallaScene(s, 'https://x/').render(root);
     const li = root.querySelector('.batalla > li')!;
     const ex = li.querySelector('.bar-msg .bar-text')!;
     // Rank + author inline at the start of the same line as the message, no separate row.
@@ -310,18 +310,18 @@ describe('Batalla de zaps', () => {
   const setup = (canZap?: (p: string) => Promise<boolean>) => {
     const s = mk();
     post(s, 1, 'a'); post(s, 2, 'b'); post(s, 3, 'c');
-    zap(s, 1, 30_000); zap(s, 2, 20_000); zap(s, 3, 10_000, '', 4 * 3600); // 3: outside the 3h window
+    zap(s, 1, 30_000); zap(s, 2, 20_000); zap(s, 3, 10_000, '', 30 * 86_400); // 3: a month old, still counts (historical)
     const root = document.createElement('div');
-    const off = batallaScene(s, 3, 'https://x/', canZap).render(root);
+    const off = batallaScene(s, 'https://x/', canZap).render(root);
     return { s, root, off: off as () => void };
   };
 
-  it('barras de los más zapeados de las últimas horas, proporcionales y ordenadas', async () => {
+  it('barras históricas de los más zapeados, proporcionales y ordenadas', async () => {
     const { root, off } = setup();
     await vi.advanceTimersByTimeAsync(100);
     const b = bars(root);
     expect(MAX_BARS).toBeGreaterThanOrEqual(5);
-    expect(b.map((li) => li.dataset.id)).toEqual([hex(1), hex(2)]);
+    expect(b.map((li) => li.dataset.id)).toEqual([hex(1), hex(2), hex(3)]);
     expect(b[0].querySelector<HTMLElement>('.bar-fill')!.style.width).toBe('100%');
     expect(parseFloat(b[1].querySelector<HTMLElement>('.bar-fill')!.style.width)).toBeCloseTo(66.67, 1);
     expect(b[1].querySelector('.bar-sats')!.textContent).toContain('20');
@@ -332,7 +332,20 @@ describe('Batalla de zaps', () => {
   it('excluye autores no zapeables', async () => {
     const { root, off } = setup(async (p) => p !== pk('a'));
     await vi.advanceTimersByTimeAsync(100);
-    expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(2)]);
+    expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(2), hex(3)]);
+    off();
+  });
+
+  it('acumula desde el inicio fijado en /admin (startLine): lo anterior no cuenta y el título lo dice', async () => {
+    const s = mk();
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: new Date((NOW - 10 * 86_400) * 1000).toISOString() });
+    post(s, 1, 'a'); post(s, 2, 'b');
+    zap(s, 1, 30_000, '', 9 * 86_400); zap(s, 2, 50_000, '', 11 * 86_400); // 2: before the start line
+    const root = document.createElement('div');
+    const off = batallaScene(s).render(root) as () => void;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(1)]);
+    expect(root.querySelector('h1')!.textContent).toContain('desde 05/01 05:00');
     off();
   });
 
@@ -342,7 +355,7 @@ describe('Batalla de zaps', () => {
     const li2 = root.querySelector<HTMLElement>(`[data-id="${hex(2)}"]`)!;
     zap(s, 2, 15_000, '¡vamos!', 1);
     await vi.advanceTimersByTimeAsync(150);
-    expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(2), hex(1)]);
+    expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(2), hex(1), hex(3)]);
     expect(root.querySelector(`[data-id="${hex(2)}"]`)).toBe(li2);
     expect(li2.querySelector<HTMLElement>('.bar-fill')!.style.width).toBe('100%');
     expect(root.querySelector('.batalla-aviso')!.textContent).toContain('pasó');
@@ -355,11 +368,12 @@ describe('Batalla de zaps', () => {
     off();
   });
 
-  it('vacío sin zaps recientes', () => {
+  it('vacío sin zaps desde el inicio', () => {
     const s = mk(); post(s, 1);
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: '2027-01-01T00:00:00-03:00' });
     const root = document.createElement('div');
-    const off = batallaScene(s, 3).render(root) as () => void;
-    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps en las últimas 3 horas');
+    const off = batallaScene(s).render(root) as () => void;
+    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps desde 01/01 00:00');
     off();
   });
 });

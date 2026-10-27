@@ -20,7 +20,7 @@ const post = (n: number, created_at = NOW - 3600) => ({ id: hex(n), pubkey: 'a'.
 const zap = (n: number, postN: number, created_at = NOW, msats = 21_000) => ({ id: hex(1000 + n), postId: hex(postN), msats, comment: '', created_at });
 const mem = (data: unknown) => { const m = new Map([['totemcillo:v1', JSON.stringify(data)]]); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
 const mkStore = (storage?: any) => new ZapStore(storage, { clock: () => NOW });
-const bat = (s: ZapStore, hours = 3) => batallaScene(s, hours, undefined, undefined, () => NOW * 1000);
+const bat = (s: ZapStore) => batallaScene(s);
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { profiles.clear(); vi.useRealTimers(); document.querySelectorAll('svg.strike, .strike-gain').forEach((e) => e.remove()); });
@@ -243,9 +243,9 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     s.addZap(zap(1, 1, NOW - 1));
-    // battle with an empty window (from the future) → not shown
     postSc(s).off();
-    (batallaScene(s, 3, undefined, undefined, () => (NOW + 4 * 3600) * 1000).render(document.createElement('div')) as () => void)();
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: new Date(NOW * 1000).toISOString() }); // battle starts after the zap → not shown
+    (batallaScene(s).render(document.createElement('div')) as () => void)();
     expect(feedFor(s).pending).toHaveLength(0);
   });
   it(`la cola tiene tope (${MAX_PENDING})`, () => {

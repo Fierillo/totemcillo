@@ -67,6 +67,9 @@ export class ZapStore {
   /** Fixed cutoff (unix s): earlier posts are ignored. Does not move over time. */
   private cutoff?: number;
 
+  /** Start line (unix s) applied to posts and zaps, if any. */
+  get since() { return this.cutoff; }
+
   constructor(private storage?: KV, opts: StoreOptions = {}) {
     this.key = opts.key ?? 'totemcillo:v1';
     this.maxPosts = opts.maxPosts ?? 500;

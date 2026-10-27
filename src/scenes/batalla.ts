@@ -6,6 +6,7 @@ import { zappability, type CanZap } from '../zapcache';
 import { live, liveMarks } from './live';
 import { appQr } from './post';
 import { fitText } from '../fit';
+import { toArInput } from '../startline';
 
 export const MAX_BARS = 50; // as many as fit; the store ranks up to this many
 /** Legible floor of a bar's message (px): it shrinks down to it, using its bar's whole height, before it's truncated. */
@@ -31,17 +32,19 @@ function fitMessage(li: HTMLElement) {
 }
 
 /**
- * Zap battle: the most zapped posts of the last `hours` as bars that grow and swap places live (keyed DOM, so CSS
+ * Zap battle: the most zapped posts since the /admin start line (historical, the store applies it) as bars that grow and swap places live (keyed DOM, so CSS
  * animates width and position). Unzappable authors are left out (as in mobile's Top). Each live zap inflates its bar
  * and shows its comment in a bubble; a notice says who passed whom.
  */
-export function batallaScene(store: ZapStore, hours = 3, publicUrl?: string, canZap?: CanZap, now: () => number = Date.now): Scene {
+export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZap): Scene {
   return {
     name: 'batalla',
     render(root) {
       let closed = false;
+      const ar = store.since === undefined ? '' : toArInput(new Date(store.since * 1000).toISOString()); // 'YYYY-MM-DDTHH:MM'
+      const desde = ar ? ` desde ${ar.slice(8, 10)}/${ar.slice(5, 7)} ${ar.slice(11)}` : '';
       const zap = zappability(canZap, () => { if (!closed) draw(); });
-      root.innerHTML = `<h1>${BOLT} Batalla de zaps · últimas ${hours} horas</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
+      root.innerHTML = `<h1>${BOLT} Batalla de zaps${desde ? ` ·${desde}` : ''}</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
       const ol = root.querySelector<HTMLOListElement>('.batalla')!;
       const aviso = root.querySelector<HTMLElement>('.batalla-aviso')!;
       const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -61,14 +64,14 @@ export function batallaScene(store: ZapStore, hours = 3, publicUrl?: string, can
         return li;
       };
       let fitN = MAX_BARS;
-      const rows = () => store.top(MAX_BARS, Math.floor(now() / 1000) - hours * 3600).filter((s) => zap.ok(s.post!.pubkey)).slice(0, fitN);
+      const rows = () => store.top(MAX_BARS).filter((s) => zap.ok(s.post!.pubkey)).slice(0, fitN);
       const marks = liveMarks(store, 'batalla', ['zap'], (id) => rows().some((s) => s.postId === id));
       const draw = () => {
         fitN = ol.clientHeight ? Math.max(1, Math.min(MAX_BARS, Math.floor((ol.clientHeight + BAR_GAP) / (BAR_MIN_PX + BAR_GAP)))) : MAX_BARS;
         const list = rows();
         marks.begin(list.map((s) => s.postId));
         root.querySelector('.empty-msg')?.remove();
-        if (!list.length) ol.insertAdjacentHTML('beforebegin', `<p class="empty-msg">Todavía no hay zaps en las últimas ${hours} horas</p>`);
+        if (!list.length) ol.insertAdjacentHTML('beforebegin', `<p class="empty-msg">Todavía no hay zaps${desde}</p>`);
         const ids = new Set(list.map((s) => s.postId));
         ol.querySelectorAll<HTMLElement>(':scope > li').forEach((li) => { if (!ids.has(li.dataset.id!)) li.remove(); });
         const max = list[0]?.msats || 1;

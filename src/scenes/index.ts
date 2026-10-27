@@ -14,7 +14,7 @@ export function buildScenes(cfg: Config, store: ZapStore, ann = new Announcement
   const publicUrl = publicUrlOf(cfg, origin);
   return [
     postScene(store, { publicUrl, canZap }),
-    batallaScene(store, cfg.topRecentHours, publicUrl, canZap),
+    batallaScene(store, publicUrl, canZap),
     anuncioScene(ann, publicUrl),
     videoScene(cfg.videoSrc),
   ];
