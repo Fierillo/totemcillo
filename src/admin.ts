@@ -33,7 +33,13 @@ async function panel() {
   const s = sess.settings;
   const durs = { ...DEFAULT_SCENE_MS, ...s.sceneDurations };
   root.innerHTML = `<section class="panel"><header><h1>Admin · Totemcillo</h1><button type="button" class="logout">Salir</button></header>
+    <div class="topbar">
     <nav class="tabs" role="tablist"><button type="button" role="tab" data-tab="config" aria-selected="true">Config</button><button type="button" role="tab" data-tab="mod" aria-selected="false">Mensajes</button></nav>
+    <section class="card card-remote"><div class="row"><button type="button" class="save">Guardar</button>
+      <button type="button" class="cmd-prev" title="Escena anterior">←</button>
+      <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
+    <p class="status"></p></section>
+    </div>
     <div class="cards" data-pane="config">
     <section class="card card-anuncio"><label>Anuncio <textarea name="announcement" maxlength="${LIMITS.maxAnnouncement}" rows="4">${s.announcement.replace(/</g, '&lt;')}</textarea>
     <small>${s.announcement.length}/${LIMITS.maxAnnouncement}</small></label></section>
@@ -46,10 +52,6 @@ async function panel() {
     <section class="card card-start"><label>Inicio: posts y zaps desde (hora de Argentina) <input type="datetime-local" name="startLine" value="${toArInput(s.startLine ?? DEFAULT_START_LINE)}" required /></label>
     <small>Lo anterior no se muestra ni cuenta. Sin fecha de fin.</small></section>
     <section class="card card-prov"></section>
-    <section class="card card-remote"><div class="row"><button type="button" class="save">Guardar</button>
-      <button type="button" class="cmd-prev" title="Escena anterior">←</button>
-      <button type="button" class="cmd-next" title="Escena siguiente">→</button></div>
-    <p class="status"></p></section>
     </div>
     <section class="card card-mod" data-pane="mod"></section></section>`;
   const panelEl = root.querySelector('.panel') as HTMLElement;

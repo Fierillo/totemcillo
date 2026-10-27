@@ -19,15 +19,17 @@ small { color: var(--muted); }
 select { width: 100%; background: #0e120c; color: var(--fg); border: 1px solid #333; border-radius: .5rem; padding: .6rem .8rem; font: inherit; }
 @media (min-width: 900px) {
   .panel:has(.cards) { width: min(1200px, calc(100vw - 4rem)); padding: 2rem; }
-  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "start dur" "prov prov" "remote remote"; }
+  .cards { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "anuncio dur" "video dur" "start dur" "prov prov"; }
   .card { background: #11150f; border: 1px solid #262d21; border-radius: .75rem; padding: 1.25rem; }
-  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-remote { grid-area: remote; } .card-prov { grid-area: prov; } .card-start { grid-area: start; }
+  .card-anuncio { grid-area: anuncio; } .card-dur { grid-area: dur; } .card-video { grid-area: video; } .card-prov { grid-area: prov; } .card-start { grid-area: start; }
   .card-dur fieldset { border: 0; padding: 0; }
   .card-remote { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 }
 [hidden] { display: none !important; }
 /* Config / Mensajes tabs: sticky on mobile; on desktop everything is shown together. */
-.tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: .5rem; padding: .5rem 0; background: var(--card); }
+/* Save/remote bar (and the tabs on mobile): always on top while scrolling, in the flow so it covers nothing at rest. */
+.topbar { position: sticky; top: 0; z-index: 5; display: grid; gap: .5rem; padding-bottom: .5rem; background: var(--card); }
+.tabs { display: flex; gap: .5rem; padding-top: .5rem; }
 .tabs button { flex: 1 1 0; background: #2a3324; color: var(--fg); }
 .tabs button[aria-selected="true"] { background: var(--accent); color: #0b0d0a; }
 @media (max-width: 700px) {
