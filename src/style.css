@@ -31,6 +31,14 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .row-meta .author { color: var(--accent); font-weight: 700; }
 .excerpt { min-width: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
 .row-total { color: var(--accent); font-weight: 900; white-space: nowrap; text-align: right; line-height: 1.2; }
+.row-total .m-bolt, h1 > .m-bolt { width: .75em; height: 1em; vertical-align: -.12em; } /* mobile's neon bolt, scaled with the text (legible on the totem) */
+.bolt-pending .m-bolt { visibility: hidden; } /* unknown zappability: space kept, no normal→red swap */
+.bolt-in .m-bolt { animation: bolt-in .18s ease-out; }
+@keyframes bolt-in { from { opacity: 0; } }
+/* Desktop: unknown zappability shows only a softly blinking neon bolt (no "0 sats") */
+.row-total.bolt-pending .m-bolt { visibility: visible; animation: bolt-blink 1.2s ease-in-out infinite alternate; }
+@keyframes bolt-blink { from { opacity: .25; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bolt-in .m-bolt { animation: none; } .row-total.bolt-pending .m-bolt { animation: none; opacity: .45; } }
 .row-total small { font-weight: 700; font-size: .7em; color: var(--muted); }
 .qr-box { position: absolute; right: 1.5em; bottom: var(--strip-room); }
 .qr { width: min(28vh, 18vw); background: #fff; padding: .45em; border-radius: .5em; text-align: center; overflow: hidden; }
@@ -51,12 +59,18 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   width: 100%; max-width: 100%; max-height: 100%; color: var(--fg); line-height: 1.3; overflow-wrap: anywhere; white-space: pre-wrap; }
 
 /* Mobile: same route, scrollable */
-html.is-mobile, html.is-mobile body { height: auto !important; min-height: 100%; overflow: visible !important; cursor: auto; font-size: 17px; }
-html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display: block; }
+html.is-mobile, html.is-mobile body { height: auto; min-height: 100%; overflow: visible; cursor: auto; font-size: 17px; }
+html.is-mobile body { overflow-x: clip; } /* nothing wider than the screen: Android would zoom the whole page out */
+html.is-mobile #app { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 .is-mobile { display: block; }
+.is-mobile .topbar, .is-mobile .footer { flex: none; }
 .is-mobile .topbar { position: sticky; top: 0; height: 4rem; z-index: 3; background: var(--bg); }
 .is-mobile .cta { white-space: normal; text-align: right; font-size: .95em; line-height: 1.25; }
-.is-mobile .mobile { display: block; padding: 0 1rem 1rem; overflow: visible; animation: none; }
+.is-mobile .mobile { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 0 1rem; overflow: hidden; animation: none; } /* bounded: the feed fits the visible screen */
+.is-mobile .mobile > .m-section { flex: none; }
+.is-mobile .mobile > [role="tabpanel"] { flex: 1; min-height: 0; margin-bottom: 0; }
+.is-mobile .mobile > [hidden] { display: none; }
+#mobile-top { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 5rem; }
 .m-tabs { position: sticky; top: 4rem; z-index: 2; display: flex; margin: 0 -1rem 1rem; padding: 0 .5rem; background: var(--bg); border-bottom: 1px solid #2b3325; }
 .m-tabs button { flex: 1; min-width: 0; min-height: 44px; padding: .65rem .3rem; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: .7rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .m-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
@@ -68,22 +82,66 @@ html.is-mobile #app { height: auto; min-height: 100%; overflow: visible; display
 .m-meta { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .85rem; }
 .m-meta > .author { flex: 0 1 auto; min-width: 0; }
 .m-meta > .muted { flex: 0 0 auto; white-space: nowrap; margin-left: auto; }
-.m-rank { flex: 0 0 auto; color: var(--accent); }
 .m-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; margin: .45rem 0; font-size: 1rem; line-height: 1.45; }
 .m-post-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; }
 .m-total { color: var(--accent); font: 600 .85rem ui-monospace, monospace; position: relative; width: fit-content; }
 .is-mobile .m-post.is-new { animation: slide-in-x 1.3s var(--ease-out-soft) both, glow var(--fx-glow) ease-out; } /* sideways: doesn't cover the heading */
 @keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
-.m-list { list-style: none; padding: 0; margin: 0; }
-.m-list li { padding: .25rem 0; border-bottom: 1px solid #222; font-size: .9rem; }
-.m-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
 .zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; border: 0; font: inherit; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; cursor: pointer; }
-.m-post .m-actions { justify-content: flex-end; margin: 0; }
 .m-post .zap-btn { background: transparent; color: var(--accent); border-radius: 0; padding: .4rem 0; font-size: .85rem; }
 .m-post .zap-btn:hover, .m-post .zap-btn:focus-visible { background: var(--accent); color: var(--bg); }
+.m-post .zap-btn.is-unzappable { cursor: default; -webkit-tap-highlight-color: transparent; }
+.m-post .zap-btn.is-unzappable:hover, .m-post .zap-btn.is-unzappable:focus-visible, .m-post .zap-btn.is-unzappable:active { background: transparent; color: var(--accent); } /* disabled bolt: no green fill on tap */
 .zap-alt { color: var(--muted); font-size: .85rem; }
 .m-empty, .m-anuncio { color: var(--muted); }
-.m-anuncio { color: var(--fg); font-size: 1.1rem; white-space: pre-wrap; }
+.m-anuncio { color: var(--fg); font-size: 1.1rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.m-announcement h2 button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.m-announcement h2 button::after { content: ' ▾'; font-size: .7em; }
+.m-announcement h2 button[aria-expanded="true"]::after { content: ' ▴'; }
+.m-announcement h2 button.is-unread { animation: pending 1s ease-in-out infinite; } /* new announcement: blinks until opened */
+/* Mobile tabs: full-screen latest posts reel (one post per screen) and a one-line Top ranking */
+.m-section[role="tabpanel"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.is-mobile #mobile-posts { position: relative; }
+.m-newer { position: absolute; top: .5rem; left: 50%; transform: translateX(-50%); z-index: 2; padding: .45rem 1rem; border: 0; border-radius: 999px; background: var(--accent); color: var(--bg); font: inherit; font-size: .8rem; font-weight: 700; box-shadow: 0 4px 14px #0008; cursor: pointer; animation: fade .3s ease; }
+/* Live icons on mobile: the totem's .live-ind (bubble / bolt) dropping from the top, leaving in a random direction (--ex/--ey from JS) */
+.m-live .live-ind { top: 5.5rem; bottom: auto; z-index: 40; animation: ind-drop var(--fx-drop) ease-in-out forwards; }
+.live-ind.zap svg { fill: var(--accent); filter: drop-shadow(0 0 .35em var(--accent)); }
+@keyframes ind-drop { 0% { opacity: 0; transform: translateY(-6rem); } 20% { opacity: 1; transform: none; } 60% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(var(--ex, 0), var(--ey, -40vh)); } }
+html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead */
+.m-reel { position: relative; height: calc(100% + 1rem); margin: -1rem -1rem 0; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; }
+.m-reel > .m-post { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; align-items: center; gap: .75rem; padding: 1.5rem 1rem 6.5rem 1.75rem; }
+/* Side scrubber on the left edge (the zap bolt is on the right, the message button at the bottom): touch or drag to jump to any post */
+.m-scrub { position: absolute; left: -1rem; /* the reel bleeds 1rem past the panel: flush with the screen edge */ top: 3rem; bottom: 6rem; z-index: 3; width: 1.5rem; touch-action: none; cursor: pointer; }
+.m-scrub::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; transform: translateX(-50%); border-radius: 2px; background: #ffffff22; }
+.m-scrub-thumb { position: absolute; left: 50%; width: .55rem; height: 1.6rem; transform: translate(-50%, -50%); border-radius: 999px; background: var(--accent); box-shadow: 0 0 .5rem var(--accent); transition: top .12s ease; }
+.m-scrub.is-dragging .m-scrub-thumb { transition: none; }
+.m-scrub-bubble { position: absolute; left: 1.1rem; top: 50%; transform: translateY(-50%); padding: .2rem .5rem; border-radius: .4rem; background: var(--accent); color: var(--bg); font-size: .8rem; font-weight: 800; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.m-scrub.is-dragging .m-scrub-bubble, .m-scrub:focus-visible .m-scrub-bubble { opacity: 1; }
+.m-reel > .m-post > .m-body { align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+.m-reel .m-excerpt { flex: 0 1 auto; min-height: 0; } /* centered; shrinks below its content when too long, so fitText sees the overflow */
+.m-post .m-excerpt { overflow: hidden; } /* fitText shrinks, then truncates: never a scrollbar */
+.m-top-row .m-excerpt { max-height: 45dvh; }
+.m-meta > .author { font-size: 2em; } /* avatar + name double size */
+.m-body { flex: 1; min-width: 0; }
+.m-side { flex: 0 0 auto; align-self: center; display: flex; flex-direction: column; gap: 1rem; }
+.m-post .m-side .zap-btn { display: grid; justify-items: center; gap: .2rem; padding: .5rem; font-size: .75rem; }
+.m-bolt { fill: rgba(199, 255, 91, .18); stroke: #eaffb8; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 8px var(--accent)); } /* neon bolt, no circle */
+.m-top { list-style: none; padding: 0; margin: 0 0 6.5rem; }
+.m-top-row { border-bottom: 1px solid #222; }
+.m-top-head { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 44px; padding: .5rem .25rem; border: 0; background: none; color: var(--fg); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+.is-unzappable .m-bolt { fill: rgba(255, 59, 59, .18); stroke: #ffb3b3; filter: drop-shadow(0 0 2px #ff3b3b) drop-shadow(0 0 8px #ff3b3b); } /* can't be zapped */
+.m-bolt .m-bolt-x { fill: none; stroke: #ff3b3b; stroke-width: 2.6; stroke-linecap: round; }
+.zap-btn.is-unzappable { cursor: not-allowed; }
+.m-top-sats .m-bolt { width: .9em; height: 1.2em; margin-right: .3em; vertical-align: -.2em; }
+.m-top-sats { flex: 0 0 5.5em; color: var(--accent); font: 700 .85rem ui-monospace, monospace; white-space: nowrap; }
+.m-top-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-top-head[aria-expanded="true"] .m-top-line { color: var(--muted); }
+.m-top-row > .m-post { display: flex; gap: .75rem; border: 0; padding-top: 0; }
+.m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(3.5rem + env(safe-area-inset-bottom)); z-index: 5; display: inline-flex; align-items: center; gap: .35rem; height: 2.4rem; min-height: 40px; padding: 0 .85rem; border: 0; border-radius: 999px; background: var(--accent); color: #0b0d0a; font: 800 .72rem system-ui, sans-serif; white-space: nowrap; box-shadow: 0 .3rem 1rem #000a; cursor: pointer; } /* small pill in the bottom-right corner, raised; sits inside the 6.5rem bottom padding of feed items and the Top list */
+.m-fab svg { width: 1rem; height: 1rem; }
+.m-compose-warn { margin: 0 0 .8rem; color: #ffe27a; font-weight: 600; }
+.m-compose-warn strong { color: #ffd23f; font-weight: 900; }
+.m-compose textarea { width: 100%; padding: .6rem; border: 1px solid #35402d; border-radius: .4rem; background: #11150e; color: var(--fg); font: inherit; resize: vertical; }
 
 /* Partial totals: the number blinks until the backfill ends; pending text/images: skeleton shimmer (.skel, below) */
 .pending { animation: pending 1s ease-in-out infinite; }
@@ -225,7 +283,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 
 /* Off-scene new-post icons: each one at a random spot/tilt in the lower band (set from JS). */
 #live-strip { position: absolute; right: 48px; bottom: .4em; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
-.live-ind { position: fixed; display: block; height: clamp(2.5rem, 4vw, 4rem); rotate: var(--tilt, 0deg); animation: ind-pop 1.5s ease-out forwards; }
+.live-ind { position: fixed; bottom: var(--y, 6vh); display: block; height: clamp(2.5rem, 4vw, 4rem); rotate: var(--tilt, 0deg); animation: ind-pop 1.5s ease-out forwards; }
 .live-ind svg { height: 100%; width: auto; display: block; }
 .live-ind.post svg { fill: var(--accent); filter: drop-shadow(0 0 .35em var(--accent)); }
 @keyframes ind-pop { 0% { opacity: 0; transform: translateY(60%); } 15% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
@@ -247,3 +305,12 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .avatar.skel, .skel.m-skel-avatar { border-radius: 50%; }
 .skel-name { width: 6em; height: .9em; }
 @media (prefers-reduced-motion: reduce) { .skel { animation: none; background: #1d2417; } }
+/* Mobile loading screen: covers the UI while it settles, fades out when the feed is ready */
+.m-splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; background: var(--bg); transition: opacity .4s ease; }
+.m-splash.is-out { opacity: 0; pointer-events: none; }
+.m-splash-title { margin: 0 0 .4rem; color: #eaffb8; font: 800 2rem system-ui, sans-serif; letter-spacing: .02em; text-shadow: 0 0 2px var(--accent), 0 0 8px var(--accent), 0 0 18px var(--accent); } /* neon, same as the bolt */
+.m-splash-bolt .m-bolt { width: 4.5rem; height: 6rem; animation: splash-pulse 1.2s ease-in-out infinite; }
+.m-splash-tag { margin: 0; color: #eaffb8; font: 800 1.4rem system-ui, sans-serif; text-shadow: 0 0 2px var(--accent), 0 0 8px var(--accent), 0 0 18px var(--accent); } /* neon, same as the title */
+.m-splash-msg { margin: 0; color: var(--muted); font-size: .85rem; letter-spacing: .05em; }
+@keyframes splash-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .m-splash-bolt .m-bolt { animation: none; } }

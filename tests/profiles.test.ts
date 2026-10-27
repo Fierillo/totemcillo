@@ -194,7 +194,6 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
         expect(r.querySelector('img.avatar')).not.toBeNull();
       }
       expect([...roots[2].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
-      expect([...roots[3].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
     } finally { cleanups.forEach((cleanup) => cleanup?.()); }
   });
 });

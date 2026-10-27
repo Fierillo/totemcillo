@@ -283,10 +283,10 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
 
   it('showIndicator ubica el post al azar en la franja baja, levemente inclinado', () => {
     const strip = document.createElement('div');
-    const at = (r: number) => { showIndicator(strip, { type: 'post', postId: 'y' }, 1500, () => r); return (strip.lastElementChild as HTMLElement).style; };
+    const at = (r: number) => { showIndicator(strip, { type: 'post', postId: 'y' }, { ms: 1500, rnd: () => r }); return (strip.lastElementChild as HTMLElement).style; };
     const lo = at(0), hi = at(1);
-    expect([lo.left, lo.bottom, lo.getPropertyValue('--tilt')]).toEqual(['5%', '6vh', '-12deg']);
-    expect([hi.left, hi.bottom, hi.getPropertyValue('--tilt')]).toEqual(['85%', '22vh', '12deg']);
+    expect([lo.left, lo.getPropertyValue('--y'), lo.getPropertyValue('--tilt')]).toEqual(['5%', '6vh', '-12deg']);
+    expect([hi.left, hi.getPropertyValue('--y'), hi.getPropertyValue('--tilt')]).toEqual(['85%', '22vh', '12deg']);
   });
 });
 

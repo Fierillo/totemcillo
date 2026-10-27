@@ -50,10 +50,10 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
       return { cls: m ? ` ${[...m].join(' ')}` : '' };
     },
     /** Call after drawing: strikes the zapped rows now on screen in `root` ("+N sats" at the impact), then forgets the marks. */
-    consume(root: ParentNode) {
+    consume(root: ParentNode, center = false) {
       root.querySelectorAll<HTMLElement>('.is-zapped').forEach((el) => {
         const msats = gains.get(el.dataset.id!);
-        strike(el, Math.random, undefined, msats ? `+${sats(msats)} sats` : undefined);
+        strike(el, Math.random, undefined, msats ? `+${sats(msats)} sats` : undefined, center);
       });
       marks.clear();
       gains.clear();

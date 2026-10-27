@@ -33,7 +33,7 @@ const toInvoice = async (dialog: HTMLDialogElement) => {
 const mount = (s: ZapStore, requestInvoice = vi.fn().mockResolvedValue(bolt11(now(), 600))) => {
   const root = document.createElement('div');
   document.body.append(root);
-  const off = renderMobile(root, s, defaultConfig, new Announcement(''), requestInvoice);
+  const off = renderMobile(root, s, defaultConfig, new Announcement(''), { requestInvoice: requestInvoice });
   const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   const reveal = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
   const selected = () => root.querySelector('[role="tab"][aria-selected="true"]')!.getAttribute('data-tab');

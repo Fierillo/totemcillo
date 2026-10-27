@@ -1,34 +1,36 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderMobile, isMobileViewport } from '../src/mobile';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderMobile, isMobileViewport, MOBILE_FONT, MOBILE_POST_MAX_CHARS, SPLASH_MS, MOBILE_VIEW_KEY } from '../src/mobile';
 import { ZapStore } from '../src/nostr/store';
 import { Announcement } from '../src/announcement';
 import { defaultConfig } from '../src/config';
-import { feedFor } from '../src/livefeed';
-import { zapFx } from '../src/zap-fx';
-import { decode } from 'nostr-tools/nip19';
-import { noteUri } from '../src/nostr/link';
-import { openZapDialog, type InvoiceRequester } from '../src/zap-dialog';
+import { type InvoiceRequester } from '../src/zap-dialog';
 
-afterEach(() => document.querySelectorAll('svg.strike').forEach((e) => e.remove()));
-afterEach(() => localStorage.clear()); // pending invoices persist across mounts
-import { profiles } from '../src/nostr/profiles';
+afterEach(() => document.querySelectorAll('svg.strike, .strike-gain, .m-live').forEach((e) => e.remove()));
+afterEach(() => { localStorage.clear(); sessionStorage.clear(); }); // pending invoices and the view state persist across mounts
+import { hex, store } from './mobile-helpers';
+beforeEach(() => Object.assign(SPLASH_MS, { min: 0, max: 0 })); // behavior after loading; the loading screen has its own tests
 
-const hex = (n: number) => n.toString(16).padStart(64, '0');
-const store = () => {
-  const s = new ZapStore();
-  for (let i = 1; i <= 3; i++) s.addPost({ id: hex(i), pubkey: 'a'.repeat(64), content: `post <i>${i}</i>`, created_at: Math.floor(Date.now() / 1000) - i * 60 });
-  s.addZap({ id: 'z', postId: hex(1), sender: 'b'.repeat(64), msats: 21000, comment: 'genial', created_at: Math.floor(Date.now() / 1000) });
-  s.setReady();
-  profiles.set('a'.repeat(64), null);
-  return s;
-};
 
 describe('vista móvil (misma ruta, layout scrolleable)', () => {
+  beforeEach(() => Object.assign(SPLASH_MS, { min: 0, max: 0 })); // behavior after loading; the loading screen has its own tests
+  it('mobile no corta el post en 210: guarda hasta MOBILE_POST_MAX_CHARS (tope para el localStorage) y muestra el texto completo', () => {
+    expect(MOBILE_POST_MAX_CHARS).toBe(2000);
+    const s = new ZapStore(undefined, { postMaxChars: MOBILE_POST_MAX_CHARS });
+    const long = 'palabra '.repeat(75).trim(); // ~600 chars
+    s.addPost({ id: hex(9), pubkey: 'a'.repeat(64), content: long, created_at: Math.floor(Date.now() / 1000) - 5 });
+    s.addPost({ id: hex(8), pubkey: 'a'.repeat(64), content: 'x'.repeat(3000), created_at: Math.floor(Date.now() / 1000) - 50 });
+    s.setReady();
+    expect(s.posts.get(hex(8))!.content.length).toBeLessThanOrEqual(MOBILE_POST_MAX_CHARS);
+    const root = document.createElement('div');
+    document.body.append(root);
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''));
+    try { expect(root.querySelector(`.m-post[data-id="${hex(9)}"]`)!.textContent).toContain(long); } finally { off(); root.remove(); }
+  });
   /** Abre el diálogo y genera la factura de prueba. */
   const walletInvoice = async (invoice: InvoiceRequester) => {
     const root = document.createElement('div');
-    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), invoice);
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), { requestInvoice: invoice });
     root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
     const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
     dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
@@ -36,8 +38,6 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
     return { dialog, off };
   };
-
-  // Redraw coalescing itself is covered by `live` in scenes.test.ts; here we only check the final DOM.
   it('agrupa los redibujos de una ráfaga conservando todos los posts visibles', () => {
     vi.useFakeTimers();
     const root = document.createElement('div'), s = new ZapStore();
@@ -52,29 +52,186 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(isMobileViewport({ matchMedia: (q: string) => ({ matches: q.includes('max-width: 700px') }) } as any)).toBe(true);
     expect(isMobileViewport({ matchMedia: () => ({ matches: false }) } as any)).toBe(false);
   });
-  it('conserva todas las secciones en pestañas, sin QR ni ajuste de fuente de kiosko', () => {
+  it('solo dos pestañas (Últimos posts y Top posts), sin QR ni ajuste de fuente de kiosko', () => {
     const root = document.createElement('div');
     renderMobile(root, store(), defaultConfig, new Announcement('Sorteo a las 18'));
-    expect([...root.querySelectorAll('h2')].map((h) => h.textContent)).toEqual(['📣 Anuncio', 'Posts', '⚡ Últimos zaps', 'Top 10 zaps · histórico', `Top 10 zaps · últimas ${defaultConfig.topRecentHours} horas`]);
+    expect([...root.querySelectorAll('[role="tab"]')].map((h) => h.textContent)).toEqual(['Últimos posts', 'Top posts']);
+    expect([...root.querySelectorAll('h2')].map((h) => h.textContent)).toEqual(['📣 Anuncio', 'Últimos posts', 'Top posts']);
     expect(root.querySelector('.qr')).toBeNull();
     expect(root.querySelector('[data-fit]')).toBeNull();
     expect(root.textContent).toContain('Sorteo a las 18');
   });
-  it('los Top muestran cada post como en Posts, con su puesto y ordenados por sats', () => {
+  it('Últimos posts: feed vertical a pantalla completa con el zap en una columna lateral', () => {
+    const root = document.createElement('div');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''));
+    try {
+      expect(root.querySelector('#mobile-posts .m-reel')).not.toBeNull();
+      const cards = root.querySelectorAll('#mobile-posts .m-reel > .m-post');
+      expect(cards).toHaveLength(3);
+      expect(cards[0].querySelector('.m-meta .author')).not.toBeNull();
+      // a single bolt: the side zap button carries the total; no separate total line
+      const zap = cards[0].querySelector<HTMLButtonElement>('.m-side button.zap-btn.m-total')!;
+      expect(zap.textContent).toContain('21 sats');
+      expect(cards[0].querySelectorAll('.m-total')).toHaveLength(1);
+      expect(cards[0].textContent).not.toContain('⚡'); // neon SVG bolt instead of the emoji
+      expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
+    } finally { off(); }
+  });
+  it('un redibujado justo después de scrollear (antes del evento scroll) no pierde la posición del feed', () => {
+    // Like a browser: a detached element's scrollTop reads 0.
+    const desc = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop')!;
+    const at = new WeakMap<Element, number>();
+    Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get() { return this.isConnected ? at.get(this) ?? 0 : 0; }, set(v: number) { at.set(this, v); } });
+    const root = document.createElement('div');
+    document.body.append(root);
+    const s = store();
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''));
+    try {
+      root.querySelector<HTMLElement>('.m-reel')!.scrollTop = 500; // no scroll event yet
+      s.addZap({ id: 'z2', postId: hex(2), sender: 'b'.repeat(64), msats: 1000, comment: '', created_at: Math.floor(Date.now() / 1000) });
+      expect(root.querySelector<HTMLElement>('.m-reel')!.scrollTop).toBe(500);
+    } finally { off(); root.remove(); Object.defineProperty(Element.prototype, 'scrollTop', desc); }
+  });
+  it('un post sin zaps muestra sólo el rayo (sin "0 sats")', () => {
+    const root = document.createElement('div');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''));
+    try {
+      const zap = root.querySelectorAll('#mobile-posts .m-reel > .m-post')[1].querySelector('.m-total')!;
+      expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
+      expect(zap.textContent!.trim()).toBe('');
+    } finally { off(); }
+  });
+  it('el anuncio se pliega al tocar su título y titila cuando llega uno nuevo hasta que lo abrís', () => {
+    const root = document.createElement('div'), ann = new Announcement('Sorteo a las 18');
+    const off = renderMobile(root, store(), defaultConfig, ann);
+    try {
+      const head = () => root.querySelector<HTMLButtonElement>('.m-announcement h2 button[data-ann]')!;
+      const body = () => root.querySelector<HTMLElement>('.m-announcement .m-ann-body')!;
+      expect(head().getAttribute('aria-expanded')).toBe('false');
+      expect(body().hidden).toBe(true);
+      expect(head().classList.contains('is-unread')).toBe(true); // never seen: blinks
+      head().click();
+      expect(head().getAttribute('aria-expanded')).toBe('true');
+      expect(body().hidden).toBe(false);
+      expect(body().textContent).toContain('Sorteo a las 18');
+      expect(head().classList.contains('is-unread')).toBe(false);
+      head().click();
+      expect(body().hidden).toBe(true);
+      ann.set('Sorteo a las 18'); // same text: still seen
+      expect(head().classList.contains('is-unread')).toBe(false);
+      ann.set('Cambio de horario');
+      expect(head().classList.contains('is-unread')).toBe(true);
+      // the last seen text survives a reload; an empty announcement never blinks
+      const again = document.createElement('div'), off2 = renderMobile(again, store(), defaultConfig, new Announcement('Sorteo a las 18'));
+      expect(again.querySelector('[data-ann]')!.classList.contains('is-unread')).toBe(false);
+      off2();
+      const none = document.createElement('div'), off3 = renderMobile(none, store(), defaultConfig, new Announcement(''));
+      expect(none.querySelector('[data-ann]')!.classList.contains('is-unread')).toBe(false);
+      off3();
+    } finally { off(); }
+  });
+  it('vuelve a ajustar el texto cuando terminan de cargar las fuentes', async () => {
+    const root = document.createElement('div'), s = store();
+    s.addPost({ id: hex(7), pubkey: 'a'.repeat(64), content: 'mediano '.repeat(8).trim(), created_at: Math.floor(Date.now() / 1000) });
+    let room = 2000, loaded!: () => void; // fake area: the real font is wider than the fallback
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: new Promise<void>((r) => { loaded = r; }) } });
+    const m = { fits: (el: HTMLElement) => el.textContent!.length * parseFloat(el.style.fontSize) <= room, setSize: (el: HTMLElement, px: number) => { el.style.fontSize = `${px}px`; } };
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''), { measure: m });
+    try {
+      const ex = () => root.querySelector<HTMLElement>(`#mobile-posts .m-post[data-id="${hex(7)}"] .m-excerpt`)!;
+      expect(ex().style.fontSize).toBe(`${MOBILE_FONT.max}px`);
+      room = 1200;
+      loaded();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(parseFloat(ex().style.fontSize)).toBeLessThan(MOBILE_FONT.max);
+    } finally { off(); delete (document as { fonts?: unknown }).fonts; }
+  });
+  it('al desplazar el feed guarda qué post está en pantalla', () => {
+    sessionStorage.setItem(MOBILE_VIEW_KEY, JSON.stringify({ tab: 'posts', post: hex(2) }));
+    const root = document.createElement('div');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''));
+    try {
+      const reel = root.querySelector<HTMLElement>('.m-reel')!;
+      reel.scrollTop = 0;
+      reel.dispatchEvent(new Event('scroll'));
+      expect(JSON.parse(sessionStorage.getItem(MOBILE_VIEW_KEY)!).post).toBe(hex(1));
+    } finally { off(); }
+  });
+  it('recuerda pestaña, fila expandida y posición de Top tras recargar', () => {
+    sessionStorage.setItem(MOBILE_VIEW_KEY, JSON.stringify({ tab: 'top', open: [hex(1)], topScroll: 120 }));
+    const root = document.createElement('div');
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''));
+    try {
+      expect(root.querySelector('[role="tab"][aria-selected="true"]')!.getAttribute('data-tab')).toBe('top');
+      expect(root.querySelector(`#mobile-top .m-top-row[data-id="${hex(1)}"] .m-post`)).not.toBeNull();
+      expect(root.querySelector<HTMLElement>('#mobile-top')!.scrollTop).toBe(120);
+      root.querySelector<HTMLButtonElement>(`#mobile-top .m-top-row[data-id="${hex(1)}"] .m-top-head`)!.click(); // collapse
+      root.querySelector<HTMLButtonElement>('[data-tab="posts"]')!.click();
+      const saved = JSON.parse(sessionStorage.getItem(MOBILE_VIEW_KEY)!);
+      expect(saved).toMatchObject({ tab: 'posts', open: [] });
+      expect(saved.post).toBe(hex(1)); // post on screen in the feed
+    } finally { off(); }
+  });
+  it('mensajes largos: achica la fuente hasta el mínimo y recién ahí trunca, sin scroll', () => {
+    const root = document.createElement('div'), s = store();
+    s.addPost({ id: hex(7), pubkey: 'a'.repeat(64), content: 'palabra '.repeat(40).trim(), created_at: Math.floor(Date.now() / 1000) });
+    s.addPost({ id: hex(6), pubkey: 'a'.repeat(64), content: 'mediano '.repeat(8).trim(), created_at: Math.floor(Date.now() / 1000) - 1 });
+    // fake layout: the box fits 1200 "px·chars"
+    const m = { fits: (el: HTMLElement) => el.textContent!.length * parseFloat(el.style.fontSize) <= 1200, setSize: (el: HTMLElement, px: number) => { el.style.fontSize = `${px}px`; } };
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''), { measure: m });
+    try {
+      const ex = (id: string) => root.querySelector<HTMLElement>(`#mobile-posts .m-post[data-id="${id}"] .m-excerpt`)!;
+      expect(ex(hex(1)).style.fontSize).toBe(`${MOBILE_FONT.max}px`); // short: untouched max
+      const mid = parseFloat(ex(hex(6)).style.fontSize);
+      expect(mid).toBeLessThan(MOBILE_FONT.max);
+      expect(mid).toBeGreaterThanOrEqual(MOBILE_FONT.min);
+      expect(MOBILE_FONT).toEqual({ max: 24, min: 10 }); // shrink further before truncating
+      expect(ex(hex(6)).textContent).not.toContain('…');
+      expect(ex(hex(7)).style.fontSize).toBe(`${MOBILE_FONT.min}px`);
+      expect(ex(hex(7)).textContent!.endsWith('…')).toBe(true);
+    } finally { off(); }
+  });
+  it('Top posts: filas de una línea ordenadas por sats, monto primero; tocar expande y vuelve a tocar colapsa', () => {
     const root = document.createElement('div'), s = store();
     s.addZap({ id: 'z2', postId: hex(2), sender: 'b'.repeat(64), msats: 50_000, comment: '', created_at: Math.floor(Date.now() / 1000) });
     const off = renderMobile(root, s, defaultConfig, new Announcement(''));
     try {
-      for (const id of ['#mobile-top', '#mobile-recent']) {
-        const cards = root.querySelectorAll(`${id} .m-post`);
-        expect([...cards].map((c) => c.querySelector('.m-rank')!.textContent)).toEqual(['#1', '#2']);
-        expect(cards[0].querySelector('.m-excerpt')!.textContent).toBe('post <i>2</i>');
-        expect(cards[0].querySelector('.m-meta .author')!.textContent).toBe('aaaaaaaa…aaaa');
-        expect(cards[0].querySelector('.m-meta')!.textContent).toContain('hace');
-        expect(cards[0].querySelector('.m-total')!.textContent).toContain('50 sats');
-        expect(cards[0].querySelector('.zap-btn')).not.toBeNull();
-      }
-      expect(root.querySelector('#mobile-posts .m-rank')).toBeNull();
+      const rows = () => [...root.querySelectorAll<HTMLElement>('#mobile-top .m-top-row')];
+      expect(rows().map((r) => r.dataset.id)).toEqual([hex(2), hex(1)]);
+      const head = rows()[0].querySelector<HTMLButtonElement>('button.m-top-head')!;
+      expect(head.firstElementChild!.classList.contains('m-top-sats')).toBe(true);
+      expect(head.querySelector('.m-top-sats')!.textContent).toContain('50');
+      expect(head.querySelector('.m-top-line')!.textContent).toBe('post <i>2</i>');
+      expect(head.getAttribute('aria-expanded')).toBe('false');
+      expect(rows()[0].querySelector('.m-post')).toBeNull();
+      expect(head.querySelector('.m-top-sats svg.m-bolt')).not.toBeNull(); // same neon bolt as the side button
+      expect(head.textContent).not.toContain('⚡');
+      head.click();
+      const card = rows()[0].querySelector('.m-post')!;
+      expect(card.querySelector('.m-excerpt')!.textContent).toBe('post <i>2</i>');
+      expect(card.querySelector('.m-meta')!.textContent).toContain('hace');
+      expect(card.querySelectorAll('svg.m-bolt')).toHaveLength(1);
+      expect(card.querySelectorAll('.m-side button.zap-btn.m-total[data-zap]')).toHaveLength(1); // one side zap button with the total
+      expect(card.querySelector('.m-total')!.textContent).toContain('sats');
+      expect(card.textContent).not.toContain('⚡');
+      expect(rows()[0].querySelector('button.m-top-head')!.getAttribute('aria-expanded')).toBe('true');
+      rows()[0].querySelector<HTMLButtonElement>('button.m-top-head')!.click();
+      expect(rows()[0].querySelector('.m-post')).toBeNull();
+    } finally { off(); }
+  });
+  it('botón flotante para escribir en ambas pestañas, que abre el editor', () => {
+    const root = document.createElement('div');
+    const compose = vi.fn();
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), { compose });
+    try {
+      expect(root.querySelector('.m-fab')!.closest('[role="tabpanel"]')).toBeNull();
+      const fab = root.querySelector<HTMLButtonElement>('.m-fab')!;
+      expect(fab.textContent!.trim()).toBe('Mandá mensaje anónimo');
+      expect(fab.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+      expect(fab.hasAttribute('aria-label')).toBe(false); // the visible text is the name
+      root.querySelector<HTMLButtonElement>('[data-tab="top"]')!.click();
+      root.querySelector<HTMLButtonElement>('.m-fab')!.click();
+      expect(compose).toHaveBeenCalledTimes(1);
     } finally { off(); }
   });
   it('abre Posts por defecto, cambia de pestaña y conserva la selección al actualizar datos', () => {
@@ -82,21 +239,21 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     const off = renderMobile(root, s, defaultConfig, ann);
     try {
       const active = () => root.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden])');
-      expect(root.querySelectorAll('[role="tab"]')).toHaveLength(4);
+      expect(root.querySelectorAll('[role="tab"]')).toHaveLength(2);
       expect(active()?.querySelectorAll('.m-post')).toHaveLength(3);
       expect(root.querySelector('.m-announcement')?.closest('[role="tabpanel"]')).toBeNull();
-      const tab = () => [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Zaps')!;
+      const tab = () => [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Top posts')!;
       tab().click();
-      expect(active()?.textContent).toContain('Últimos zaps');
+      expect(active()?.querySelector('.m-top-row')).not.toBeNull();
       expect(root.querySelector('.m-announcement')?.textContent).toContain('Sorteo a las 18');
       expect(root.querySelectorAll('[role="tabpanel"]:not([hidden])')).toHaveLength(1);
       expect(tab().getAttribute('aria-selected')).toBe('true');
       ann.set('Cambio de horario');
       s.addPost({ id: hex(8), pubkey: 'a'.repeat(64), content: 'nuevo post', created_at: Math.floor(Date.now() / 1000) });
       expect(tab().getAttribute('aria-selected')).toBe('true');
-      expect(active()?.textContent).toContain('Últimos zaps');
+      expect(active()?.querySelector('.m-top-row')).not.toBeNull();
       expect(root.querySelector('.m-announcement')?.textContent).toContain('Cambio de horario');
-      [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Posts')!.click();
+      [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Últimos posts')!.click();
       expect(active()?.querySelectorAll('.m-post')).toHaveLength(4);
       off();
       tab().click();
@@ -106,14 +263,14 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
   it('Zapear ofrece cliente Nostr o wallet anónima y conserva la alternativa njump', () => {
     const root = document.createElement('div');
     const invoice = vi.fn();
-    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), invoice);
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), { requestInvoice: invoice });
     try {
     // Card content (excerpt, author, total) is covered by the Top test above.
     const posts = root.querySelectorAll('#mobile-posts .m-post');
     expect(posts[0].querySelector('.m-zaps')).toBeNull();
     expect(posts[0].textContent).not.toContain('genial');
     const btn = posts[0].querySelector<HTMLButtonElement>('.zap-btn')!;
-    expect(btn.textContent).toContain('Zapear');
+    expect(btn.getAttribute('aria-label')).toContain('Zapear');
     expect(btn.tagName).toBe('BUTTON');
     btn.click();
     const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
@@ -136,15 +293,13 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       const current = () => root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')!;
       const key = (value: string) => current().dispatchEvent(new KeyboardEvent('keydown', { key: value, bubbles: true }));
       key('ArrowRight');
-      expect(current().textContent).toBe('Zaps');
-      key('End');
-      expect(current().textContent).toBe(`Top ${defaultConfig.topRecentHours}h`);
+      expect(current().textContent).toBe('Top posts');
       key('ArrowRight');
-      expect(current().textContent).toBe('Posts');
-      key('ArrowLeft');
-      expect(current().textContent).toBe(`Top ${defaultConfig.topRecentHours}h`);
+      expect(current().textContent).toBe('Últimos posts');
+      key('End');
+      expect(current().textContent).toBe('Top posts');
       key('Home');
-      expect(current().textContent).toBe('Posts');
+      expect(current().textContent).toBe('Últimos posts');
       expect(root.querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1);
     } finally { off(); }
   });
@@ -153,7 +308,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     let finish!: (invoice: string) => void;
     const invoice = vi.fn(() => new Promise<string>((resolve) => { finish = resolve; }));
     const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
-    const off = renderMobile(root, s, defaultConfig, ann, invoice);
+    const off = renderMobile(root, s, defaultConfig, ann, { requestInvoice: invoice });
     try {
       root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
       const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
@@ -212,7 +367,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
   it('muestra errores de generación sin declarar un pago y permite reintentar explícitamente', async () => {
     const root = document.createElement('div');
     const invoice = vi.fn().mockRejectedValueOnce(new Error('Proveedor no disponible')).mockResolvedValue('lnbc210n1ptestinvoice');
-    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), invoice);
+    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), { requestInvoice: invoice });
     try {
       root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
       const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
@@ -234,7 +389,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     const root = document.createElement('div');
     const s = store();
     const invoice = vi.fn().mockResolvedValue('lnbc210n1ptestinvoice');
-    const off = renderMobile(root, s, defaultConfig, new Announcement(''), invoice);
+    const off = renderMobile(root, s, defaultConfig, new Announcement(''), { requestInvoice: invoice });
     try {
       root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
       const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
@@ -269,317 +424,5 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     renderMobile(root, s, defaultConfig, new Announcement(''));
     expect(root.textContent).toContain('Todavía no hay posts con #lacrypta');
     expect(root.textContent).toContain('Todavía no hay zaps');
-  });
-});
-
-describe('enlaces Nostr', () => {
-  const post = { id: 'd'.repeat(64), pubkey: 'e'.repeat(64), content: 'x', created_at: 1 };
-  const relays = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
-  const nevent = (uri: string) => uri.match(/nevent1[02-9ac-hj-np-z]+/)![0];
-  it('incluye id, autor, kind y dos hints; admite nostr y njump', () => {
-    const uri = noteUri(post, relays, 'nostr:{nevent}')!;
-    expect(uri).toMatch(/^nostr:nevent1/);
-    const decoded = decode(nevent(uri));
-    expect(decoded.type).toBe('nevent');
-    expect(decoded.data).toMatchObject({ id: post.id, author: post.pubkey, kind: 1, relays: relays.slice(0, 2) });
-    expect(noteUri(post, relays, 'https://njump.me/{nevent}')).toMatch(/^https:\/\/njump\.me\/nevent1[a-z0-9]+$/);
-  });
-  it('omite autores inválidos y rechaza ids inválidos', () => {
-    const decoded = decode(nevent(noteUri({ ...post, pubkey: '<img>' }, [], 'nostr:{nevent}')!));
-    expect((decoded.data as any).author).toBeUndefined();
-    expect(noteUri({ ...post, id: 'zz' }, relays, 'nostr:{nevent}')).toBeNull();
-  });
-});
-
-describe('animaciones móviles', () => {
-  const NOW = 1_800_000_000;
-  const post = (n: number, created_at = NOW - 3600) => ({ id: hex(n), pubkey: 'a'.repeat(64), content: `post ${n}`, created_at });
-  const zap = (created_at = NOW) => ({ id: hex(1001), postId: hex(1), sender: 'b'.repeat(64), msats: 210_000, comment: '', created_at });
-  const setup = () => {
-    const s = new ZapStore(undefined, { clock: () => NOW }); s.addPost(post(1)); s.addPost(post(2)); s.setReady();
-    const root = document.createElement('div'), off = renderMobile(root, s, defaultConfig, new Announcement(''));
-    return { s, root, off };
-  };
-  it('zap con otra pestaña abierta: ráfaga de abajo, sin rayo; en Posts: rayo, sin ráfaga', () => {
-    vi.useFakeTimers();
-    const { s, root, off } = setup();
-    document.body.append(root);
-    const stop = zapFx(s);
-    try {
-      root.querySelector<HTMLButtonElement>('[data-tab="zaps"]')!.click();
-      s.addZap(zap());
-      expect(document.querySelector('.zap-fx')).not.toBeNull();
-      expect(document.querySelector('svg.strike')).toBeNull();
-      document.querySelector('.zap-fx')!.remove();
-      root.querySelector<HTMLButtonElement>('[data-tab="posts"]')!.click();
-      s.addZap({ ...zap(), id: hex(1002) });
-      vi.advanceTimersByTime(100); // redraws are coalesced
-      expect(document.querySelector('svg.strike')).not.toBeNull();
-      expect(document.querySelector('.zap-fx')).toBeNull();
-    } finally { stop(); off(); root.remove(); vi.useRealTimers(); }
-  });
-  it('muestra los totales acumulados con mini ruedita y skeletons en textos hasta que el backfill termina', () => {
-    vi.useFakeTimers();
-    const s = new ZapStore(undefined, { clock: () => NOW });
-    s.addPost(post(1));
-    s.addZap(zap());
-    const root = document.createElement('div'), off = renderMobile(root, s, defaultConfig, new Announcement(''));
-    const s2 = new ZapStore(undefined, { clock: () => NOW });
-    s2.addPost(post(2));
-    const root2 = document.createElement('div'), off2 = renderMobile(root2, s2, defaultConfig, new Announcement(''));
-    const s3 = new ZapStore(undefined, { clock: () => NOW });
-    const root3 = document.createElement('div'), off3 = renderMobile(root3, s3, defaultConfig, new Announcement(''));
-    try {
-      expect(root.querySelector('.m-total .pending')!.textContent).toBe('210 sats'); // total parcial: el número parpadea
-      expect(root.querySelector('.m-total')!.textContent).toContain('210');
-      expect(root.querySelector('#mobile-top .pending')).not.toBeNull();
-      expect(root.querySelector('#mobile-recent .pending')).not.toBeNull();
-      expect(root.querySelector('#mobile-zaps .pending')).toBeNull(); // un zap suelto ya es definitivo
-      expect(root2.querySelector('#mobile-zaps .skel')).not.toBeNull(); // textos pendientes: skeletons
-      expect(root2.querySelector('#mobile-top .skel')).not.toBeNull();
-      expect(root2.querySelector('#mobile-recent .skel')).not.toBeNull();
-      expect(root3.querySelector('#mobile-posts .skel')).not.toBeNull();
-      expect(root3.textContent).not.toContain('Todavía no hay posts'); // nunca afirmar vacío antes de tiempo
-      s.setReady(); s2.setReady(); s3.setReady();
-      vi.advanceTimersByTime(100);
-      expect(root.querySelectorAll('.pending')).toHaveLength(0);
-      expect(root.querySelector('.m-total')!.textContent).toContain('210');
-      expect(root.querySelector('#mobile-zaps')!.textContent).toContain('210');
-      expect(root2.querySelectorAll('.m-skel-post, .m-skel-rows')).toHaveLength(0);
-      expect(root2.textContent).toContain('Todavía no hay zaps');
-      expect(root3.textContent).toContain('Todavía no hay posts');
-    } finally { off(); off2(); off3(); vi.useRealTimers(); }
-  });
-  it('anima posts recientes una vez, nunca historial', () => {
-    vi.useFakeTimers();
-    const { s, root, off } = setup();
-    try {
-      expect(root.querySelector('.is-new')).toBeNull();
-      s.addPost(post(3, NOW - 5));
-      expect(root.querySelector(`.m-post[data-id="${hex(3)}"]`)!.classList.contains('is-new')).toBe(true);
-      expect(root.querySelectorAll('.is-new')).toHaveLength(1);
-      s.addPost(post(4));
-      vi.advanceTimersByTime(100);
-      expect(root.querySelector('.is-new')).toBeNull();
-    } finally { off(); vi.useRealTimers(); }
-  });
-  it('marca el post zapeado y actualiza el total con un rayo', () => {
-    const { s, root, off } = setup();
-    try {
-      s.addZap(zap());
-      const card = root.querySelector(`.m-post[data-id="${hex(1)}"]`)!;
-      expect(card.classList.contains('is-zapped')).toBe(true);
-      expect(document.querySelector('svg.strike')).not.toBeNull();
-      expect(card.querySelector('.m-total')!.textContent).toContain('210');
-      expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
-    } finally { off(); }
-  });
-  it('no anima zaps históricos', () => {
-    const { s, root, off } = setup();
-    try { s.addZap(zap(NOW - 3600)); expect(root.querySelector('.is-zapped')).toBeNull(); }
-    finally { off(); }
-  });
-  it('consume eventos visibles sin pendientes y deja de consumirlos al cerrar', () => {
-    const { s, off } = setup();
-    let indicators = 0; feedFor(s).onMiss(() => indicators++);
-    s.addZap(zap()); s.addPost(post(9, NOW - 1));
-    expect(indicators).toBe(0);
-    expect(feedFor(s).pending).toHaveLength(0);
-    off(); s.addZap({ ...zap(), id: hex(1002) });
-    expect(indicators).toBe(1);
-  });
-});
-
-describe('pago confirmado desde el modal móvil', () => {
-  const now = () => Math.floor(Date.now() / 1000);
-  const receipt = (n: number, postId: string) => ({ id: hex(n), postId, sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() });
-  /** Shows the wallet invoice in an already open zap dialog. */
-  const showInvoice = async () => {
-    const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
-    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
-    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
-    return dialog;
-  };
-  /** Opens the zap dialog from a card in `tab` and generates the invoice. */
-  const payFrom = async (root: HTMLElement, tab: string, postId: string) => {
-    root.querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)!.click();
-    root.querySelector<HTMLButtonElement>(`#mobile-${tab} [data-zap="${postId}"]`)!.click();
-    return showInvoice();
-  };
-  // Same wiring order as main.ts: zapFx (and so the shared LiveFeed) subscribes to the store before the mobile view and the dialog.
-  const mount = (s: ZapStore) => {
-    const root = document.createElement('div');
-    document.body.append(root);
-    const stop = zapFx(s);
-    const off = renderMobile(root, s, defaultConfig, new Announcement(''), vi.fn().mockResolvedValue('lnbc210n1ptestinvoice'));
-    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    const reveal = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
-    const selected = () => root.querySelector('[role="tab"][aria-selected="true"]')!.getAttribute('data-tab');
-    const cleanup = () => { off(); stop(); root.remove(); scrollTo.mockRestore(); reveal.mockRestore(); document.querySelectorAll('dialog, .zap-fx').forEach((e) => e.remove()); };
-    return { root, scrollTo, reveal, selected, cleanup };
-  };
-
-  it('pagado desde Top histórico: cierra el modal, vuelve a Posts, muestra la tarjeta y el rayo cae sobre ella (sin ráfaga)', async () => {
-    const s = store();
-    s.addZap({ ...receipt(50, hex(3)), created_at: now() - 3600 }); // hex(3) also ranks in Top (old zap, not live)
-    const { root, scrollTo, reveal, selected, cleanup } = mount(s);
-    try {
-      await payFrom(root, 'top', hex(3));
-      scrollTo.mockClear();
-      s.addZap(receipt(51, hex(3)));
-      expect(document.querySelector('dialog')).toBeNull();
-      expect(selected()).toBe('posts');
-      expect(root.querySelector('#mobile-posts')!.hasAttribute('hidden')).toBe(false);
-      const card = root.querySelector<HTMLElement>(`#mobile-posts .m-post[data-id="${hex(3)}"]`)!;
-      expect(card.classList.contains('is-zapped')).toBe(true);
-      expect(document.querySelector('svg.strike')).not.toBeNull();
-      expect(document.querySelector('.zap-fx')).toBeNull();
-      expect(feedFor(s).pending).toHaveLength(0);
-      expect(reveal).toHaveBeenCalledTimes(1);
-      const revealed = reveal.mock.contexts[0] as HTMLElement;
-      expect(revealed.dataset.id).toBe(hex(3));
-      expect(revealed.closest('#mobile-posts')).not.toBeNull();
-      expect(scrollTo).not.toHaveBeenCalled();
-    } finally { cleanup(); }
-  });
-  it('pagado un post que no está entre los recientes: Posts arriba de todo y la ráfaga de abajo', async () => {
-    const s = new ZapStore();
-    s.addPost({ id: hex(100), pubkey: 'a'.repeat(64), content: 'viejo', created_at: now() - 86_400 });
-    s.addZap({ ...receipt(150, hex(100)), created_at: now() - 3600 });
-    for (let i = 1; i <= 50; i++) s.addPost({ id: hex(i), pubkey: 'a'.repeat(64), content: `post ${i}`, created_at: now() - i });
-    s.setReady();
-    profiles.set('a'.repeat(64), null);
-    const { root, scrollTo, reveal, selected, cleanup } = mount(s);
-    try {
-      await payFrom(root, 'top', hex(100));
-      scrollTo.mockClear();
-      s.addZap(receipt(151, hex(100)));
-      expect(document.querySelector('dialog')).toBeNull();
-      expect(selected()).toBe('posts');
-      expect(root.querySelector(`#mobile-posts [data-id="${hex(100)}"]`)).toBeNull();
-      expect(scrollTo).toHaveBeenCalledWith(0, 0);
-      expect(reveal).not.toHaveBeenCalled();
-      expect(document.querySelector('.zap-fx')).not.toBeNull();
-      expect(document.querySelector('svg.strike')).toBeNull();
-    } finally { cleanup(); }
-  });
-  it('pagado desde Posts: sigue en Posts y el rayo cae sobre la tarjeta', async () => {
-    const s = store();
-    const { root, reveal, selected, cleanup } = mount(s);
-    try {
-      await payFrom(root, 'posts', hex(2));
-      s.addZap(receipt(52, hex(2)));
-      expect(document.querySelector('dialog')).toBeNull();
-      expect(selected()).toBe('posts');
-      expect(root.querySelector(`#mobile-posts .m-post[data-id="${hex(2)}"]`)!.classList.contains('is-zapped')).toBe(true);
-      expect(document.querySelector('.zap-fx')).toBeNull();
-      expect((reveal.mock.contexts[0] as HTMLElement).dataset.id).toBe(hex(2));
-    } finally { cleanup(); }
-  });
-  it('cerrar el modal a mano no cambia de pestaña, ni aunque después llegue el recibo', async () => {
-    const s = store();
-    const { root, selected, cleanup } = mount(s);
-    try {
-      const dialog = await payFrom(root, 'top', hex(1));
-      dialog.querySelector<HTMLButtonElement>('[data-close]')!.click();
-      expect(document.querySelector('dialog')).toBeNull();
-      expect(selected()).toBe('top');
-      s.addZap(receipt(53, hex(1)));
-      expect(selected()).toBe('top');
-    } finally { cleanup(); }
-  });
-  it('openZapDialog avisa onPaid una sola vez, solo con el recibo de su post y nunca al cerrar a mano', async () => {
-    const s = store(), onPaid = vi.fn(), invoice = vi.fn().mockResolvedValue('lnbc210n1ptestinvoice');
-    openZapDialog(s.posts.get(hex(1))!, defaultConfig.relays, invoice, s, { onPaid });
-    await showInvoice();
-    s.addZap(receipt(60, hex(2)));
-    expect(onPaid).not.toHaveBeenCalled();
-    expect(document.querySelector('dialog')).not.toBeNull();
-    s.addZap(receipt(61, hex(1)));
-    expect(onPaid).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('dialog')).toBeNull();
-    s.addZap(receipt(62, hex(1)));
-    expect(onPaid).toHaveBeenCalledTimes(1);
-    const manual = vi.fn();
-    openZapDialog(s.posts.get(hex(1))!, defaultConfig.relays, invoice, s, { onPaid: manual });
-    const dialog = await showInvoice();
-    dialog.querySelector<HTMLButtonElement>('[data-close]')!.click();
-    s.addZap(receipt(63, hex(1)));
-    expect(manual).not.toHaveBeenCalled();
-  });
-});
-
-describe('el modal de zap solo se cierra al pagar o con Cancelar', () => {
-  const now = () => Math.floor(Date.now() / 1000);
-  const open = (s = store(), onPaid = vi.fn()) => {
-    const close = openZapDialog(s.posts.get(hex(1))!, defaultConfig.relays, vi.fn().mockResolvedValue('lnbc210n1ptestinvoice'), s, { onPaid });
-    const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
-    return { s, onPaid, close, dialog };
-  };
-  const toInvoice = async (dialog: HTMLDialogElement) => {
-    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
-    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
-  };
-  const cancelBtn = (dialog: HTMLDialogElement) => [...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === 'Cancelar');
-  const stillOpen = (dialog: HTMLDialogElement) => { expect(dialog.isConnected).toBe(true); expect(dialog.open).toBe(true); };
-  afterEach(() => document.querySelectorAll('dialog').forEach((d) => d.remove()));
-
-  it('no tiene ✕: un botón rojo Cancelar abajo de todo, visible en elegir, monto y factura', async () => {
-    const { dialog, onPaid } = open();
-    expect(dialog.querySelector('[aria-label="Cerrar"]')).toBeNull();
-    expect(dialog.querySelector('header button')).toBeNull();
-    const visible = () => {
-      const btn = cancelBtn(dialog)!;
-      expect(btn).toBeDefined();
-      expect(btn.closest('[hidden]')).toBeNull();
-      expect(btn.classList.contains('zap-cancel')).toBe(true);
-      expect(dialog.lastElementChild).toBe(btn);
-    };
-    visible(); // payment choices
-    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
-    visible(); // amount form
-    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
-    visible(); // invoice
-    cancelBtn(dialog)!.click();
-    expect(document.querySelector('dialog')).toBeNull();
-    expect(onPaid).not.toHaveBeenCalled();
-  });
-  it('Escape / gesto atrás (evento cancel) no lo cierra', async () => {
-    const { dialog } = open();
-    await toInvoice(dialog);
-    const cancel = new Event('cancel', { cancelable: true });
-    dialog.dispatchEvent(cancel);
-    expect(cancel.defaultPrevented).toBe(true);
-    stillOpen(dialog);
-  });
-  it('si el navegador lo cierra igual (atrás sin activación del usuario), se vuelve a abrir y sigue esperando el pago', async () => {
-    const { s, dialog, onPaid } = open();
-    await toInvoice(dialog);
-    dialog.close(); // what Chrome's CloseWatcher does when it skips the cancel event
-    await vi.waitFor(() => stillOpen(dialog));
-    expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull(); // same invoice, not reset
-    s.addZap({ id: hex(70), postId: hex(1), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() });
-    expect(onPaid).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('dialog')).toBeNull();
-  });
-  it('salir a la wallet y volver (visibilidad, foco, resize, pagehide/pageshow) no lo cierra', async () => {
-    const root = document.createElement('div');
-    document.body.append(root);
-    const off = renderMobile(root, store(), defaultConfig, new Announcement(''), vi.fn().mockResolvedValue('lnbc210n1ptestinvoice'));
-    try {
-      root.querySelector<HTMLButtonElement>('.zap-btn')!.click();
-      const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
-      await toInvoice(dialog);
-      dialog.querySelector<HTMLAnchorElement>('[data-open-wallet]')!.dispatchEvent(new Event('blur'));
-      document.dispatchEvent(new Event('visibilitychange'));
-      for (const type of ['blur', 'pagehide', 'pageshow', 'focus', 'resize']) window.dispatchEvent(new Event(type));
-      document.dispatchEvent(new Event('visibilitychange'));
-      await new Promise((r) => setTimeout(r, 150)); // let coalesced redraws run
-      stillOpen(dialog);
-      expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull();
-    } finally { off(); root.remove(); }
   });
 });

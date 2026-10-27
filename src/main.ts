@@ -3,20 +3,21 @@ import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS } from '../
 import { ZapStore, type Moderation } from './nostr/store';
 import { createPool, followCutoff, profileLoader, startNostr } from './nostr/pool';
 import { LnurlResolver } from './nostr/lnurl';
-import { configureProfiles } from './nostr/profiles';
+import { configureProfiles, profiles } from './nostr/profiles';
+import { cachedCanZap } from './zapcache';
 import { Follower } from './follow';
 import { buildScenes } from './scenes';
 import { Announcement } from './announcement';
 import { createRemote } from './remote';
 import { feedFor, showIndicator } from './livefeed';
-import { isMobileViewport, renderMobile } from './mobile';
+import { isMobileViewport, MOBILE_POST_MAX_CHARS, renderMobile } from './mobile';
 import { zapFx } from './zap-fx';
 import { installFx } from './fx';
 
 installFx(document.documentElement);
 const cfg = await loadConfig();
 const cutoff = postCutoff({ startLine: DEFAULT_START_LINE });
-const store = new ZapStore(window.localStorage, { postMaxChars: cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
+const store = new ZapStore(window.localStorage, { postMaxChars: isMobileViewport() ? MOBILE_POST_MAX_CHARS : cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
 const pool = createPool();
 configureProfiles(pool, cfg.relays, window.localStorage, document);
 const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefined, c), cutoff);
@@ -27,6 +28,9 @@ let follower: Follower | undefined; // totem only: mobile doesn't follow the clo
 // Dev only (tree-shaken from production): window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
 if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store), import.meta.env.DEV, follower));
 const scene = document.getElementById('scene')!;
+const wallet = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS);
+// Same cached check on both views: the totem only uses it for the red bolt (no zapping there).
+const canZap = cachedCanZap(async (pk) => !!(await wallet.resolveInfo(pk)), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
 const app = document.getElementById('app')!;
 zapFx(store); // ⚡ + sats at the bottom when the zapped post is not on screen
 
@@ -34,8 +38,10 @@ if (isMobileViewport()) {
   app.classList.add('is-mobile');
   document.documentElement.classList.add('is-mobile');
   scene.className = 'mobile';
-  const wallet = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS);
-  renderMobile(scene, store, cfg, announcement, (post, sats, message) => wallet.requestInvoice(post, sats, cfg.relays, message));
+  renderMobile(scene, store, cfg, announcement, {
+    requestInvoice: (post, sats, message) => wallet.requestInvoice(post, sats, cfg.relays, message),
+    canZap,
+  });
   createRemote({ announcement, onModeration: moderate }).start(cfg.settingsPollMs);
 } else {
   // The server is the source of truth: the totem computes the schedule it defines. Arrows: /admin.

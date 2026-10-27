@@ -59,16 +59,19 @@ export function feedFor(store: ZapStore): LiveFeed {
 
 const POST_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>';
 
-/** Brief off-scene icon for a new post at a random spot/tilt in the lower band; zaps get none here (the zap-fx burst already announces them). */
-export function showIndicator(strip: HTMLElement, e: LiveEvent, ms = INDICATOR_MS, rnd = Math.random) {
-  if (e.type !== 'post') return;
+const ZAP_ICON = '<svg viewBox="0 0 24 48" aria-hidden="true"><path d="M15 0 3 27h9L8 48l14-30h-9l5-18z"/></svg>';
+
+/** Brief off-scene icon for a new post at a random spot/tilt in the lower band; zaps get none unless `zaps` (on the totem the zap-fx burst already announces them). */
+export function showIndicator(strip: HTMLElement, e: LiveEvent, { ms = INDICATOR_MS, rnd = Math.random, zaps = false } = {}): HTMLElement | undefined {
+  if (e.type !== 'post' && !zaps) return;
   const el = document.createElement('span');
-  el.className = 'live-ind post';
-  el.innerHTML = POST_ICON;
+  el.className = `live-ind ${e.type}`;
+  el.innerHTML = e.type === 'post' ? POST_ICON : ZAP_ICON;
   el.style.left = `${5 + rnd() * 80}%`;
-  el.style.bottom = `${6 + rnd() * 16}vh`;
+  el.style.setProperty('--y', `${6 + rnd() * 16}vh`); // height in the lower band (style.css)
   el.style.setProperty('--tilt', `${-12 + rnd() * 24}deg`);
   strip.appendChild(el);
   while (strip.children.length > 6) strip.firstElementChild!.remove();
   setTimeout(() => el.remove(), ms);
+  return el;
 }
