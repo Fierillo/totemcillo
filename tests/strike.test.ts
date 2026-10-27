@@ -27,6 +27,23 @@ describe('rayo real sobre el post zapeado', () => {
     expect(svg.querySelector('path.branch')!.getAttribute('d')).toMatch(/^M/); // at least one short branch
   });
 
+  it('en el celu (center): cae en el centro del box del mensaje, vertical y horizontal', () => {
+    const svg = strike(row(), seq(7), STRIKE_MS, '+21 sats', true)!;
+    expect(points(mainPath(svg)).at(-1)).toEqual([200, 525]);
+    expect([svg.querySelector('circle.impact')!.getAttribute('cx'), svg.querySelector('circle.impact')!.getAttribute('cy')]).toEqual(['200', '525']);
+    expect(document.querySelector<HTMLElement>('.strike-gain')!.style.top).toBe('525px');
+  });
+
+  it('el SVG mide lo mismo que su viewBox, en el viewport de layout (no innerWidth/innerHeight, que cambian con el zoom del celu)', () => {
+    const de = document.documentElement;
+    const cw = vi.spyOn(de, 'clientWidth', 'get').mockReturnValue(390), ch = vi.spyOn(de, 'clientHeight', 'get').mockReturnValue(844);
+    try {
+      const svg = strike(row(), () => 0.5, STRIKE_MS, undefined, true)!;
+      expect(svg.getAttribute('viewBox')).toBe('0 0 390 844');
+      expect([svg.style.width, svg.style.height]).toEqual(['390px', '844px']); // 1 unit = 1 CSS px, like the "+N sats" label
+    } finally { cw.mockRestore(); ch.mockRestore(); }
+  });
+
   it('cada rayo es distinto: otra secuencia al azar da otro trazo (en producción usa Math.random)', () => {
     const target = row();
     const a = mainPath(strike(target, seq(1))!);

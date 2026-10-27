@@ -26,12 +26,14 @@ function jagged(a: Pt, b: Pt, rnd: () => number, levels: number): Pt[] {
  * Real-looking lightning: a jagged streak that grows from the top of the viewport onto the target's top edge,
  * plus one or two short branches that sprout when the leader passes their fork. A fresh shape every time (Math.random); removes itself after `ms`.
  */
-export function strike(target: Element, rnd = Math.random, ms = STRIKE_MS, gain?: string): SVGSVGElement | null {
+export function strike(target: Element, rnd = Math.random, ms = STRIKE_MS, gain?: string, center = false): SVGSVGElement | null {
   if (target.closest('[hidden]')) return null;
   const doc = target.ownerDocument;
-  const { innerWidth: w, innerHeight: h } = doc.defaultView!;
+  // Layout viewport (where position:fixed and getBoundingClientRect live); innerWidth/innerHeight follow a zoomed-out phone and would scale the bolt off target.
+  const de = doc.documentElement, w = de.clientWidth || doc.defaultView!.innerWidth, h = de.clientHeight || doc.defaultView!.innerHeight;
   const box = target.getBoundingClientRect();
-  const end: Pt = [box.left + box.width * (0.2 + 0.6 * rnd()), box.top];
+  // Totem: a random spot on the top edge; phone (`center`): the middle of the message box.
+  const end: Pt = center ? [box.left + box.width / 2, box.top + box.height / 2] : [box.left + box.width * (0.2 + 0.6 * rnd()), box.top];
   const start: Pt = [Math.min(w, Math.max(0, end[0] + (rnd() - 0.5) * 0.4 * w)), 0];
   const main = jagged(start, end, rnd, 5);
   const branches = Array.from({ length: rnd() < 0.5 ? 1 : 2 }, () => {
@@ -45,6 +47,7 @@ export function strike(target: Element, rnd = Math.random, ms = STRIKE_MS, gain?
   svg.setAttribute('class', 'strike');
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  Object.assign(svg.style, { width: `${w}px`, height: `${h}px` }); // 1 unit = 1 CSS px, never rescaled
   svg.style.setProperty('--leader', `${LEADER_MS}ms`);
   svg.innerHTML = `<path class="glow" pathLength="1" d="${d(main)}"/>${branches}<path class="core" pathLength="1" d="${d(main)}"/>`
     + `<circle class="impact" cx="${r1(end[0])}" cy="${r1(end[1])}" r="40"/>`;
