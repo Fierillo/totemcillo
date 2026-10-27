@@ -12,6 +12,7 @@ import { createRemote } from './remote';
 import { feedFor, showIndicator } from './livefeed';
 import { isMobileViewport, MOBILE_POST_MAX_CHARS, renderMobile } from './mobile';
 import { zapFx } from './zap-fx';
+import { openCompose } from './compose';
 import { installFx } from './fx';
 
 installFx(document.documentElement);
@@ -40,6 +41,7 @@ if (isMobileViewport()) {
   scene.className = 'mobile';
   renderMobile(scene, store, cfg, announcement, {
     requestInvoice: (post, sats, message) => wallet.requestInvoice(post, sats, cfg.relays, message),
+    compose: () => openCompose(cfg.hashtags, (ev) => Promise.any(pool.publish!(cfg.relays, ev))), // straight to the relays, never Redis
     canZap,
   });
   createRemote({ announcement, onModeration: moderate }).start(cfg.settingsPollMs);

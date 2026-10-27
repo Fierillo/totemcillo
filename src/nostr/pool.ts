@@ -10,10 +10,11 @@ export interface PoolLike {
   subscribeMany(relays: string[], filter: any, params: { onevent: (ev: NostrEvent) => void; oneose?: () => void }): { close(): void };
   querySync(relays: string[], filter: any, params?: { maxWait?: number }): Promise<NostrEvent[]>;
   close(relays: string[]): void;
+  publish?(relays: string[], ev: NostrEvent): Promise<string>[]; // mobile compose only
 }
 
 /** Relays compare #t exactly; NIP-24 asks for lowercase but some clients keep the case. */
-export const tagVariants = (t: string) => [t.toLowerCase(), t, t[0].toUpperCase() + t.slice(1).toLowerCase(), t.toUpperCase()];
+const tagVariants = (t: string) => [t.toLowerCase(), t, t[0].toUpperCase() + t.slice(1).toLowerCase(), t.toUpperCase()];
 export const notesFilter = (hashtags: string[], since?: number) => ({
   kinds: [1],
   '#t': [...new Set(hashtags.flatMap(tagVariants))],
@@ -21,7 +22,7 @@ export const notesFilter = (hashtags: string[], since?: number) => ({
 });
 /** Connection timeout per relay. Some relays that carry real posts take ~5 s to connect when the
  *  browser opens all sockets at once; nostr-tools' 3 s default silently dropped them. */
-export const RELAY_CONNECT_TIMEOUT_MS = 12_000;
+const RELAY_CONNECT_TIMEOUT_MS = 12_000;
 /** Pool shared by the totem and /admin, so both see the same relays the same way. */
 export const createPool = (): PoolLike => new SimplePool({ maxWaitForConnection: RELAY_CONNECT_TIMEOUT_MS } as any) as unknown as PoolLike;
 
@@ -29,7 +30,7 @@ export const zapsFilter = (ids: string[]) => ({ kinds: [9735], '#e': ids });
 /** Safety net only: nostr-tools already ends every relay by connection or EOSE timeout, for notes and then zaps. */
 export const READY_FALLBACK_MS = 45_000;
 /** Allow clock skew, never let future-dated events pin the feed. */
-export const MAX_FUTURE_SEC = 120;
+const MAX_FUTURE_SEC = 120;
 export const NOSTR_LIMITS = { eventsPerSecond: 100, concurrentZaps: 4, queuedZaps: 128, contentChars: 16_384, tags: 128, tagValues: 16, tagChars: 2048, eventChars: 32_768 };
 
 function eventBudget() {
