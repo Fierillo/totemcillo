@@ -5,8 +5,8 @@ import { moderationOf } from './moderation-lists';
 import { positionAt, shiftSchedule, type ScheduleInputs } from '../shared/schedule';
 import type { Action } from '../shared/settings';
 
-export interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[]; zapProviders?: string[]; startLine?: string }
-export interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
+interface KioskInputs extends ScheduleInputs { announcement?: string; version: number; hiddenPosts?: string[]; bannedPubkeys?: string[]; zapProviders?: string[]; startLine?: string }
+interface FollowerOptions { fetchFn?: typeof fetch; clock?: () => number; announcement?: Announcement; pollMs?: number;
   /** Delay before re-requesting a kiosk older than /api/version announced (default 3 s). */
   staleRetryMs?: number;
   /** Moderation lists that come in /api/kiosk. */

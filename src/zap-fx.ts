@@ -2,7 +2,7 @@ import type { ZapStore, LiveEvent } from './nostr/store';
 import { feedFor } from './livefeed';
 import { sats } from './util';
 
-export const FX_MS = 3000;
+const FX_MS = 3000;
 
 /**
  * Bolt + sats in the lower band, only when the zapped post is not on screen (otherwise the real strike falls on its row).

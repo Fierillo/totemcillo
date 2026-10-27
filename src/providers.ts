@@ -1,6 +1,6 @@
 import { esc } from './util';
 
-export interface ProvidersOptions {
+interface ProvidersOptions {
   list: string[];
   /** Saves the full list (PUT /api/settings); returns the stored list or throws with the server error. */
   save: (list: string[]) => Promise<string[]>;

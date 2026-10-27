@@ -9,7 +9,7 @@ import { bech32 } from '@scure/base';
 export type InvoiceRequester = (post: Post, sats: number, message?: string) => Promise<string>;
 
 /** Invoice shown but not paid yet: survives a reload (Android kills the tab while the user is in the wallet). */
-export interface PendingZap { postId: string; pubkey: string; sats: number; invoice: string; createdAt: number; expiresAt: number }
+interface PendingZap { postId: string; pubkey: string; sats: number; invoice: string; createdAt: number; expiresAt: number }
 export const PENDING_ZAP_KEY = 'totemcillo:pending-zap';
 const nowSec = () => Math.floor(Date.now() / 1000);
 
@@ -29,7 +29,7 @@ export function bolt11Expiry(invoice: string): number | null {
 }
 
 const storage = (): Storage | undefined => { try { return globalThis.localStorage; } catch { return undefined; } };
-export const clearPendingZap = () => { try { storage()?.removeItem(PENDING_ZAP_KEY); } catch { /* storage unavailable */ } };
+const clearPendingZap = () => { try { storage()?.removeItem(PENDING_ZAP_KEY); } catch { /* storage unavailable */ } };
 const savePendingZap = (p: PendingZap) => { try { storage()?.setItem(PENDING_ZAP_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ } };
 
 /** The pending invoice if still valid; corrupt or expired entries are discarded. */

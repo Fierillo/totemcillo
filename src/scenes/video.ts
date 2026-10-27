@@ -2,7 +2,7 @@ import type { Scene } from './types';
 import { esc } from '../util';
 
 /** Drift correction: tolerance and jump (s), rate limits and measurement interval (ms). */
-export const DRIFT = { tolerance: 0.25, seek: 1.5, minRate: 0.95, maxRate: 1.05, everyMs: 1000 };
+const DRIFT = { tolerance: 0.25, seek: 1.5, minRate: 0.95, maxRate: 1.05, everyMs: 1000 };
 export const EMPTY_VIDEO = 'Sin video configurado';
 
 /** Playback only: the shared schedule owns clip selection and all scene transitions. */

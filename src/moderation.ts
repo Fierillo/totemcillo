@@ -5,7 +5,7 @@ import { live } from './scenes/live';
 import { recentPosts } from './scenes/post';
 import { ago, esc, sats } from './util';
 
-export interface ModerationOptions {
+interface ModerationOptions {
   store: ZapStore;
   /** Calls POST /api/moderation; true on success. */
   act: (action: ModAction, id: string) => Promise<boolean>;

@@ -2,7 +2,7 @@ import type { Announcement } from './announcement';
 import type { Moderation } from './nostr/store';
 import { moderationOf } from './moderation-lists';
 
-export interface RemoteOptions { fetchFn?: typeof fetch; announcement: Announcement; onModeration?: (m: Moderation) => void }
+interface RemoteOptions { fetchFn?: typeof fetch; announcement: Announcement; onModeration?: (m: Moderation) => void }
 
 /** Mobile only needs the announcement and moderation, not the scene schedule. */
 export function createRemote(o: RemoteOptions) {

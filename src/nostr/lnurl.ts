@@ -7,8 +7,8 @@ import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import { bolt11ToMsats } from './zap';
 import type { Post } from './types';
 
-export type ProfileLoader = (pubkey: string) => Promise<NostrEvent | null>;
-export type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<any> }>;
+type ProfileLoader = (pubkey: string) => Promise<NostrEvent | null>;
+type FetchLike = (url: string) => Promise<{ ok: boolean; json(): Promise<any> }>;
 
 /** Deadline covers both headers and body, so a slow endpoint cannot hold a validation slot forever. */
 const fetchLnurl: FetchLike = async (url) => {

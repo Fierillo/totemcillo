@@ -1,6 +1,6 @@
 import { graphemes } from './text';
 
-export const MAX_ANNOUNCEMENT = 280;
+const MAX_ANNOUNCEMENT = 280;
 
 /** Announcement text (the admin changes it live). */
 export class Announcement {
