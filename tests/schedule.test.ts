@@ -9,15 +9,15 @@ import { Announcement } from '../src/announcement';
 import type { Scene } from '../src/scenes/types';
 import { videoScene } from '../src/scenes/video';
 
-const D = { post: 1000, latestZaps: 2000, top10Historico: 1000, top10Ultimas3h: 1000, anuncio: 1000 }; // base 6000
+const D = { post: 1000, batalla: 2000, anuncio: 3000 }; // base 6000
 const S = (o: Partial<Settings> = {}): Settings => ({ ...DEFAULT_SETTINGS, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 10, epoch: 100_000, ...o });
 
 describe('positionAt (determinístico)', () => {
   it('recorre escenas con sus duraciones; la vuelta 0 incluye video, la 1 no', () => {
     const s = S();
     expect(positionAt(s, 100_000)).toEqual({ scene: 'post', index: 0, cycle: 0, sceneStartedAt: 100_000, sceneEndsAt: 101_000 });
-    expect(positionAt(s, 102_999)).toMatchObject({ scene: 'latestZaps', index: 1, sceneStartedAt: 101_000, sceneEndsAt: 103_000 });
-    expect(positionAt(s, 106_500)).toEqual({ scene: 'video', index: 5, cycle: 0, sceneStartedAt: 106_000, sceneEndsAt: 116_000, videoOffset: 0 });
+    expect(positionAt(s, 102_999)).toMatchObject({ scene: 'batalla', index: 1, sceneStartedAt: 101_000, sceneEndsAt: 103_000 });
+    expect(positionAt(s, 106_500)).toEqual({ scene: 'video', index: 3, cycle: 0, sceneStartedAt: 106_000, sceneEndsAt: 116_000, videoOffset: 0 });
     expect(positionAt(s, 116_000)).toMatchObject({ scene: 'post', cycle: 1, sceneStartedAt: 116_000 });
     expect(positionAt(s, 121_000)).toMatchObject({ scene: 'anuncio', cycle: 1 });
     expect(positionAt(s, 122_000)).toMatchObject({ scene: 'post', cycle: 2, sceneStartedAt: 122_000 }); // no video in cycle 1
@@ -51,7 +51,7 @@ describe('flechas: shiftSchedule', () => {
   it('next arranca la escena siguiente ahora; prev la anterior', () => {
     const s = S();
     const n = shiftSchedule(s, 100_500, 'next');
-    expect(positionAt(n, 100_500)).toMatchObject({ scene: 'latestZaps', sceneStartedAt: 100_500, sceneEndsAt: 102_500 });
+    expect(positionAt(n, 100_500)).toMatchObject({ scene: 'batalla', sceneStartedAt: 100_500, sceneEndsAt: 102_500 });
     const p = shiftSchedule(n, 101_000, 'prev');
     expect(positionAt(p, 101_000)).toMatchObject({ scene: 'post', sceneStartedAt: 101_000 });
     const pp = shiftSchedule(s, 100_200, 'prev'); // before post: announcement from the previous cycle
@@ -62,9 +62,9 @@ describe('flechas: shiftSchedule', () => {
 describe('reanchor al cambiar duraciones', () => {
   it('la escena actual conserva su inicio', () => {
     const s = S();
-    const cur = positionAt(s, 101_500); // latestZaps since 101_000
+    const cur = positionAt(s, 101_500); // batalla since 101_000
     const next = reanchor(s, { ...s, sceneDurations: { ...D, post: 5000 } }, 101_500);
-    expect(positionAt(next, 101_500)).toMatchObject({ scene: 'latestZaps', sceneStartedAt: cur.sceneStartedAt, sceneEndsAt: 103_000 });
+    expect(positionAt(next, 101_500)).toMatchObject({ scene: 'batalla', sceneStartedAt: cur.sceneStartedAt, sceneEndsAt: 103_000 });
   });
 });
 
@@ -78,7 +78,7 @@ describe('/api/kiosk (sólo lectura)', () => {
   it('GET devuelve las entradas de la agenda, anuncio y versión (sin hora: es cacheable)', async () => {
     const r = await handle(req('GET', '/api/kiosk'), deps());
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [], zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE });
+    expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'clip', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [], zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE });
   });
   it('GET /api/version: diminuto y cacheable unos segundos en el CDN', async () => {
     const r = await handle(req('GET', '/api/version'), deps());
@@ -114,13 +114,13 @@ describe('/api/kiosk (sólo lectura)', () => {
     expect(v.ok && 'epoch' in v.patch).toBe(false);
   });
   it('cambiar duraciones re-ancla: la escena actual no salta', async () => {
-    let now = 1_234_567;
+    const now = 1_234_567;
     const d = deps({ now: () => now });
     const login = await handle(req('POST', '/api/login', { password: PASS }), d);
     const cookie = String(login.headers['set-cookie']).split(';')[0];
     const pos = async () => positionAt((await handle(req('GET', '/api/kiosk'), d)).body as any, now);
     const before = await pos();
-    await handle(req('PUT', '/api/settings', { sceneDurations: { post: 60000, latestZaps: 60000, top10Historico: 60000, top10Ultimas3h: 60000, anuncio: 60000 } }, { cookie }), d);
+    await handle(req('PUT', '/api/settings', { sceneDurations: { post: 60000, batalla: 60000, anuncio: 60000 } }, { cookie }), d);
     const after = await pos();
     expect([after.scene, after.sceneStartedAt]).toEqual([before.scene, before.sceneStartedAt]);
   });
@@ -140,7 +140,7 @@ afterEach(() => vi.useRealTimers());
 describe('Follower: agenda local, el servidor manda', () => {
   // base 6000 ms + 10 s video in cycle 0 (see D)
   const inputs = (o: object = {}) => ({ epoch: 0, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: 'hola', version: 1, serverNow: 500, ...o });
-  const names = ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio'];
+  const names = ['post', 'batalla', 'anuncio'];
   const scenes = () => [...names.map(mk), videoScene('/v.webm')];
   // /api/kiosk (cacheable) carries no time; the time comes from /api/time (no cache). Fixture serverNow = server time.
   const api = (k: any, version?: { version: number }) => {
@@ -162,7 +162,7 @@ describe('Follower: agenda local, el servidor manda', () => {
     expect(root.textContent).toBe('post');
     expect(ann.text).toBe('hola');
     await vi.advanceTimersByTimeAsync(600);
-    expect(root.textContent).toBe('latestZaps');
+    expect(root.textContent).toBe('batalla');
     await vi.advanceTimersByTimeAsync(4000);
     expect(root.textContent).toBe('anuncio');
     expect(urls(f)).toEqual(LOAD);
@@ -286,7 +286,7 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
     let t = 7000;
     const inputs = { epoch: 0, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: '', version: 1 };
     const f = vi.fn(async (url: string) => ({ ok: true, json: async () => (url === '/api/time' ? { now: t } : url.startsWith('/api/kiosk') ? inputs : { version: 1 }) }));
-    const names = ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio'];
+    const names = ['post', 'batalla', 'anuncio'];
     await new Follower(root, [...names.map(mk), videoScene('/v.webm')], { fetchFn: f as any, clock: () => t, pollMs: 21_000 }).start();
     const v = root.querySelector('video')!;
     meta(v, 10);

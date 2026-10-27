@@ -50,7 +50,7 @@ if (isMobileViewport()) {
   const strip = document.getElementById('live-strip');
   if (strip) feedFor(store).onMiss((e) => showIndicator(strip, e)); // 💬 in the lower band if the post is not on screen
   // One schedule load + a version check every settingsPollMs (includes the announcement).
-  follower = new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate });
+  follower = new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin, canZap), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate });
   void follower.start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }

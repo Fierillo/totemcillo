@@ -1,9 +1,9 @@
 import type { LiveEvent, ZapStore } from './nostr/store';
 
 export const MAX_PENDING = 10;
-export const INDICATOR_MS = 1500;
-/** Scenes where each event type's target can be visible (pending expires once all were checked; latestZaps also takes pending zaps). */
-export const TARGET_SCENES: Record<LiveEvent['type'], readonly string[]> = { post: ['post'], zap: ['post', 'top10Historico', 'top10Ultimas3h'] };
+const INDICATOR_MS = 1500;
+/** Scenes where each event type's target can be visible (pending expires once all were checked; the battle also takes pending zaps). */
+export const TARGET_SCENES: Record<LiveEvent['type'], readonly string[]> = { post: ['post'], zap: ['post', 'batalla'] };
 
 interface Handler { name: string; kinds: LiveEvent['type'][]; visible: (postId: string) => boolean; mark: (e: LiveEvent) => void }
 interface Pending extends LiveEvent { checked: Set<string> }

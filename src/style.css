@@ -22,7 +22,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   text-align: center; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
 
 /* Post scene: list + app QR */
-.scene-post { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); align-items: stretch; }
+.scene-post { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); align-items: stretch; position: relative; }
 .posts, .empty-state { min-width: 0; min-height: 0; overflow: hidden; }
 .post-list { list-style: none; min-height: 0; overflow: hidden; height: 100%; }
 .post-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8em; align-items: start; padding: .55em .9em; border-bottom: 1px solid #222; min-width: 0; }
@@ -46,7 +46,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.6vh, 22px); margin-top: .25em; line-height: 1.2; }
 
 /* Content uses the full width; fitRegions reserves only the QR's actual rectangle. */
-.scene-anuncio, .scene-latestZaps, .scene-top10Historico, .scene-top10Ultimas3h { grid-template-columns: minmax(0, 1fr); }
+.scene-anuncio, .scene-batalla { grid-template-columns: minmax(0, 1fr); }
 [data-fit="text"]::before { content: ''; float: right; width: var(--qr-flow-width, 0px); height: var(--qr-flow-height, 0px); shape-outside: inset(var(--qr-flow-top, 0px) 0 0 0); }
 
 @media (orientation: portrait) {
@@ -188,25 +188,43 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .wallet-qr { width: min(100%, 16rem); justify-self: center; padding: .5rem; border: 0; border-radius: 2px; background: #fff; cursor: copy; }
 .wallet-qr svg { display: block; width: 100%; height: auto; }
 
-/* Latest zaps scene */
-.scene-latestZaps { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zap-list { list-style: none; min-height: 0; overflow: hidden; }
-.zap-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1em; align-items: center; padding: .35em 0; border-bottom: 1px solid #222; }
-.amount { color: var(--accent); font-weight: 900; text-align: right; white-space: nowrap; overflow: hidden; }
-.who { min-width: 0; overflow: hidden; overflow-wrap: anywhere; font-size: .7em; } /* sender + message at 70%; the amount keeps the list size */
-.who-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* anonymous zap message: one line with … */
-.who small { display: block; color: var(--muted); font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zap-list li > .muted { white-space: nowrap; }
-
-
-/* Top 10 scenes */
-.scene-top10Historico, .scene-top10Ultimas3h { display: grid; grid-template-rows: auto minmax(0, 1fr); }
-.top-title { min-width: 0; overflow: hidden; white-space: nowrap; line-height: 1.45; }
-.top-list { list-style: none; min-height: 0; overflow: hidden; }
-.top-list .post-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+.scene-batalla h1 { font-size: clamp(24px, min(6vh, 4.2vw), 90px); }
 .rank { color: var(--accent); font-weight: 900; }
-.top-list .excerpt { white-space: nowrap; text-overflow: ellipsis; } /* one line, cut with … at the row-main edge (where "hace X" ends) */
+
+/* Zap battle: keyed bars; position (--rank) and width animate on every live zap */
+.scene-batalla { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.batalla-wrap { position: relative; min-height: 0; margin-right: calc(min(28vh, 18vw) + 1.5em); display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.batalla-aviso { min-height: 1.4em; text-align: center; color: #ffe27a; font-weight: 800; font-size: .8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.batalla-aviso .author { color: inherit; }
+.batalla-aviso.is-on { animation: aviso-in .4s var(--ease-out-soft); }
+@keyframes aviso-in { from { opacity: 0; transform: translateY(-.4em); } }
+.batalla { list-style: none; position: relative; min-height: 0; height: 100%; }
+.batalla > li { position: absolute; left: 0; right: 0; --slot: calc((100% - (var(--n, 6) - 1) * var(--gap, 8px)) / var(--n, 6)); top: calc(var(--rank, 0) * (var(--slot) + var(--gap, 8px))); height: var(--slot); padding: 0;
+  display: grid; grid-template-rows: auto auto; grid-template-columns: minmax(0, 1fr) auto; column-gap: .6em; gap: .15em; align-content: center; overflow: hidden; container-type: size; transition: top .7s var(--ease-out-soft); }
+/* Rank + author inline at the start of the message: only color and weight set them apart */
+.bar-label { color: var(--accent); font-weight: 800; margin-right: .4em; }
+.bar-label .rank { margin-right: .3em; }
+.bar-label .avatar { display: inline-block; width: 1em; height: 1em; margin-right: .3em; vertical-align: -.15em; }
+.bar-label .author { display: inline; color: inherit; font-weight: inherit; vertical-align: baseline; }
+/* The message is the protagonist; the bar is a thin neon line under it */
+.bar-msg { grid-column: 1 / -1; overflow: hidden; font-size: clamp(14px, min(18cqh, 3.6cqw), 44px); font-weight: 600; line-height: 1.4; padding-block: .15em; min-height: 1.7em; max-height: 3.1em; color: var(--fg); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.bar-track { grid-column: 1 / -1; position: relative; display: flex; align-items: center; gap: .5em; min-height: 0; font-size: clamp(11px, 12cqh, 26px); line-height: 1.4; margin-top: .25em; }
+.bar-fill { height: 3px; min-width: .4em; border-radius: 2px; background: linear-gradient(90deg, #6f9a1f, var(--accent)); box-shadow: 0 0 .6em #c7ff5b55; transition: width .7s var(--ease-out-soft); }
+.bar-sats { color: var(--accent); font-weight: 900; white-space: nowrap; }
+.bar-sats .m-bolt { width: .75em; height: 1em; vertical-align: -.12em; }
+.is-hinchada .bar-fill { animation: hinchada 1.2s var(--ease-out-soft); }
+@keyframes hinchada { 30% { transform: scaleY(2.5); box-shadow: 0 0 1.4em var(--accent); } }
+.globo { position: absolute; right: 0; top: 0; z-index: 2; max-width: 60%; padding: .3em .7em; border-radius: 1em; background: #fff; color: #0b0d0a; font-size: .6em; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 .2em .8em #000a; animation: globo-in .3s var(--ease-out-soft); }
+@keyframes globo-in { from { opacity: 0; transform: scale(.6); } }
+@media (orientation: portrait) { .batalla-wrap { margin-right: 0; margin-bottom: calc(min(22vh, 42vw) + 2.5em); } }
+/* Short bars (small / low windows): fewer lines instead of clipped glyphs */
+@container (max-height: 90px) { .bar-msg { max-height: 1.7em; } }
+/* Only one bar fits and it is shorter than BAR_MIN_PX: sats beside the text, never shrink the text */
+@container (max-height: 45px) { .bar-msg { grid-column: 1; grid-row: 1; } .bar-track { position: static; grid-column: 2; grid-row: 1; margin-top: 0; } .bar-fill { position: absolute; left: 0; bottom: 0; } }
+@media (prefers-reduced-motion: reduce) { .batalla > li, .bar-fill { transition: none; } .is-hinchada .bar-fill, .globo, .batalla-aviso.is-on { animation: none; } }
 
 /* Video */
 .scene-video { padding: 0; background: #000; display: grid; }
@@ -221,7 +239,6 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   100% { box-shadow: inset 0 0 0 2px transparent, 0 0 0 transparent; background: transparent; }
 }
 .is-zapped { animation: zap-shake 1.1s steps(10) var(--fx-leader), zap-flash var(--fx-glow) ease-out var(--fx-leader); } /* --fx-leader: when the strike's leader lands */
-.post-list, .top-list { padding: 0 .3em; }
 @keyframes zap-flash {
   0% { background: rgba(255, 238, 120, .55); }
   8% { background: rgba(255, 238, 120, .05); }
@@ -262,7 +279,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   100% { opacity: 0; transform: translate(-50%, 45%) scale(1); }
 }
 /* Amount pop at the strike's impact (--fx-leader): scale + accent glow; transform only, so the layout never moves. */
-.is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { transform-origin: right center; animation: total-pop 2.2s var(--ease-out-soft) var(--fx-leader); }
+.is-zapped .row-total, .is-zapped .m-total { transform-origin: right center; animation: total-pop 2.2s var(--ease-out-soft) var(--fx-leader); }
 .is-zapped .m-total { transform-origin: left center; }
 @keyframes total-pop {
   0% { transform: scale(1); }
@@ -273,7 +290,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 @media (prefers-reduced-motion: reduce) {
   .is-new, .is-mobile .m-post.is-new { animation: glow var(--fx-glow) ease-out; }
   .is-zapped { animation: zap-flash var(--fx-glow) ease-out; }
-  .is-zapped .row-total, .is-zapped .m-total, .is-zapped .amount { animation: none; }
+  .is-zapped .row-total, .is-zapped .m-total { animation: none; }
   .strike { display: none; } /* just the row highlight, no strike */
   .strike-gain { animation: gain-fade 2.3s ease-out forwards; } /* the amount still shows, without moving */
   @keyframes gain-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -297,7 +314,6 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .alias { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .row-meta > .author { flex: 0 1 auto; }
 .row-meta > .ago { flex: 0 0 auto; }
-.who .author { max-width: 60%; }
 
 /* Skeleton shimmer: after .avatar so its background wins on the loading avatar. */
 .skel { display: block; border-radius: .35rem; background: linear-gradient(90deg, #171c13 25%, #242c1c 37%, #171c13 63%); background-size: 400% 100%; animation: skel 1.4s ease infinite; }
@@ -314,3 +330,35 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .m-splash-msg { margin: 0; color: var(--muted); font-size: .85rem; letter-spacing: .05em; }
 @keyframes splash-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .m-splash-bolt .m-bolt { animation: none; } }
+
+/* Messages: floating boxes sized by their content (a long message stretches its box up to --box-max-w and
+   --box-lines lines; then fitBoxes shrinks its font and only then truncates). The QR keeps its own room. */
+.scene-post .posts { margin-right: 0; } /* full width: the list's .qr-slot reserves only the QR's corner */
+.post-list[data-boxes] { --box-min-w: 14em; /* narrower cells (was 16em): more boxes, none oversized */ --box-lines: 3; --box-lh: 1.5em; --box-gap: .6em;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--box-min-w), 100%), 1fr));
+  grid-template-rows: repeat(var(--rows, 1), minmax(0, 1fr)); /* truly equal rows: a tall box can't stretch its track and push the QR's reserved corner off */ grid-auto-rows: 0; grid-auto-flow: row; /* reading order = message order (no dense refill); fitBoxes picks the rows (they share the height); a box past them does not fit */ gap: var(--box-gap); padding: .4em; }
+.post-list[data-boxes] > .post-row { display: block; min-width: 0;
+  padding: .6em .9em; border: 1px solid #2c2c2c; border-radius: .5em;
+  background: linear-gradient(160deg, #151515, #0c0c0c); box-shadow: 0 .3em 1em rgba(0, 0, 0, .55);
+  animation: bob 7s ease-in-out calc(var(--i, 0) * -1.7s) infinite alternate; }
+.post-list[data-boxes] > .post-row:nth-child(3n + 2) { animation-duration: 8.5s; }
+.post-list[data-boxes] > .post-row:nth-child(3n) { animation-duration: 9.6s; }
+.post-list[data-boxes] > .qr-slot { list-style: none; } /* placed by fitBoxes under the QR */
+.post-list[data-boxes] > [hidden] { display: none; } /* the QR slot off, or a box fitBoxes is trying without */
+.post-list[data-boxes] > .post-row.is-long { grid-row: span 2; } /* a long message stretches to two rows before its font shrinks */
+.post-list[data-boxes] > .post-row.is-long .excerpt { max-height: calc((var(--box-lines) * 2 + 1) * var(--box-lh)); }
+.post-list[data-boxes] .row-main { font-size: 1em; } /* the list font is the message font */
+.post-list[data-boxes] .row-meta { gap: .6em; align-items: baseline; }
+.post-list[data-boxes] .row-meta > .author { min-width: 4em; } /* a narrow box keeps the avatar and the start of the name */
+.post-list[data-boxes] .row-meta > .ago { flex: 0 1 auto; min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* the age gives way first */
+.post-list[data-boxes] .row-total { font-size: 1em; } /* sats on the header line, same size as the message */
+.post-list[data-boxes] .excerpt { line-height: var(--box-lh); max-height: calc(var(--box-lines) * var(--box-lh)); } /* 1.5: at the small fonts the glyphs (accents, emoji) are taller than a 1.4 line */
+.post-list[data-boxes] > .post-row.is-new { animation: slide-in 1.3s var(--ease-out-soft) both, glow var(--fx-glow) ease-out; }
+.post-list[data-boxes] > .post-row.is-zapped { animation: zap-shake 1.1s steps(10) var(--fx-leader), zap-flash var(--fx-glow) ease-out var(--fx-leader); }
+@keyframes bob { 0% { transform: translate(0, 0); } 35% { transform: translate(.18em, -.3em); } 70% { transform: translate(-.15em, -.1em); } 100% { transform: translate(.08em, .25em); } }
+@media (orientation: portrait) {
+  .scene-post .posts { margin-right: 0; margin-bottom: calc(min(22vh, 42vw) + 2.5em); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-list[data-boxes] > .post-row { animation: none; }
+}

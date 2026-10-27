@@ -107,7 +107,7 @@ describe('POST /api/moderation (admin)', () => {
     await mod(d, c, { action: 'hide', id: H('a') });
     r = await mod(d, c, { action: 'ban', id: H('b') });
     expect((r.body as any)).toMatchObject({ hiddenPosts: [H('a')], bannedPubkeys: [H('b')], version: 3 });
-    r = await mod(d, c, { action: 'unhide', id: H('a') });
+    await mod(d, c, { action: 'unhide', id: H('a') });
     r = await mod(d, c, { action: 'unban', id: H('b') });
     expect((r.body as any)).toMatchObject({ hiddenPosts: [], bannedPubkeys: [] });
   });
@@ -172,7 +172,7 @@ describe('ZapStore con moderación', () => {
 describe('las listas llegan al tótem y al celular por el flujo existente', () => {
   afterEach(() => vi.useRealTimers());
   it('Follower pasa hiddenPosts/bannedPubkeys de /api/kiosk', async () => {
-    const k = { epoch: 0, sceneDurations: { post: 5000, latestZaps: 5000, top10Historico: 5000, top10Ultimas3h: 5000, anuncio: 5000 }, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: '', version: 1, hiddenPosts: [H('a')], bannedPubkeys: [H('b')] };
+    const k = { epoch: 0, sceneDurations: { post: 5000, batalla: 5000, anuncio: 5000 }, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: '', version: 1, hiddenPosts: [H('a')], bannedPubkeys: [H('b')] };
     const f = vi.fn(async (url: string) => ({ ok: true, json: async () => (url.startsWith('/api/kiosk') ? k : url === '/api/time' ? { now: 500 } : { version: 1 }) }));
     const onModeration = vi.fn();
     await new Follower(document.createElement('div'), [], { fetchFn: f as any, clock: () => 500, pollMs: 30_000, onModeration }).start();

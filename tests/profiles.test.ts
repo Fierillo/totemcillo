@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfileCache, profiles, configureProfiles, authorHtml, installAvatarFallback, PLACEHOLDER_CLASS } from '../src/nostr/profiles';
 import { ZapStore } from '../src/nostr/store';
 import { postScene } from '../src/scenes/post';
-import { latestZapsScene } from '../src/scenes/latestZaps';
-import { topScene } from '../src/scenes/top';
+import { batallaScene } from '../src/scenes/batalla';
 import { renderMobile } from '../src/mobile';
 import { Announcement } from '../src/announcement';
 import { defaultConfig } from '../src/config';
@@ -174,14 +173,13 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
     profiles.configure({ query });
     return { store, a, z };
   };
-  it('post, top, últimos zaps y móvil', async () => {
+  it('mensajes, batalla y móvil', async () => {
     const { store } = setup();
-    const roots = [document.createElement('div'), document.createElement('div'), document.createElement('div'), document.createElement('div')];
+    const roots = [document.createElement('div'), document.createElement('div'), document.createElement('div')];
     const cleanups = [
       postScene(store, { publicUrl: 'https://x/' }).render(roots[0]),
-      topScene({ name: 'top10Historico', title: 'T', store, since: () => 0 }).render(roots[1]),
-      latestZapsScene(store).render(roots[2]),
-      renderMobile(roots[3], store, defaultConfig, new Announcement('')),
+ batallaScene(store, 3, undefined, undefined, () => 102_000).render(roots[1]),
+      renderMobile(roots[2], store, defaultConfig, new Announcement('')),
     ];
     try {
       for (const r of roots) {
@@ -189,11 +187,10 @@ describe('escenas y móvil muestran alias + avatar (y se actualizan al llegar el
         expect(r.textContent).not.toContain('…');
       }
       await vi.advanceTimersByTimeAsync(1000);
-      for (const r of [roots[0], roots[1], roots[3]]) {
+      for (const r of [roots[0], roots[1], roots[2]]) {
         expect([...r.querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Autora');
         expect(r.querySelector('img.avatar')).not.toBeNull();
       }
-      expect([...roots[2].querySelectorAll('.alias')].map((e) => e.textContent)).toContain('Zapeador');
     } finally { cleanups.forEach((cleanup) => cleanup?.()); }
   });
 });

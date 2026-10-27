@@ -50,9 +50,9 @@ describe('botones de simulación (solo desarrollo)', () => {
 
   describe('flechas de escena (locales) y ▷ reloj', () => {
     // base 6000 ms + 10 s video every 2 cycles: period 22 s; at t=500 the clock says "post"
-    const D = { post: 1000, latestZaps: 2000, top10Historico: 1000, top10Ultimas3h: 1000, anuncio: 1000 };
+    const D = { post: 1000, batalla: 2000, anuncio: 3000 };
     const K = { epoch: 0, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full' as const, videoClipSeconds: 21, videoDurationSec: 10, version: 1 };
-    const names = ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio', 'video'];
+    const names = ['post', 'batalla', 'anuncio', 'video'];
     const T0 = 1_700_000_000_000;
     const setup = async () => {
       vi.useFakeTimers();
@@ -71,7 +71,7 @@ describe('botones de simulación (solo desarrollo)', () => {
       try {
         expect(scene.textContent).toBe('post');
         button('▶').click();
-        expect(scene.textContent).toBe('latestZaps');
+        expect(scene.textContent).toBe('batalla');
         button('◀').click();
         button('◀').click(); // before the first scene: the last one of the previous cycle (no video in that cycle)
         expect(scene.textContent).toBe('anuncio');
@@ -89,10 +89,9 @@ describe('botones de simulación (solo desarrollo)', () => {
         await vi.advanceTimersByTimeAsync(3_000);
         button('▷ reloj').click();
         expect(scene.textContent).toBe(positionAt(K, clock()).scene);
-        expect(scene.textContent).toBe('top10Historico');
         expect(button('▷ reloj').disabled).toBe(true);
         await vi.advanceTimersByTimeAsync(1_000);
-        expect(scene.textContent).toBe('top10Ultimas3h'); // following the clock again
+        expect(scene.textContent).toBe(positionAt(K, clock()).scene); // following the clock again
       } finally { fol.stop(); }
     });
 

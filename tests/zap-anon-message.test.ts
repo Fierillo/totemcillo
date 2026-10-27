@@ -4,9 +4,8 @@ import { LnurlResolver } from '../src/nostr/lnurl';
 import { ZapStore, MAX_COMMENT } from '../src/nostr/store';
 import { openZapDialog } from '../src/zap-dialog';
 import { defaultConfig } from '../src/config';
-import { postScene } from '../src/scenes/post';
-import { top10HistoricoScene } from '../src/scenes/top10Historico';
-import { latestZapsScene } from '../src/scenes/latestZaps';
+import { LONG_COMMENT, postScene } from '../src/scenes/post';
+import { batallaScene } from '../src/scenes/batalla';
 import { profiles } from '../src/nostr/profiles';
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');
@@ -67,16 +66,18 @@ describe('mensaje de zap anónimo: dónde se muestra', () => {
     profiles.set('a'.repeat(64), null);
     return s;
   };
-  it('en Últimos zaps: «anónimo — mensaje», en una sola línea recortable', () => {
-    const root = document.createElement('div'), off = latestZapsScene(store()).render(root);
-    const line = root.querySelector<HTMLElement>('.zap-list .who-line')!;
-    expect(line.textContent).toContain('anónimo');
-    expect(line.querySelector('.zap-comment')!.textContent).toBe('mensaje secreto');
-    expect(line.hasAttribute('data-clip')).toBe(true);
+  it('comentario largo: en Mensajes como «anónimo», con el comentario completo', () => {
+    const long = 'x'.repeat(LONG_COMMENT);
+    const s = new ZapStore(); s.addPost(post); profiles.set('a'.repeat(64), null);
+    s.addZap({ id: hex(51), postId: post.id, msats: 21_000, comment: long, created_at: Math.floor(Date.now() / 1000) });
+    const root = document.createElement('div'), off = postScene(s).render(root);
+    const row = root.querySelector('.msg-zap')!;
+    expect(row.textContent).toContain('anónimo');
+    expect(row.querySelector('.excerpt')!.textContent).toBe(long);
     off?.();
   });
-  it('no aparece en posts ni en los Top 10', () => {
-    for (const scene of [postScene(store()), top10HistoricoScene(store())]) {
+  it('comentario corto: no aparece en Mensajes ni en la batalla (fuera de vivo)', () => {
+    for (const scene of [postScene(store()), batallaScene(store())]) {
       const root = document.createElement('div'), off = scene.render(root);
       expect(root.textContent).not.toContain('mensaje secreto');
       off?.();

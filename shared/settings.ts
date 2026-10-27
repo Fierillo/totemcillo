@@ -1,4 +1,4 @@
-export const SCENES = ['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio'] as const;
+export const SCENES = ['post', 'batalla', 'anuncio'] as const;
 export type Action = 'next' | 'prev';
 export interface Settings {
   announcement: string;
@@ -23,11 +23,14 @@ export interface Settings {
 }
 export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
 export const DEFAULT_START_LINE = '2026-10-13T00:00:00-03:00';
-export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'full' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
+export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'clip' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
 export const DEFAULT_SETTINGS: Settings = { ...SCHEDULE_DEFAULTS, announcement: '', sceneDurations: {}, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE };
-/** Default duration of each scene (ms). */
-export const DEFAULT_SCENE_MS: Record<string, number> = Object.fromEntries(SCENES.map((name) => [name, 21000]));
-export const LIMITS = { maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120, maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365 };
+/** Default duration of each scene (ms): messages lead, the zap battle follows, the announcement is a short pause. */
+export const DEFAULT_SCENE_MS: Record<string, number> = { post: 42000, batalla: 28000, anuncio: 10000 };
+export const LIMITS = {
+  maxAnnouncement: 280, minMs: 3000, maxMs: 120000, minEveryCycles: 1, maxEveryCycles: 10, minClipSeconds: 3, maxClipSeconds: 120,
+  maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365,
+};
 
 export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[]; startLine?: string }
 

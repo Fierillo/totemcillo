@@ -3,6 +3,7 @@ import { feedFor } from '../livefeed';
 import { profiles } from '../nostr/profiles';
 import { strike } from '../strike';
 import { sats } from '../util';
+import { FX } from '../fx';
 
 /** Draws now; coalesces store/profile/resize bursts to at most ten updates per second. */
 export function live(store: ZapStore, draw: () => void): () => void {
@@ -59,5 +60,32 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
       gains.clear();
     },
     off,
+  };
+}
+
+/** is-new = glow; is-zapped = the strike's leader, then zap-flash (style.css uses the same FX via --fx-*). */
+const EFFECTS: Record<string, { ms: number; delay: number }> = { 'is-new': { ms: FX.glowMs, delay: 0 }, 'is-zapped': { ms: FX.leaderMs + FX.glowMs, delay: FX.leaderMs } };
+
+/**
+ * Keeps a row's live effect across redraws: `start` records rows that just got is-new / is-zapped,
+ * `resume` re-adds the class on later redraws (profile, canZap) with a negative delay so the animation continues instead of restarting.
+ */
+export function rowEffects(key: (row: HTMLElement) => string, now = () => Date.now()) {
+  const started = new Map<string, number>(); // "rowKey class" → when its effect started
+  return {
+    start(rows: HTMLElement[]) {
+      const t = now();
+      rows.forEach((li) => Object.keys(EFFECTS).forEach((c) => { if (li.classList.contains(c)) started.set(`${key(li)} ${c}`, t); }));
+    },
+    resume(rows: HTMLElement[]) {
+      const t = now();
+      rows.forEach((li) => Object.entries(EFFECTS).forEach(([c, { ms, delay }]) => {
+        const k = `${key(li)} ${c}`, at = started.get(k);
+        if (at === undefined) return;
+        const el = t - at;
+        if (el >= ms) { started.delete(k); return; }
+        if (el > 0) { li.classList.add(c); li.style.animationDelay = `${delay - el}ms`; }
+      }));
+    },
   };
 }

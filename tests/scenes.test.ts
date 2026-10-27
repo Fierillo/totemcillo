@@ -1,11 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore, type LiveEvent } from '../src/nostr/store';
-import { postScene, QR_CAPTION } from '../src/scenes/post';
-import { topScene } from '../src/scenes/top';
-import { top10HistoricoScene } from '../src/scenes/top10Historico';
-import { top10Ultimas3hScene } from '../src/scenes/top10Ultimas3h';
-import { latestZapsScene } from '../src/scenes/latestZaps';
+import { postScene, QR_CAPTION, MAX_BOXES } from '../src/scenes/post';
+import { batallaScene } from '../src/scenes/batalla';
 import { anuncioScene, EMPTY_ANUNCIO } from '../src/scenes/anuncio';
 import { Announcement } from '../src/announcement';
 import { buildScenes } from '../src/scenes';
@@ -23,6 +20,7 @@ const post = (n: number, created_at = NOW - 3600) => ({ id: hex(n), pubkey: 'a'.
 const zap = (n: number, postN: number, created_at = NOW, msats = 21_000) => ({ id: hex(1000 + n), postId: hex(postN), msats, comment: '', created_at });
 const mem = (data: unknown) => { const m = new Map([['totemcillo:v1', JSON.stringify(data)]]); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
 const mkStore = (storage?: any) => new ZapStore(storage, { clock: () => NOW });
+const bat = (s: ZapStore, hours = 3) => batallaScene(s, hours, undefined, undefined, () => NOW * 1000);
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { profiles.clear(); vi.useRealTimers(); document.querySelectorAll('svg.strike, .strike-gain').forEach((e) => e.remove()); });
@@ -66,6 +64,7 @@ describe('animación de post nuevo en la lista', () => {
     const root = document.createElement('div');
     postScene(s, { publicUrl: 'https://x/' }).render(root);
     s.addPost(post(2, NOW - 2));
+    vi.advanceTimersByTime(3600); // its effect is over
     s.addPost(post(3)); // redraw from another change (history)
     vi.advanceTimersByTime(100);
     expect(root.querySelector('.is-new')).toBeNull();
@@ -96,19 +95,6 @@ describe('animación de zap (rayo) en la fila visible', () => {
     expect(r.querySelector('.row-total')!.textContent).toContain('2.100');
     expect(root.querySelectorAll('.is-zapped')).toHaveLength(1);
   });
-  it('últimos zaps: cae el rayo sobre la fila del zap nuevo (no las viejas del mismo post) y su monto resalta', () => {
-    const s = mkStore();
-    s.addPost(post(1));
-    s.addZap(zap(1, 1, NOW - 3600));
-    const root = document.createElement('div');
-    latestZapsScene(s).render(root);
-    s.addZap(zap(2, 1, NOW - 1, 50_000));
-    const [fresh, old] = root.querySelectorAll('.zap-list li');
-    expect(fresh.classList.contains('is-zapped')).toBe(true);
-    expect(fresh.querySelector('.amount')!.textContent).toBe('50');
-    expect(old.classList.contains('is-zapped')).toBe(false);
-    expect(document.querySelectorAll('svg.strike')).toHaveLength(1);
-  });
   it('el rayo deja "+N sats" con lo que sumó el zap (en vivo y al reponer un pendiente)', () => {
     const s = mkStore();
     s.addPost(post(1));
@@ -122,38 +108,36 @@ describe('animación de zap (rayo) en la fila visible', () => {
   it('totales acumulados: el número parpadea hasta que el backfill termina', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addZap(zap(1, 1, NOW - 3600, 2_100_000));
-    const posts = document.createElement('div'), top = document.createElement('div'), latest = document.createElement('div');
+    const posts = document.createElement('div'), top = document.createElement('div');
     postScene(s, { publicUrl: 'https://x/' }).render(posts);
-    topScene({ name: 'top10Historico', title: 'T', store: s, since: () => 0 }).render(top);
-    latestZapsScene(s).render(latest);
+    bat(s).render(top);
     expect(posts.querySelector('.row-total .pending')!.textContent).toBe('2.100 sats');
     expect(posts.querySelector('.row-total')!.textContent).toContain('2.100');
-    expect(top.querySelector('.row-total .pending')!.textContent).toBe('2.100 sats');
-    expect(top.querySelector('.row-total')!.textContent).toBe('⚡ 2.100 sats');
-    expect(latest.querySelector('.pending')).toBeNull();
+    expect(top.querySelector('.bar-sats .pending')!.textContent).toBe('2.100 sats');
+    expect(top.querySelector('.bar-sats')!.textContent).toBe(' 2.100 sats');
     s.setReady();
     expect(posts.querySelector('.pending')).toBeNull();
     expect(top.querySelector('.pending')).toBeNull();
   });
-  it('top: anima la fila si el post está listado; zap viejo no anima', () => {
+  it('batalla: rayo real sobre la barra del post zapeado; zap viejo no anima', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addPost(post(2));
     s.addZap(zap(1, 2, NOW - 3600));
     const root = document.createElement('div');
-    topScene({ name: 'top10Historico', title: 'T', store: s, since: () => 0 }).render(root);
-    expect(root.querySelector('.is-zapped')).toBeNull();
+    bat(s).render(root);
+    expect(document.querySelector('svg.strike')).toBeNull();
     s.addZap(zap(2, 1, NOW - 1));
-    const li = root.querySelector(`li[data-id="${hex(1)}"]`)!;
-    expect(li.classList.contains('is-zapped')).toBe(true);
+    expect(root.querySelector(`li[data-id="${hex(1)}"]`)).not.toBeNull();
     expect(document.querySelector('svg.strike')).not.toBeNull();
   });
-  it('zap a un post que no está en pantalla: nada se anima', () => {
+  it('zap a un post que no estaba en pantalla: entra primero (arriba a la izquierda) y se anima ahí', () => {
     const s = mkStore();
-    for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
+    for (let i = 1; i <= MAX_BOXES + 3; i++) s.addPost(post(i, NOW - 3600 + i));
     const root = document.createElement('div');
-    postScene(s, { publicUrl: 'https://x/' }).render(root); // shows the 6 newest: 3..8
+    postScene(s, { publicUrl: 'https://x/' }).render(root); // shows the MAX_BOXES newest: post 1 is out
     s.addZap(zap(1, 1, NOW - 1));
-    expect(root.querySelector('.is-zapped')).toBeNull();
+    expect(root.querySelector<HTMLElement>('.post-row')!.dataset.id).toBe(hex(1));
+    expect(root.querySelector<HTMLElement>('.is-zapped')!.dataset.id).toBe(hex(1));
   });
 });
 
@@ -175,7 +159,7 @@ describe('demo (sólo dev): window.__totemDemo', () => {
 
 describe('pendientes + indicador abajo cuando el objetivo no está en pantalla', () => {
   const postSc = (s: ZapStore) => { const r = document.createElement('div'); const off = postScene(s, { publicUrl: 'https://x/' }).render(r) as () => void; return { r, off }; };
-  const topSc = (s: ZapStore, name = 'top10Historico') => { const r = document.createElement('div'); const off = topScene({ name, title: 'T', store: s, since: () => 0 }).render(r) as () => void; return { r, off }; };
+  const topSc = (s: ZapStore) => { const r = document.createElement('div'); const off = bat(s).render(r) as () => void; return { r, off }; };
   it('zap con otra escena (anuncio/video): indicador ⚡ abajo y pendiente; al entrar a posts, rayo en esa fila', () => {
     const s = mkStore();
     s.addPost(post(1));
@@ -190,13 +174,11 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     expect(document.querySelector('svg.strike')).not.toBeNull();
     expect(feedFor(s).pending).toHaveLength(0);
   });
-  it('zap con otra escena: al entrar a últimos zaps se repite ahí con el rayo', () => {
+  it('zap con otra escena: al entrar a la batalla se repite ahí con el rayo', () => {
     const s = mkStore();
     s.addPost(post(1));
     s.addZap(zap(1, 1, NOW - 1));
-    const r = document.createElement('div');
-    latestZapsScene(s).render(r);
-    expect(r.querySelector('.zap-list li')!.classList.contains('is-zapped')).toBe(true);
+    topSc(s);
     expect(document.querySelector('svg.strike')).not.toBeNull();
     expect(feedFor(s).pending).toHaveLength(0);
   });
@@ -237,32 +219,33 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     s.addZap(zap(2, 1, NOW - 1));
     expect(seen).toEqual(['miss']);
   });
-  it('escena visible pero sin esa fila (ej. top sin el post): indicador + pendiente', () => {
+  it('escena visible pero sin esa fila (ej. batalla sin el post): indicador + pendiente', () => {
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     topSc(s);
     const ind: string[] = [];
     feedFor(s).onMiss((e) => ind.push(e.type));
-    s.addPost(post(20, NOW - 1)); // the top scene doesn't show new posts
+    s.addPost(post(20, NOW - 1)); // the battle doesn't show new posts
     expect(ind).toEqual(['post']);
   });
-  it('zap a post que no está en posts: sigue pendiente para los tops y se anima ahí', () => {
+  it('zap a post que no está en mensajes: sigue pendiente para la batalla y se anima ahí', () => {
     const s = mkStore();
-    for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i)); // posts shows 3..8
-    s.addZap(zap(1, 1, NOW - 1));
+    for (let i = 1; i <= MAX_BOXES + 3; i++) s.addPost(post(i, i === 1 ? NOW - 3600 : NOW - 1)); // messages shows the newest MAX_BOXES: post 1 is out
+    s.addZap(zap(1, 1, NOW - 2)); // its zap is older than every shown post: it doesn't move it up
     postSc(s).off();
     expect(feedFor(s).pending).toHaveLength(1);
     const { r } = topSc(s);
-    expect(r.querySelector(`li[data-id="${hex(1)}"]`)!.classList.contains('is-zapped')).toBe(true);
+    expect(r.querySelector(`li[data-id="${hex(1)}"]`)).not.toBeNull();
+    expect(document.querySelector('svg.strike')).not.toBeNull();
     expect(feedFor(s).pending).toHaveLength(0);
   });
   it('vence si su post no aparece en ninguna escena que le corresponde', () => {
     const s = mkStore();
     for (let i = 1; i <= 8; i++) s.addPost(post(i, NOW - 3600 + i));
     s.addZap(zap(1, 1, NOW - 1));
-    // tops with an empty window (future since) → not shown
+    // battle with an empty window (from the future) → not shown
     postSc(s).off();
-    for (const n of ['top10Historico', 'top10Ultimas3h']) { const r = document.createElement('div'); (topScene({ name: n, title: 'T', store: s, since: () => NOW + 10 }).render(r) as () => void)(); }
+    (batallaScene(s, 3, undefined, undefined, () => (NOW + 4 * 3600) * 1000).render(document.createElement('div')) as () => void)();
     expect(feedFor(s).pending).toHaveLength(0);
   });
   it(`la cola tiene tope (${MAX_PENDING})`, () => {
@@ -301,19 +284,19 @@ describe('renderizado de posts', () => {
   it('pasa del estado vacío a la lista al llegar un post, manteniendo un QR', () => {
     const s = new ZapStore(), root = document.createElement('div');
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
-    expect(root.querySelector('h1')!.textContent).toBe('Últimos posts');
+    expect(root.querySelector('h1')!.textContent).toBe('Últimos mensajes');
     expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay posts con #lacrypta');
     expect(root.querySelectorAll('figure.qr')).toHaveLength(1);
     s.addPost({ ...post(1, 1), content: 'llegó' });
-    expect(root.querySelector('h1')!.textContent).toBe('Últimos posts');
+    expect(root.querySelector('h1')!.textContent).toBe('Últimos mensajes');
     expect(root.querySelector('.empty-msg')).toBeNull();
     expect(excerpts(root)).toEqual(['llegó']);
     cleanup?.();
   });
-  it('lista los seis más recientes, de forma determinística entre renderizados', () => {
-    const s = many(8), a = document.createElement('div'), b = document.createElement('div');
+  it('lista hasta MAX_BOXES de los más recientes, de forma determinística entre renderizados', () => {
+    const n = MAX_BOXES + 3, s = many(n), a = document.createElement('div'), b = document.createElement('div');
     const cleanups = [postScene(s, { publicUrl: URL }).render(a), postScene(s, { publicUrl: URL }).render(b)];
-    expect(excerpts(a)).toEqual(['post 8', 'post 7', 'post 6', 'post 5', 'post 4', 'post 3']);
+    expect(excerpts(a)).toEqual(Array.from({ length: MAX_BOXES }, (_, i) => `post ${n - i}`));
     expect(a.innerHTML).toBe(b.innerHTML);
     cleanups.forEach((cleanup) => cleanup?.());
   });
@@ -324,11 +307,11 @@ describe('renderizado de posts', () => {
     for (let i = 0; i < 4; i++) s.addZap({ ...zap(i, 1, 10 + i, 1_000_000), comment: `comentario${i}` });
     profiles.set('a'.repeat(64), null);
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
-    const [b, a] = [...root.querySelectorAll('.post-row')];
+    const [a, b] = [...root.querySelectorAll('.post-row')]; // its zaps moved post 1 up
     expect(a.querySelector('.excerpt')!.textContent).toBe('Hola <b>mundo</b>');
     expect(a.querySelector('.excerpt b')).toBeNull();
     expect(a.querySelector('.row-total')!.textContent).toContain(sats(4_000_000));
-    expect(b.querySelector('.row-total')!.textContent).toContain('0');
+    expect(b.querySelector('.row-total')!.textContent!.trim()).toBe(''); // unzapped: bare bolt, no "0 sats"
     expect(a.querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
     expect(a.querySelector('.ago')!.textContent).toMatch(/^hace/);
     expect(root.textContent).not.toContain('comentario');
@@ -342,94 +325,12 @@ describe('renderizado de posts', () => {
     profiles.set('<img src=x onerror=alert(1)>', null);
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
     expect(root.querySelector('img')).toBeNull();
-    expect(root.querySelectorAll('svg')).toHaveLength(1);
+    expect(root.querySelectorAll('svg:not(.m-bolt)')).toHaveLength(1);
     expect(root.querySelector('.author')!.textContent).toContain('<img');
     s.addPost({ ...post(9, 999), content: 'nuevo' });
     expect(excerpts(root)[0]).toBe('nuevo');
     cleanup?.(); s.addPost({ ...post(10, 1000), content: 'otro' });
     expect(excerpts(root)[0]).toBe('nuevo');
-  });
-});
-
-describe('rankings', () => {
-  const setup = () => {
-    const s = new ZapStore();
-    for (let i = 0; i < 12; i++) {
-      s.addPost({ ...post(i, 1), content: `Post ${i} <b>x</b>` });
-      s.addZap(zap(i, i, 100 + i, (i + 1) * 1000));
-    }
-    s.addZap({ ...zap(99, 99, 50, 50_000), postId: 'borrado' });
-    return s;
-  };
-  it('muestra título y estado vacío ajustado cuando no hay zaps', () => {
-    const root = document.createElement('div'), cleanup = top10HistoricoScene(new ZapStore()).render(root);
-    expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · histórico');
-    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps en este período');
-    expect(root.querySelector('li')).toBeNull();
-    cleanup?.();
-  });
-  it('ordena diez posts como en Posts (puesto, autor, hace cuánto, extracto escapado y total); excluye huérfanos y actualiza en vivo', () => {
-    profiles.set('a'.repeat(64), null);
-    const s = setup(), root = document.createElement('div'), cleanup = top10HistoricoScene(s).render(root);
-    const rows = root.querySelectorAll('.top-list > .post-row');
-    expect(rows).toHaveLength(10);
-    expect(rows[0].querySelector('.rank')!.textContent).toBe('#1');
-    expect(rows[0].querySelector('.row-total')!.textContent).toBe(`⚡ ${sats(12_000)} sats`);
-    expect(rows[0].querySelector('.ago')!.textContent).toContain('hace');
-    expect(rows[0].querySelector('.excerpt')!.textContent).toBe('Post 11 <b>x</b>');
-    expect(rows[0].querySelector('.author')!.textContent).toBe('aaaaaaaa…aaaa');
-    expect(rows[9].querySelector('.rank')!.textContent).toBe('#10');
-    expect(root.textContent).not.toContain('post no disponible');
-    expect(root.querySelector('.top-list b')).toBeNull();
-    s.addZap(zap(100, 0, 200, 10_000_000));
-    expect(root.querySelector('.top-list li .excerpt')!.textContent).toBe('Post 0 <b>x</b>');
-    cleanup?.();
-  });
-  it('cuenta solo la ventana reciente configurable y muestra vacío al quedar sin zaps recientes', () => {
-    const now = 1_000_000, s = new ZapStore(), root = document.createElement('div');
-    s.addPost({ ...post(1, 1), content: 'A' }); s.addPost({ ...post(2, 1), content: 'B' });
-    s.addZap(zap(1, 1, now - 4 * 3600, 900_000));
-    s.addZap(zap(2, 2, now - 60, 1000)); s.addZap(zap(3, 1, now - 100, 2000));
-    const show = (hours: number, time = now) => top10Ultimas3hScene(s, hours, () => time * 1000).render(root);
-    let cleanup = show(3);
-    expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 3 horas');
-    expect([...root.querySelectorAll('.top-list li')].map((li) => [li.querySelector('.excerpt')!.textContent, li.querySelector('.row-total')!.textContent])).toEqual([['A', `⚡ ${sats(2000)} sats`], ['B', `⚡ ${sats(1000)} sats`]]);
-    cleanup?.(); cleanup = show(6);
-    expect(root.querySelector('h1')!.textContent).toBe('Top 10 zaps · últimas 6 horas');
-    expect(root.querySelector('.row-total')!.textContent).toBe(`⚡ ${sats(902_000)} sats`);
-    cleanup?.(); cleanup = show(3, now + 4 * 3600);
-    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps en este período');
-    cleanup?.();
-  });
-});
-
-describe('últimos zaps', () => {
-  const setup = (n: number) => {
-    const s = new ZapStore(); s.addPost({ ...post(1, 1), content: 'Post A <script>' });
-    for (let i = 0; i < n; i++) s.addZap({ ...zap(i, 1, i, (i + 1) * 1000), comment: i === n - 1 ? 'el último' : '' });
-    return s;
-  };
-  it('muestra estado vacío y los diez más nuevos con comentario y extracto escapado', () => {
-    const root = document.createElement('div');
-    let cleanup = latestZapsScene(setup(0)).render(root);
-    expect(root.querySelector('h1')!.textContent).toContain('Últimos zaps');
-    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps');
-    expect(root.querySelector('li')).toBeNull();
-    cleanup?.(); cleanup = latestZapsScene(setup(12)).render(root);
-    const rows = root.querySelectorAll('.zap-list li');
-    expect(rows).toHaveLength(10);
-    expect(rows[0].querySelector('.amount')!.textContent).toBe(sats(12_000));
-    expect(rows[0].textContent).toContain('el último');
-    expect(rows[0].querySelector('small')!.textContent).toBe('Post A <script>');
-    expect(root.querySelector('script')).toBeNull();
-    cleanup?.();
-  });
-  it('actualiza hasta limpiar', () => {
-    const s = setup(1), root = document.createElement('div'), cleanup = latestZapsScene(s).render(root);
-    s.addZap(zap(20, 2, 50, 99000));
-    expect(root.querySelector('.amount')!.textContent).toBe(sats(99000));
-    cleanup?.(); s.addZap(zap(21, 2, 60, 1000));
-    expect(root.querySelectorAll('.zap-list li')).toHaveLength(2);
   });
 });
 
@@ -460,7 +361,7 @@ describe('composición y QR', () => {
     expect(publicUrlOf({ ...defaultConfig, publicUrl: URL }, 'http://x')).toBe(URL);
     expect(publicUrlOf(defaultConfig, 'https://example.com')).toBe('https://example.com/');
   });
-  it.each(['post', 'latestZaps', 'top10Historico', 'top10Ultimas3h', 'anuncio'])('%s tiene un solo QR de la app incluso vacío', (name) => {
+  it.each(['post', 'batalla', 'anuncio'])('%s tiene un solo QR de la app incluso vacío', (name) => {
     const scene = buildScenes({ ...defaultConfig, publicUrl: URL }, new ZapStore(), new Announcement(''), 'http://x').find((s) => s.name === name)!;
     const root = document.createElement('div'), cleanup = scene.render(root), qr = root.querySelectorAll('figure.qr');
     expect(qr).toHaveLength(1);
@@ -491,21 +392,13 @@ describe('ajuste y ciclo de vida', () => {
   });
   it('ajusta las listas al renderizar y después de un cambio, marcando los mensajes recortables', () => {
     const s = new ZapStore(); s.addPost(post(1, 1)); s.addZap(zap(1, 1, 2));
-    for (const [scene, list, message] of [[postScene(s), '.post-list', '.post-row .excerpt'], [latestZapsScene(s), '.zap-list', '.zap-list .who'], [top10HistoricoScene(s), '.top-list', '.top-list .excerpt']] as const) {
+    for (const [scene, list, message] of [[postScene(s), '.post-list', '.post-row .excerpt']] as const) {
       const root = document.createElement('div'), cleanup = scene.render(root), el = root.querySelector<HTMLElement>(list)!;
-      expect(el.dataset.fit).toBe('list');
+      expect(el.dataset.boxes).toBe('');
       expect(el.style.fontSize).toMatch(/px$/);
       expect(root.querySelector(message)!.hasAttribute('data-clip')).toBe(true);
       s.addZap({ ...zap(10, 1, 3), id: list });
       expect(root.querySelector<HTMLElement>(list)!.style.fontSize).toMatch(/px$/);
-      cleanup?.();
-    }
-  });
-  it('solo los top 10 se achican para mostrar las 10 entradas (data-min); posts y zaps sacan filas', () => {
-    const s = new ZapStore(); s.addPost(post(1, 1)); s.addZap(zap(1, 1, 2));
-    for (const [scene, list, min] of [[postScene(s), '.post-list', undefined], [latestZapsScene(s), '.zap-list', undefined], [top10HistoricoScene(s), '.top-list', '12'], [top10Ultimas3hScene(s, 3, () => 3 * 1000), '.top-list', '12']] as const) {
-      const root = document.createElement('div'), cleanup = scene.render(root);
-      expect(root.querySelector<HTMLElement>(list)!.dataset.min).toBe(min);
       cleanup?.();
     }
   });
@@ -518,5 +411,19 @@ describe('ajuste y ciclo de vida', () => {
     expect(draw).toHaveBeenCalledTimes(3);
     off(); window.dispatchEvent(new Event('resize')); s.addPost(post(2, 1));
     expect(draw).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('el rediseño móvil no toca el tótem de escritorio', () => {
+  it('ninguna escena de escritorio muestra pestañas, feed, ranking ni botón flotante móviles', () => {
+    const s = new ZapStore();
+    s.addPost({ id: 'f'.repeat(64), pubkey: 'a'.repeat(64), content: 'hola #lacrypta', created_at: Math.floor(Date.now() / 1000) });
+    s.addZap({ id: 'e'.repeat(64), postId: 'f'.repeat(64), sender: 'b'.repeat(64), msats: 21_000, comment: '', created_at: Math.floor(Date.now() / 1000) });
+    s.setReady();
+    for (const scene of buildScenes(defaultConfig, s, new Announcement('x'), 'http://x')) {
+      const root = document.createElement('div'), cleanup = scene.render(root);
+      expect(root.querySelector('.m-fab, [data-compose], .m-reel, .m-top, .m-side, .m-tabs'), scene.name).toBeNull();
+      cleanup?.();
+    }
   });
 });
