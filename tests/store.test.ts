@@ -15,6 +15,14 @@ const zap = { id: '1', postId: 'a', msats: 1000, comment: '', created_at: 10 };
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
+describe('guardado tolerante', () => {
+  it('save() no explota si localStorage está lleno o bloqueado', () => {
+    const s = new ZapStore({ getItem: () => null, setItem: () => { throw new DOMException('full', 'QuotaExceededError'); } });
+    expect(() => s.addPost({ id: 'q', pubkey: 'p', content: 'x', created_at: 1 })).not.toThrow();
+    expect(() => s.save()).not.toThrow();
+  });
+});
+
 const filled = () => {
   const s = new ZapStore();
   s.addPost({ id: 'a', pubkey: 'p', content: 'A', created_at: 1 });
@@ -92,6 +100,15 @@ describe('persistencia y notificaciones', () => {
 });
 
 describe('límites de memoria y contenido', () => {
+  it('un post guardado cortado (límite viejo) se completa cuando vuelve a llegar con un límite mayor', () => {
+    const now = Math.floor(Date.now() / 1000), id = 'f'.repeat(64), full = 'palabra '.repeat(60).trim();
+    const s = new ZapStore(undefined, { postMaxChars: 210 });
+    s.addPost({ id, pubkey: 'a'.repeat(64), content: full, created_at: now });
+    const m = new ZapStore(undefined, { postMaxChars: 2000 });
+    m.addPost(s.posts.get(id)!); // as restored from localStorage
+    m.addPost({ id, pubkey: 'a'.repeat(64), content: full, created_at: now }); // from the relays
+    expect(m.posts.get(id)!.content).toBe(full);
+  });
   it('prioriza posts visibles sobre los borrados y sigue descartando por antigüedad entre visibles', () => {
     const s = new ZapStore(undefined, { maxPosts: 2 });
     s.addPost({ ...post, id: 'legitimo', created_at: 1 });

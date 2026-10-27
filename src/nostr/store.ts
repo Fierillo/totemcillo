@@ -8,9 +8,9 @@ const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
 const str = (x: unknown, max: number) => typeof x === 'string' && x.length > 0 && x.length <= max;
 const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 
-export const isPost = (x: any): x is Post =>
+const isPost = (x: any): x is Post =>
   !!x && str(x.id, 64) && str(x.pubkey, 64) && typeof x.content === 'string' && num(x.created_at);
-export const isZap = (x: any): x is Zap =>
+const isZap = (x: any): x is Zap =>
   !!x && str(x.id, 64) && str(x.postId, 64) && num(x.msats) && x.msats > 0 && typeof x.comment === 'string' &&
   num(x.created_at) && (x.sender === undefined || str(x.sender, 64)) &&
   (x.domain === undefined || str(x.domain, 253));
@@ -19,14 +19,14 @@ export const MAX_COMMENT = 280;
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s);
 const clipZap = (z: Zap): Zap => ({ ...z, comment: clip(z.comment, MAX_COMMENT) });
 
-export interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number;
+interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; postMaxChars?: number; cutoff?: number;
   /** Clock in unix seconds (injectable) and max age (s) for an event to count as "live". */
   clock?: () => number; liveWindowSec?: number;
   /** Allowed LNURL providers (domain or subdomain); without a list, all count. */
   zapProviders?: string[] }
 
-/** Post or zap that arrived live (not history): visible scenes animate it. `msats` only on zaps. */
-export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: number }
+/** Post or zap that arrived live (not history): visible scenes animate it. `msats` and `comment` only on zaps. */
+export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: number; comment?: string }
 
 /** Moderation lists published by the server. */
 export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string }
@@ -81,7 +81,13 @@ export class ZapStore {
   }
 
   addPost(p: Post) {
-    if (this.posts.has(p.id) || !this.isFresh(p)) return;
+    const old = this.posts.get(p.id);
+    if (old) { // a copy clipped by an older, shorter limit gets completed
+      const c = this.clipPost(p);
+      if (old.content.endsWith('…') && c.content.length > old.content.length && c.content.startsWith(old.content.slice(0, -1).trimEnd())) { this.posts.set(p.id, c); this.changed(); }
+      return;
+    }
+    if (!this.isFresh(p)) return;
     this.posts.set(p.id, this.clipPost(p));
     // Under memory pressure, moderated posts must not evict visible history.
     if (this.posts.size > this.maxPosts) {
@@ -104,7 +110,7 @@ export class ZapStore {
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (!this.zaps.has(z.id)) return;
-    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId, msats: z.msats }, z.created_at);
+    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId, msats: z.msats, ...(z.comment ? { comment: clip(z.comment, MAX_COMMENT) } : {}) }, z.created_at);
     this.changed();
   }
 
@@ -145,7 +151,7 @@ export class ZapStore {
   }
 
   save() {
-    this.storage?.setItem(this.key, JSON.stringify({ posts: [...this.posts.values()], zaps: [...this.zaps.values()] }));
+    try { this.storage?.setItem(this.key, JSON.stringify({ posts: [...this.posts.values()], zaps: [...this.zaps.values()] })); } catch { /* quota full or storage blocked: keep going in memory */ }
   }
 
   private changed() {
