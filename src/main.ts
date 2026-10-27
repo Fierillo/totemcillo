@@ -26,12 +26,11 @@ const feed = followCutoff((c) => startNostr(cfg, store, pool, undefined, undefin
 const moderate = (m: Moderation) => { store.setModeration(m); feed.setCutoff(postCutoff({ startLine: m.startLine ?? '' })); };
 const announcement = new Announcement(DEFAULT_SETTINGS.announcement);
 let follower: Follower | undefined; // totem only: mobile doesn't follow the clock
-// Dev only (tree-shaken from production): window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
-if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store), import.meta.env.DEV, follower));
+const devZappable = new Set<string>(); // dev only: authors of the "+ post ⚡" demo posts
 const scene = document.getElementById('scene')!;
 const wallet = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS);
 // Same cached check on both views: the totem only uses it for the red bolt (no zapping there).
-const canZap = cachedCanZap(async (pk) => !!(await wallet.resolveInfo(pk)), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
+const canZap = cachedCanZap(async (pk) => (import.meta.env.DEV && devZappable.has(pk)) || !!(await wallet.resolveInfo(pk)), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
 const app = document.getElementById('app')!;
 zapFx(store); // ⚡ + sats at the bottom when the zapped post is not on screen
 
@@ -54,3 +53,5 @@ if (isMobileViewport()) {
   void follower.start();
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
+// Dev only (tree-shaken from production), wired once the totem's follower exists: window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
+if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store, undefined, devZappable), import.meta.env.DEV, follower));

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
-import { demoButtons, installDemo } from '../src/demo';
+import { demoButtons, installDemo, DEMO_TEXTS } from '../src/demo';
 import { zapFx } from '../src/zap-fx';
 import { Follower } from '../src/follow';
 import { positionAt } from '../shared/schedule';
@@ -13,6 +13,11 @@ const button = (label: string) => [...document.querySelectorAll<HTMLButtonElemen
 afterEach(() => { vi.useRealTimers(); document.body.innerHTML = ''; });
 
 describe('botones de simulación (solo desarrollo)', () => {
+  it('post(text, pubkey) permite elegir el autor (e2e con un autor zapeable)', () => {
+    const s = new ZapStore();
+    const id = installDemo({}, s, () => NOW).post('hola', 'e'.repeat(64));
+    expect(s.posts.get(id)!.pubkey).toBe('e'.repeat(64));
+  });
   it('no existen si el flag de desarrollo está apagado', () => {
     const s = new ZapStore(undefined, { clock: () => NOW });
     expect(demoButtons(document, installDemo({}, s, () => NOW), false, new Follower(document.createElement('main'), []))).toBeNull();
@@ -27,6 +32,27 @@ describe('botones de simulación (solo desarrollo)', () => {
     expect(s.posts.size).toBe(1);
     expect(live).toEqual(['post']);
   });
+  it('"+ post" y "+ post ⚡" ciclan textos de largos distintos (todos con #lacrypta) para ver cómo cambian las cajas', () => {
+    const s = new ZapStore(undefined, { clock: () => NOW });
+    demoButtons(document, installDemo({}, s, () => NOW), true);
+    for (let i = 0; i < DEMO_TEXTS.length; i++) button(i % 2 ? '+ post ⚡' : '+ post').click();
+    const lengths = [...s.posts.values()].map((p) => p.content.length);
+    expect(new Set(lengths).size).toBe(DEMO_TEXTS.length);
+    expect(Math.min(...lengths)).toBeLessThanOrEqual(15);
+    expect(Math.max(...lengths)).toBeGreaterThanOrEqual(200); // the longest one hits the store cap
+    expect([...s.posts.values()].every((p) => p.content.includes('#lacrypta'))).toBe(true);
+  });
+  it('"+ mix" agrega de una vez un post de cada largo, algunos zapeables y con sats', () => {
+    const s = new ZapStore(undefined, { clock: () => NOW });
+    const zappable = new Set<string>();
+    demoButtons(document, installDemo({}, s, () => NOW, zappable), true);
+    button('+ mix').click();
+    const posts = [...s.posts.values()];
+    expect(posts.length).toBeGreaterThanOrEqual(DEMO_TEXTS.length);
+    expect(new Set(posts.map((p) => p.content.length)).size).toBe(DEMO_TEXTS.length);
+    expect(posts.some((p) => zappable.has(p.pubkey))).toBe(true);
+    expect(s.zaps.size).toBeGreaterThan(0);
+  });
   it('"+ zap" zapea el post más nuevo (o crea uno) y muestra el rayo con los sats', () => {
     const s = new ZapStore(undefined, { clock: () => NOW });
     const stop = zapFx(s);
@@ -38,6 +64,45 @@ describe('botones de simulación (solo desarrollo)', () => {
       expect(s.stats()[0].msats).toBe(zap.msats);
       expect(document.querySelector('.zap-fx.is-on')?.textContent).toMatch(/\d+ sats/);
     } finally { stop(); }
+  });
+  describe('"+ zap" con mira: el próximo click elige el post', () => {
+    const setup = (markup: string) => {
+      const s = new ZapStore(undefined, { clock: () => NOW });
+      const demo = installDemo({}, s, () => NOW);
+      const a = demo.post('a'), b = demo.post('b');
+      const scene = document.body.appendChild(document.createElement('main'));
+      scene.id = 'scene';
+      scene.innerHTML = markup.replace('$A', a).replace('$B', b);
+      demoButtons(document, demo, true);
+      return { s, a, b, scene };
+    };
+    const zapped = (s: ZapStore) => [...s.zaps.values()].map((z) => z.postId);
+    it.each([
+      ['cajas de Últimos mensajes', '<ul class="post-list"><li class="post-row" data-id="$A"><p class="excerpt">a</p></li><li class="post-row" data-id="$B">b</li></ul>'],
+      ['barras de la Batalla', '<ol class="batalla"><li data-id="$A"><div class="bar-track"><span class="bar-fill"></span></div></li><li data-id="$B"></li></ol>'],
+    ])('%s: arma la mira y el click zapea ESE post', (_, markup) => {
+      const { s, a, scene } = setup(markup);
+      button('+ zap').click();
+      expect(zapped(s)).toEqual([]);
+      expect(button('+ zap').getAttribute('aria-pressed')).toBe('true');
+      expect(document.documentElement.classList.contains('demo-aiming')).toBe(true); // the kiosk hides the cursor; only aiming shows the crosshair
+      expect(document.querySelector('style[data-demo-aim]')!.textContent).toMatch(/html\.demo-aiming[^{]*\{[^}]*crosshair !important/);
+      (scene.querySelector(`[data-id="${a}"]`)!.firstElementChild as HTMLElement ?? scene.querySelector(`[data-id="${a}"]`)!).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(zapped(s)).toEqual([a]);
+      expect(button('+ zap').getAttribute('aria-pressed')).toBe('false');
+      expect(document.documentElement.classList.contains('demo-aiming')).toBe(false);
+    });
+    it('Esc o click fuera de un post cancela sin zapear', () => {
+      const { s, scene } = setup('<h1>t</h1><ul><li class="post-row" data-id="$A"></li></ul>');
+      button('+ zap').click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(button('+ zap').getAttribute('aria-pressed')).toBe('false');
+      expect(document.documentElement.classList.contains('demo-aiming')).toBe(false);
+      button('+ zap').click();
+      scene.querySelector('h1')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(button('+ zap').getAttribute('aria-pressed')).toBe('false');
+      expect(zapped(s)).toEqual([]);
+    });
   });
   it('quedan fuera de #scene, así que siguen disponibles cuando la rotación redibuja la escena', () => {
     const scene = document.body.appendChild(document.createElement('main'));
@@ -104,5 +169,13 @@ describe('botones de simulación (solo desarrollo)', () => {
         expect(fetchFn.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
       } finally { fol.stop(); }
     });
+  });
+  it('"+ post ⚡" crea un post de un autor marcado como zapeable (rayo verde)', () => {
+    const s = new ZapStore(undefined, { clock: () => NOW });
+    const zappable = new Set<string>();
+    demoButtons(document, installDemo({}, s, () => NOW, zappable), true);
+    button('+ post ⚡').click();
+    const [post] = [...s.posts.values()];
+    expect(zappable.has(post!.pubkey)).toBe(true);
   });
 });
