@@ -44,7 +44,7 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
       const ar = store.since === undefined ? '' : toArInput(new Date(store.since * 1000).toISOString()); // 'YYYY-MM-DDTHH:MM'
       const desde = ar ? ` desde ${ar.slice(8, 10)}/${ar.slice(5, 7)} ${ar.slice(11)}` : '';
       const zap = zappability(canZap, () => { if (!closed) draw(); });
-      root.innerHTML = `<h1>${BOLT} Batalla de zaps${desde ? ` ·${desde}` : ''}</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
+      root.innerHTML = `<h1>${BOLT} Batalla de zaps</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
       const ol = root.querySelector<HTMLOListElement>('.batalla')!;
       const aviso = root.querySelector<HTMLElement>('.batalla-aviso')!;
       const timers = new Set<ReturnType<typeof setTimeout>>();

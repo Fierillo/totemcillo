@@ -345,7 +345,7 @@ describe('Batalla de zaps', () => {
     const off = batallaScene(s).render(root) as () => void;
     await vi.advanceTimersByTimeAsync(100);
     expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(1)]);
-    expect(root.querySelector('h1')!.textContent).toContain('desde 05/01 05:00');
+    expect(root.querySelector('h1')!.textContent!.trim()).toBe('Batalla de zaps');
     off();
   });
 
