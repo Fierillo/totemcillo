@@ -278,9 +278,15 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
     expect(dialog.open).toBe(true);
     expect(dialog.querySelector('[data-nostr-client]')?.getAttribute('href')).toMatch(/^nostr:nevent1/);
-    expect(dialog.textContent).toContain('Zapear desde cliente de Nostr');
-    expect(dialog.textContent).toContain('Zapear desde wallet');
-    expect(dialog.textContent).toContain('Pago anónimo en Nostr');
+    // short labels, each with its icon; no repeated "Zapear" nor explanatory text
+    expect(dialog.querySelector('h2')!.textContent).toBe('Zapear');
+    expect(dialog.querySelector('[data-nostr-client]')!.textContent!.trim()).toBe('Cliente Nostr');
+    expect(dialog.querySelector('[data-wallet]')!.textContent!.trim()).toBe('Wallet anónima');
+    expect(dialog.querySelector('[data-nostr-client] svg.zap-icon')).not.toBeNull();
+    expect(dialog.querySelector('[data-wallet] svg.zap-icon')).not.toBeNull();
+    expect(dialog.querySelectorAll('.zap-choices small, img')).toHaveLength(0);
+    expect(dialog.textContent!.match(/Zapear/g)).toHaveLength(1);
+    expect(dialog.textContent).not.toContain('no se vinculará');
     expect(invoice).not.toHaveBeenCalled();
     const alt = posts[0].querySelector<HTMLAnchorElement>('a.zap-alt')!;
     expect(alt.getAttribute('href')).toMatch(/^https:\/\/njump\.me\/nevent1/);
@@ -335,7 +341,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       qr.click();
       await vi.waitFor(() => expect(dialog.querySelector('[role="status"]')?.textContent).toBe('Factura copiada'));
       expect(copy).toHaveBeenCalledWith('lnbc420n1ptestinvoice');
-      expect(dialog.textContent).toContain('No es una confirmación de pago');
+      expect(dialog.textContent).toContain('El total se actualiza al confirmarse el pago');
       expect(s.zaps.size).toBe(1);
     } finally { off(); copy.mockRestore(); }
   });

@@ -174,8 +174,8 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .zap-dialog button { cursor: pointer; font: inherit; }
 .zap-dialog .zap-cancel { width: 100%; margin-top: 1rem; padding: .55rem 1rem; border: 0; border-radius: .5rem; background: #d32f2f; color: #fff; font-weight: 800; }
 .zap-choices { display: grid; gap: .7rem; }
-.zap-choices > a, .zap-choices > button { display: block; padding: .9rem; border: 1px solid #35402d; border-radius: 2px; background: var(--card); color: var(--accent); text-align: left; text-decoration: none; font-weight: 700; }
-.zap-choices small { display: block; margin-top: .35rem; color: var(--muted); font-size: .85rem; font-weight: 400; line-height: 1.4; }
+.zap-choices > a, .zap-choices > button { display: flex; align-items: center; gap: .7rem; padding: .9rem; border: 1px solid #35402d; border-radius: 2px; background: var(--card); color: var(--accent); text-align: left; text-decoration: none; font-weight: 700; }
+.zap-icon { flex: 0 0 auto; }
 .zap-dialog form, .zap-dialog [data-invoice] { display: grid; gap: 1rem; }
 .zap-dialog [hidden] { display: none; }
 .zap-dialog label { display: grid; gap: .4rem; font-size: .9rem; }

@@ -6,6 +6,10 @@ import { esc } from './util';
 import { renderSVG } from 'uqr';
 import { bech32 } from '@scure/base';
 
+/** Purple Nostr ostrich (simplified) and a wallet, inline: no external assets. */
+const NOSTR_ICON = '<svg class="zap-icon" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><rect width="24" height="24" rx="5" fill="#8e30eb"/><path fill="#fff" d="M15.6 4.2c-1.3 0-2.3.9-2.5 2.1-.1.7.1 1.3.5 1.8L12 11.4c-2.6.1-4.9 1.6-5.9 3.9l-.6 1.4 1.4.3 1.9-.9v3.7h1.5v-3.2l1.3 1.6v1.6h1.5V17l1.4-1.5c1.2-1.3 1.6-3.1 1.1-4.8l1-3.1h1.6l1.5-1.2-1.5-.6c-.4-.9-1.3-1.6-2.6-1.6Z"/><circle cx="15.8" cy="6.2" r=".6" fill="#8e30eb"/></svg>';
+const WALLET_ICON = '<svg class="zap-icon" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 7.5V18a2 2 0 0 0 2 2h13V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h11v4"/><path d="M15 12h5v4h-5a2 2 0 0 1 0-4Z"/></svg>';
+
 export type InvoiceRequester = (post: Post, sats: number, message?: string) => Promise<string>;
 
 /** Invoice shown but not paid yet: survives a reload (Android kills the tab while the user is in the wallet). */
@@ -87,12 +91,12 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
   const dialog = document.createElement('dialog');
   dialog.className = 'zap-dialog';
   dialog.setAttribute('aria-labelledby', 'zap-title');
-  dialog.innerHTML = `<header><h2 id="zap-title">Zapear este post</h2></header>
-    <div class="zap-choices"><a data-nostr-client href="${esc(noteUri(post, relays, 'nostr:{nevent}')!)}">Zapear desde cliente de Nostr<small>Usá tu perfil y tu cliente habitual.</small></a>
-    <button type="button" data-wallet>Zapear desde wallet<small>Pago anónimo en Nostr: no se vinculará tu perfil.</small></button></div>
-    <form hidden><p class="zap-note">Pago anónimo en Nostr: no se vinculará tu perfil. Tu wallet y el proveedor pueden registrar el pago.</p>
+  dialog.innerHTML = `<header><h2 id="zap-title">Zapear</h2></header>
+    <div class="zap-choices"><a data-nostr-client href="${esc(noteUri(post, relays, 'nostr:{nevent}')!)}">${NOSTR_ICON}Cliente Nostr</a>
+    <button type="button" data-wallet>${WALLET_ICON}Wallet anónima</button></div>
+    <form hidden>
     <label>Monto (sats)<input name="sats" type="number" inputmode="numeric" min="1" step="1" value="21" required></label>
-    <label>Mensaje (opcional)<input name="message" type="text" maxlength="${MAX_COMMENT}" autocomplete="off" placeholder="Se publica con el zap, como anónimo"></label>
+    <label>Mensaje (opcional)<input name="message" type="text" maxlength="${MAX_COMMENT}" autocomplete="off" placeholder="Se publica con el zap"></label>
     <button class="zap-btn" type="submit">Generar factura</button></form>
     <p class="zap-error" role="alert"></p><div data-invoice hidden></div>
     <button type="button" class="zap-cancel" data-close>Cancelar</button>`;
@@ -108,18 +112,18 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
   const showInvoice = (p: PendingZap) => {
     const invoice = p.invoice;
     const result = dialog.querySelector<HTMLElement>('[data-invoice]')!;
-    result.innerHTML = `<p class="zap-note">Pago anónimo en Nostr · ${esc(String(p.sats))} sats</p>
+    result.innerHTML = `<p class="zap-note">${esc(String(p.sats))} sats</p>
       <button type="button" class="wallet-qr" data-copy aria-label="Copiar factura">${renderSVG(invoice.toUpperCase(), { ecc: 'M', border: 2 })}</button>
       <p class="zap-note" role="status"></p>
       <a class="zap-btn" data-open-wallet href="lightning:${esc(invoice)}">Abrir wallet</a>
-      <p class="zap-note">No es una confirmación de pago. El total se actualizará cuando llegue el recibo del proveedor.</p>`;
+      <p class="zap-note">El total se actualiza al confirmarse el pago.</p>`;
     result.querySelector<HTMLButtonElement>('[data-copy]')!.addEventListener('click', async () => {
       const status = result.querySelector<HTMLElement>('[role="status"]')!;
       if (await copyText(invoice, dialog)) {
         status.textContent = 'Factura copiada';
         return;
       }
-      status.textContent = 'No se pudo copiar con un toque. Seleccioná la factura para copiarla.';
+      status.textContent = 'No se pudo copiar. Seleccioná la factura.';
       let manual = result.querySelector<HTMLTextAreaElement>('[data-manual]');
       if (!manual) {
         manual = document.createElement('textarea');
