@@ -109,7 +109,7 @@ html.is-mobile #app { height: 100dvh; overflow: hidden; display: flex; flex-dire
 @keyframes ind-drop { 0% { opacity: 0; transform: translateY(-6rem); } 20% { opacity: 1; transform: none; } 60% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(var(--ex, 0), var(--ey, -40vh)); } }
 html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead */
 .m-reel { position: relative; height: calc(100% + 1rem); margin: -1rem -1rem 0; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; }
-.m-reel > .m-post { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; align-items: center; gap: .75rem; padding: 1.5rem 1rem 6.5rem 1.75rem; }
+.m-reel > .m-post { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; align-items: center; gap: .75rem; padding: 1.5rem 1rem 7.5rem 1.75rem; }
 /* Side scrubber on the left edge (the zap bolt is on the right, the message button at the bottom): touch or drag to jump to any post */
 .m-scrub { position: absolute; left: -1rem; /* the reel bleeds 1rem past the panel: flush with the screen edge */ top: 3rem; bottom: 6rem; z-index: 3; width: 1.5rem; touch-action: none; cursor: pointer; }
 .m-scrub::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; transform: translateX(-50%); border-radius: 2px; background: #ffffff22; }
@@ -125,8 +125,11 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-body { flex: 1; min-width: 0; }
 .m-side { flex: 0 0 auto; align-self: center; display: flex; flex-direction: column; gap: 1rem; }
 .m-post .m-side .zap-btn { display: grid; justify-items: center; gap: .2rem; padding: .5rem; font-size: .75rem; }
+.m-reel > .m-post { position: relative; }
+.m-zap-cta { display: flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; margin-top: .6rem; padding: 0 1.2rem; border: 1px solid var(--accent); border-radius: 999px; background: transparent; color: var(--accent); font: 800 1rem system-ui, sans-serif; text-shadow: 0 0 6px currentColor; box-shadow: 0 0 .6rem #c7ff5b44; cursor: pointer; }
+.m-zap-cta:disabled { opacity: .35; cursor: default; box-shadow: none; text-shadow: none; }
+.m-reel > .m-post > .m-zap-cta { position: absolute; left: 1.75rem; right: 1rem; bottom: 3.6rem; margin: 0; } /* full width, just above the compose pill, inside the 7.5rem bottom padding */
 .m-zap-sats { font-size: 1.15rem; }
-.m-zap-label { font-weight: 700; text-shadow: 0 0 6px currentColor; }
 .m-bolt { fill: rgba(199, 255, 91, .18); stroke: #eaffb8; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 8px var(--accent)); } /* neon bolt, no circle */
 .m-top { list-style: none; padding: 0; margin: 0 0 6.5rem; }
 .m-top-row { border-bottom: 1px solid #222; }

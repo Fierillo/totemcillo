@@ -78,8 +78,16 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
       // bolt, then the (larger) sats number, then «Zapear» below it
       expect(zap.querySelector('svg.m-bolt + .m-zap-sats')?.textContent).toBe('21 sats');
-      expect(zap.querySelector('.m-zap-sats + .m-zap-label')?.textContent).toBe('Zapear');
-      expect(zap.lastElementChild!.classList.contains('m-zap-label')).toBe(true);
+      expect(zap.textContent).not.toContain('Zapear'); // the bolt only shows the total
+      // «Zapear» is its own button at the bottom of the card, opening the same modal
+      const cta = cards[0].querySelector<HTMLButtonElement>('button.m-zap-cta')!;
+      expect(cta.textContent!.trim()).toBe('Zapear');
+      expect(cards[0].lastElementChild).toBe(cta);
+      expect(cta.dataset.zap).toBe(zap.dataset.zap);
+      expect(cta.disabled).toBe(false);
+      cta.click();
+      expect(document.querySelector('dialog.zap-dialog')?.hasAttribute('open')).toBe(true);
+      document.querySelectorAll('dialog').forEach((d) => d.remove());
     } finally { off(); }
   });
   it('un redibujado justo después de scrollear (antes del evento scroll) no pierde la posición del feed', () => {
@@ -103,7 +111,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     try {
       const zap = root.querySelectorAll('#mobile-posts .m-reel > .m-post')[1].querySelector('.m-total')!;
       expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
-      expect(zap.textContent!.trim()).toBe('Zapear'); // label only, never "0 sats"
+      expect(zap.textContent!.trim()).toBe(''); // never "0 sats"
     } finally { off(); }
   });
   it('el anuncio se pliega al tocar su título y titila cuando llega uno nuevo hasta que lo abrís', () => {

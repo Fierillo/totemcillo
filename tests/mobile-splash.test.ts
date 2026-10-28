@@ -36,6 +36,7 @@ describe('vista móvil: pantalla de carga, zapeabilidad y redibujos', () => {
       await vi.advanceTimersByTimeAsync(500);
       expect(splash()!.classList.contains('is-out')).toBe(true);
       expect(root.querySelector('.is-unzappable')).not.toBeNull(); // final state under the fade
+      expect(root.querySelector<HTMLButtonElement>('.is-unzappable')!.closest('.m-post')!.querySelector<HTMLButtonElement>('.m-zap-cta')!.disabled).toBe(true); // author without wallet: Zapear disabled
       await vi.advanceTimersByTimeAsync(500);
       expect(splash()).toBeNull();
     } finally { off(); root.remove(); vi.useRealTimers(); }

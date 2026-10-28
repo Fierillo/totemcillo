@@ -89,7 +89,8 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
         ${web ? `<div class="m-post-footer"><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}</div>
         ${web ? `<div class="m-side">${zap.off(s.post!.pubkey)
           ? `<button class="zap-btn m-total is-unzappable${c}" type="button" aria-disabled="true" aria-label="No se puede zapear: el autor no tiene una wallet que acepte zaps">${BOLT_OFF}</button>`
-          : `<button class="zap-btn m-total${c}" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog" aria-label="Zapear · ${sats(s.msats)} sats">${BOLT}${s.msats > 0 ? `<b class="m-zap-sats">${pending(`${sats(s.msats)} sats`, store.ready)}</b>` : ''}<span class="m-zap-label">Zapear</span></button>`}</div>` : ''}
+          : `<button class="zap-btn m-total${c}" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog" aria-label="Zapear · ${sats(s.msats)} sats">${BOLT}${s.msats > 0 ? `<b class="m-zap-sats">${pending(`${sats(s.msats)} sats`, store.ready)}</b>` : ''}</button>`}</div>
+        <button class="m-zap-cta" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog"${zap.off(s.post!.pubkey) ? ' disabled' : ''}>Zapear</button>` : ''}
       </article>`;
   };
   /** Top row: amount first, message on one line; tapping toggles the full card in place. */
