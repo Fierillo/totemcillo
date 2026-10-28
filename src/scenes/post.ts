@@ -21,7 +21,7 @@ export const MAX_BOXES = 24;
 export const BOX_MIN_RATIO = 0.6;
 /** Legible floor (px): 12px still reads at arm's length on a totem screen; no message goes below it. */
 export const BOX_MIN_PX = 12;
-/** Comfortable list font (px): never below it, the list keeps fewer boxes instead. */
+/** Comfortable list font (px): on short screens the list goes below it (down to BOX_MIN_PX) when that fits more boxes. */
 export const BOX_COMFORT_PX = 16;
 /** …and on big windows it scales with the height (vh). */
 const BOX_COMFORT_VH = 1.8; // ≈19px at 1080p: smaller boxes, more of them
@@ -151,8 +151,10 @@ export function fitBoxes(root: HTMLElement, m: Measurer = domMeasurer, vh = wind
   const cap = Math.max(floor, Math.floor(Math.min(Number(ul.dataset.max) * vh, Number(ul.dataset.maxw ?? Infinity) * vw) / 100));
   const all = [...ul.querySelectorAll<HTMLElement>('.post-row')];
   const keep = (k: number) => all.forEach((box, i) => { box.hidden = i >= k; });
-  sizeBoxes(ul, floor, m);
-  const kept = largest(1, all.length, (k) => { keep(k); return arrange(root, ul, fits) >= 0; }) ?? 1;
+  const count = (s: number) => { sizeBoxes(ul, s, m); return largest(1, all.length, (k) => { keep(k); return arrange(root, ul, fits) >= 0; }) ?? 1; };
+  const atMin = floor <= BOX_COMFORT_PX ? count(BOX_MIN_PX) : 0, atFloor = count(floor);
+  const kept = Math.max(atFloor, atMin); // a short screen (fixed comfort floor): a smaller font before dropping boxes; big ones (vh comfort) keep fewer, comfortable boxes
+  if (atMin > atFloor) sizeBoxes(ul, BOX_MIN_PX, m);
   all.slice(kept).forEach((box) => box.remove()); // the oldest that don't fit
   keep(kept);
   const need = Math.max(1, arrange(root, ul, fits));

@@ -84,6 +84,18 @@ for (const [w, h] of [[1024, 434], [1280, 631], [1366, 657], [1920, 1080]]) {
   });
 }
 
+test('Mensajes: en una pantalla baja (915x412) la letra baja antes de dejar cajas afuera: más de 2 cajas', async () => {
+  const page = await openApp(app.browser, { viewport: { width: 915, height: 412 }, data: { posts, zaps } });
+  await kiosk(page, sceneDurations);
+  await page.goto(`${BASE}/`);
+  await page.waitForSelector('.scene-post .post-row');
+  await settled(page);
+  assert.deepEqual(await page.evaluate(check, 'post'), []);
+  const n = await page.evaluate(() => document.querySelectorAll('.post-list .post-row').length);
+  assert.ok(n > 2, `sólo ${n} cajas`);
+  await page.close();
+});
+
 for (const [w, h] of [[1920, 1080], [1280, 631]]) {
   test(`Mensajes: masonry (cajas del alto de su contenido, sin huecos ni solapes, en orden) y letra cómoda en ${w}x${h}`, async () => {
     const page = await openApp(app.browser, { viewport: { width: w, height: h }, data: { posts, zaps } });
