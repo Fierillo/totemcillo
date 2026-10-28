@@ -32,6 +32,17 @@ describe('fullscreen (totem)', () => {
     await Promise.resolve();
     expect(btn.getAttribute('aria-label')).toBe('Pantalla completa');
   });
+  it('button hides while fullscreen and shows again on exit', async () => {
+    const { d } = fsDoc();
+    const btn = fullscreenButton(document, document.body)!;
+    expect(btn.hidden).toBe(false);
+    btn.click();
+    await Promise.resolve();
+    expect(btn.hidden).toBe(true);
+    d.fullscreenElement = null;
+    d.dispatchEvent(new Event('webkitfullscreenchange'));
+    expect(btn.hidden).toBe(false);
+  });
   it('no button without Fullscreen API', () => {
     const el = document.documentElement as any, d = document as any;
     el.requestFullscreen = undefined; el.webkitRequestFullscreen = undefined;

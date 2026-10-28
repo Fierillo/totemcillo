@@ -196,7 +196,7 @@ export function fullscreenButton(doc: Document, parent: Element): HTMLButtonElem
   btn.type = 'button';
   btn.className = 'fs-toggle';
   btn.innerHTML = FS_ICON;
-  const sync = () => { const label = fsElement(d) ? 'Salir de pantalla completa' : 'Pantalla completa'; btn.setAttribute('aria-label', label); btn.title = label; };
+  const sync = () => { const label = fsElement(d) ? 'Salir de pantalla completa' : 'Pantalla completa'; btn.setAttribute('aria-label', label); btn.title = label; btn.hidden = !!fsElement(d); }; // hidden in fullscreen: exit with Esc, f or back
   sync();
   doc.addEventListener('fullscreenchange', sync);
   doc.addEventListener('webkitfullscreenchange', sync);
