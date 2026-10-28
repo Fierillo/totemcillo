@@ -294,6 +294,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(dialog.querySelector('[data-nostr-client]')!.textContent!.trim()).toBe('Cliente Nostr');
     expect(dialog.querySelector('[data-wallet]')!.textContent!.trim()).toBe('Wallet anónima');
     expect(dialog.querySelector('[data-nostr-client] svg.zap-icon')).not.toBeNull();
+    expect(dialog.querySelector('[data-nostr-client] svg.zap-icon path[fill="#662482"]')).not.toBeNull(); // the community nostrich icon (CC0)
     expect(dialog.querySelector('[data-wallet] svg.zap-icon')).not.toBeNull();
     expect(dialog.querySelectorAll('.zap-choices small, img')).toHaveLength(0);
     expect(dialog.textContent!.match(/Zapear/g)).toHaveLength(1);
