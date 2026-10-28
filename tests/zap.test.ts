@@ -24,7 +24,7 @@ describe('bolt11ToMsats', () => {
 describe('parseZapReceipt', () => {
   it('usa bolt11 primero y extrae sender, comentario y post', () => {
     const z = parseZapReceipt(receipt({ bolt11: 'lnbc21u1pxx', amount: '5000' }))!;
-    expect(z).toEqual({ id: 'z1', postId: 'post1', sender: 'sender', msats: 2_100_000, comment: 'grande!', created_at: 100 });
+    expect(z).toEqual({ id: 'z1', postId: 'post1', sender: 'sender', msats: 2_100_000, comment: 'grande!', created_at: 100, bolt11: 'lnbc21u1pxx' });
   });
   it('cae al amount de la zap request', () => {
     expect(parseZapReceipt(receipt({ amount: '21000' }))!.msats).toBe(21000);

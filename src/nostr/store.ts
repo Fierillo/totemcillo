@@ -26,7 +26,7 @@ interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; post
   zapProviders?: string[] }
 
 /** Post or zap that arrived live (not history): visible scenes animate it. `msats` and `comment` only on zaps. */
-export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: number; comment?: string }
+export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: number; comment?: string; bolt11?: string }
 
 /** Moderation lists published by the server. */
 export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string }
@@ -113,7 +113,7 @@ export class ZapStore {
     this.zaps.set(z.id, clipZap(z));
     trimOldest(this.zaps, this.maxZaps);
     if (!this.zaps.has(z.id)) return;
-    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId, msats: z.msats, ...(z.comment ? { comment: clip(z.comment, MAX_COMMENT) } : {}) }, z.created_at);
+    if (this.zapVisible(z)) this.emitLive({ type: 'zap', postId: z.postId, msats: z.msats, ...(z.comment ? { comment: clip(z.comment, MAX_COMMENT) } : {}), ...(z.bolt11 ? { bolt11: z.bolt11 } : {}) }, z.created_at);
     this.changed();
   }
 

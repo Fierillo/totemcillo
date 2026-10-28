@@ -6,13 +6,14 @@ import { Announcement } from '../src/announcement';
 import { defaultConfig } from '../src/config';
 import { feedFor } from '../src/livefeed';
 import { zapFx } from '../src/zap-fx';
-import { openZapDialog } from '../src/zap-dialog';
+import { openZapDialog, PAID_CLOSE_MS } from '../src/zap-dialog';
 
 afterEach(() => document.querySelectorAll('svg.strike, .strike-gain, .m-live').forEach((e) => e.remove()));
 afterEach(() => { localStorage.clear(); sessionStorage.clear(); }); // pending invoices and the view state persist across mounts
 import { profiles } from '../src/nostr/profiles';
 import { hex, store } from './mobile-helpers';
-beforeEach(() => Object.assign(SPLASH_MS, { min: 0, max: 0 })); // behavior after loading; the loading screen has its own tests
+beforeEach(() => Object.assign(SPLASH_MS, { min: 0, max: 0 }));
+beforeEach(() => { PAID_CLOSE_MS.ms = 0; }); // closes at once; the 3 s success pause has its own tests // behavior after loading; the loading screen has its own tests
 
 
 describe('pago confirmado desde el modal móvil', () => {
@@ -173,6 +174,16 @@ describe('el modal de zap solo se cierra al pagar o con Cancelar', () => {
     expect(document.querySelector('dialog')).toBeNull();
     expect(onPaid).not.toHaveBeenCalled();
   });
+  it('se cierra solo con el recibo de su propia factura (bolt11), no con zaps ajenos al mismo post', async () => {
+    const { s, dialog, onPaid } = open();
+    await toInvoice(dialog);
+    s.addZap({ id: hex(80), postId: hex(1), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now(), bolt11: 'lnbc210n1potherinvoice' });
+    stillOpen(dialog);
+    expect(onPaid).not.toHaveBeenCalled();
+    s.addZap({ id: hex(81), postId: hex(1), msats: 21_000, comment: '', created_at: now(), bolt11: 'LNBC210N1PTESTINVOICE' });
+    expect(onPaid).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('dialog')).toBeNull();
+  });
   it('Escape / gesto atrás (evento cancel) no lo cierra', async () => {
     const { dialog } = open();
     await toInvoice(dialog);
@@ -207,5 +218,46 @@ describe('el modal de zap solo se cierra al pagar o con Cancelar', () => {
       stillOpen(dialog);
       expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull();
     } finally { off(); root.remove(); }
+  });
+});
+
+describe('pago confirmado: muestra el rayo 3 s (con la página visible) y después cierra', () => {
+  const now = () => Math.floor(Date.now() / 1000);
+  const setVisibility = (v: 'visible' | 'hidden') => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); };
+  beforeEach(() => { PAID_CLOSE_MS.ms = 3000; });
+  afterEach(() => { vi.useRealTimers(); setVisibility('visible'); document.querySelectorAll('dialog').forEach((d) => d.remove()); });
+  const paidDialog = async () => {
+    const s = store(), onPaid = vi.fn();
+    openZapDialog(s.posts.get(hex(1))!, defaultConfig.relays, vi.fn().mockResolvedValue('lnbc210n1ptestinvoice'), s, { onPaid });
+    const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
+    dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
+    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
+    vi.useFakeTimers();
+    return { s, onPaid, dialog, pay: () => s.addZap({ id: hex(90), postId: hex(1), msats: 21_000, comment: '', created_at: now(), bolt11: 'lnbc210n1ptestinvoice' }) };
+  };
+  it('visible: rayo de éxito en el modal, cierra a los 3 s', async () => {
+    const { dialog, onPaid, pay } = await paidDialog();
+    pay();
+    expect(onPaid).toHaveBeenCalledTimes(1);
+    expect(dialog.isConnected).toBe(true);
+    expect(dialog.querySelector('.zap-paid svg.m-bolt')).not.toBeNull();
+    expect(dialog.querySelector('[data-open-wallet]')).toBeNull();
+    vi.advanceTimersByTime(2999);
+    expect(dialog.isConnected).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(document.querySelector('dialog')).toBeNull();
+  });
+  it('oculta (en la wallet): los 3 s arrancan al volver a la pestaña', async () => {
+    const { dialog, pay } = await paidDialog();
+    setVisibility('hidden');
+    pay();
+    vi.advanceTimersByTime(10_000);
+    expect(dialog.isConnected).toBe(true);
+    setVisibility('visible');
+    vi.advanceTimersByTime(2999);
+    expect(dialog.isConnected).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(document.querySelector('dialog')).toBeNull();
   });
 });

@@ -17,6 +17,8 @@ export interface Zap {
   created_at: number;
   /** Domain of the recipient's LNURL (the one that signed the receipt). */
   domain?: string;
+  /** Paid invoice (receipt `bolt11` tag): matches the receipt to the invoice shown in the zap modal. */
+  bolt11?: string;
 }
 
 export interface Post {

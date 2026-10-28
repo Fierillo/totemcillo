@@ -183,6 +183,8 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .zap-dialog [data-manual] { font-size: .8rem; overflow-wrap: anywhere; resize: vertical; cursor: text; }
 .zap-dialog .zap-btn { text-align: center; }
 .zap-dialog button:disabled { opacity: .6; cursor: wait; }
+.zap-paid { display: grid; justify-items: center; gap: .6rem; color: var(--accent); font-weight: 800; font-size: 1.2rem; }
+.zap-paid .m-bolt { width: 72px; height: 96px; animation: bolt-in .18s ease-out; }
 .zap-note { color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .zap-error { color: #ff9e86; font-size: .9rem; line-height: 1.4; }
 .zap-error:not(:empty) { margin-top: 1rem; }

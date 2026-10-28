@@ -34,5 +34,5 @@ export function parseZapReceipt(ev: NostrEvent): Zap | null {
   const msats = amountMsats(ev, req);
   if (!msats) return null;
   const anonymous = Array.isArray(req?.tags) && req.tags.some((t) => Array.isArray(t) && t[0] === 'anon');
-  return { id: ev.id, postId, sender: anonymous ? undefined : req?.pubkey ?? tag(ev, 'P'), msats, comment: req?.content ?? '', created_at: ev.created_at };
+  return { id: ev.id, postId, sender: anonymous ? undefined : req?.pubkey ?? tag(ev, 'P'), msats, comment: req?.content ?? '', created_at: ev.created_at, ...(tag(ev, 'bolt11') ? { bolt11: tag(ev, 'bolt11') } : {}) };
 }

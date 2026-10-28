@@ -6,7 +6,8 @@ import { ZapStore } from '../src/nostr/store';
 import { Announcement } from '../src/announcement';
 import { defaultConfig } from '../src/config';
 import { profiles } from '../src/nostr/profiles';
-import { openZapDialog, PENDING_ZAP_KEY, bolt11Expiry, loadPendingZap } from '../src/zap-dialog';
+import { openZapDialog, PAID_CLOSE_MS, PENDING_ZAP_KEY, bolt11Expiry, loadPendingZap } from '../src/zap-dialog';
+beforeEach(() => { PAID_CLOSE_MS.ms = 0; }); // closes at once; the 3 s success pause has its own tests
 
 const hex = (n: number) => n.toString(16).padStart(64, '0');
 const now = () => Math.floor(Date.now() / 1000);

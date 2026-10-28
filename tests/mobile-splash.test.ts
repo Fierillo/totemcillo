@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { PAID_CLOSE_MS } from '../src/zap-dialog';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderMobile, SPLASH_MS } from '../src/mobile';
 import { Announcement } from '../src/announcement';
@@ -7,6 +8,7 @@ import { defaultConfig } from '../src/config';
 afterEach(() => document.querySelectorAll('svg.strike, .strike-gain, .m-live').forEach((e) => e.remove()));
 afterEach(() => { localStorage.clear(); sessionStorage.clear(); }); // pending invoices and the view state persist across mounts
 import { hex, store } from './mobile-helpers';
+beforeEach(() => { PAID_CLOSE_MS.ms = 0; }); // closes at once; the 3 s success pause has its own tests
 beforeEach(() => Object.assign(SPLASH_MS, { min: 0, max: 0 })); // behavior after loading; the loading screen has its own tests
 
 
