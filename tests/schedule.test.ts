@@ -4,7 +4,7 @@ import { positionAt, shiftSchedule, reanchor } from '../shared/schedule';
 import { handle, type ApiRequest, type Deps } from '../server/api';
 import { memoryStorage } from '../server/storage';
 import { DEFAULT_SETTINGS, DEFAULT_START_LINE, DEFAULT_ZAP_PROVIDERS, validatePatch, type Settings } from '../shared/settings';
-import { Follower } from '../src/follow';
+import { Follower, sceneKeys } from '../src/follow';
 import { Announcement } from '../src/announcement';
 import type { Scene } from '../src/scenes/types';
 import { videoScene } from '../src/scenes/video';
@@ -202,6 +202,36 @@ describe('Follower: agenda local, el servidor manda', () => {
     v.dispatchEvent(new Event('loadedmetadata'));
     const p = positionAt(inputs({ videoMode: 'clip', videoClipSeconds: 4 }) as any, 7000);
     expect(v.currentTime).toBeCloseTo(p.videoOffset! + 1, 5);
+  });
+  it('teclado: flechas pasan a la escena siguiente/anterior y la rotación sigue desde ahí', async () => {
+    const { f } = api(inputs());
+    const fol = new Follower(root, scenes(), { fetchFn: f as any, clock: () => Date.now() - T0 + 500, pollMs: 30_000 });
+    await fol.start();
+    const off = sceneKeys(document, fol);
+    const key = (k: string, o: KeyboardEventInit = {}, el: EventTarget = document) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, ...o }));
+    key('ArrowRight');
+    expect(root.textContent).toBe('batalla');
+    await vi.advanceTimersByTimeAsync(2100); // batalla's full duration, then the rotation goes on
+    expect(root.textContent).toBe('anuncio');
+    key('ArrowLeft');
+    expect(root.textContent).toBe('batalla');
+    key('3');
+    expect(root.textContent).toBe('anuncio');
+    key('1');
+    expect(root.textContent).toBe('post');
+    key('ArrowLeft'); // wraps backwards
+    expect(root.textContent).not.toBe('post');
+    key('1');
+    key('ArrowRight', { ctrlKey: true });
+    key('2', { altKey: true });
+    const input = document.body.appendChild(document.createElement('input'));
+    key('ArrowRight', {}, input);
+    key('9');
+    expect(root.textContent).toBe('post');
+    off();
+    key('ArrowRight');
+    expect(root.textContent).toBe('post');
+    input.remove();
   });
   it('usa el fetch global sin cambiarle el this', async () => {
     vi.stubGlobal('fetch', function (this: unknown) {

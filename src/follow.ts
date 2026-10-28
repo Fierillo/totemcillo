@@ -108,11 +108,19 @@ export class Follower {
   private now() { return this.clock() + this.offset + this.shift; }
 
   /** Dev only, this screen only (nothing is written to the server): shows the previous/next scene of the rotation and stops following the clock. */
-  step(action: Action) {
+  step(action: Action, pause = true) {
     if (!this.inputs) return;
     // Same target as the /admin arrows: shifting epoch back by Δ equals looking Δ ahead in time.
     this.shift += (this.inputs.epoch ?? 0) - shiftSchedule(this.inputs, this.now(), action).epoch!; // shiftSchedule always sets epoch
-    this.paused = true;
+    this.paused = pause;
+    this.tick();
+  }
+
+  /** Keyboard: jumps (this screen only) to the next occurrence of scene `index`; the rotation keeps going from there. */
+  show(index: number) {
+    if (!this.inputs || !this.scenes[index]) return;
+    for (let i = 0; i < this.scenes.length * 4 && positionAt(this.inputs, this.now()).index !== index; i++)
+      this.shift += (this.inputs.epoch ?? 0) - shiftSchedule(this.inputs, this.now(), 'next').epoch!;
     this.tick();
   }
 
@@ -152,4 +160,16 @@ export class Follower {
     if (this.timer) clearTimeout(this.timer);
     this.cleanup?.();
   }
+}
+
+/** Totem keyboard: ArrowRight/ArrowLeft = next/previous scene, 1..N = that scene (ignored with modifiers or while typing). */
+export function sceneKeys(doc: Document, follower: Follower): () => void {
+  const onKey = (e: KeyboardEvent) => {
+    if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+    if ((e.target as Element | null)?.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') follower.step(e.key === 'ArrowRight' ? 'next' : 'prev', false);
+    else if (/^[1-9]$/.test(e.key)) follower.show(Number(e.key) - 1);
+  };
+  doc.addEventListener('keydown', onKey);
+  return () => doc.removeEventListener('keydown', onKey);
 }
