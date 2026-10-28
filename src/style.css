@@ -7,6 +7,9 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 .repo-link { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; width: 32px; height: 32px; padding: 8px; color: var(--muted); cursor: pointer; }
 .repo-link svg { display: block; width: 100%; height: 100%; }
 .repo-link:hover, .repo-link:focus-visible { color: var(--accent); }
+.fs-toggle { position: absolute; right: 8px; bottom: 8px; width: 32px; height: 32px; padding: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.fs-toggle svg { display: block; width: 100%; height: 100%; }
+.fs-toggle:hover, .fs-toggle:focus-visible { color: var(--accent); }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
   min-width: 0; overflow: hidden; white-space: nowrap; }
 .brand { display: block; height: 1.8em; width: auto; max-width: 40vw; object-fit: contain; flex: 0 0 auto; } /* official logo (white), header height */

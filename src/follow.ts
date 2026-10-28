@@ -162,14 +162,45 @@ export class Follower {
   }
 }
 
-/** Totem keyboard: ArrowRight/ArrowLeft = next/previous scene, 1..N = that scene (ignored with modifiers or while typing). */
+/** Totem keyboard: ArrowRight/ArrowLeft = next/previous scene, 1..N = that scene, f = fullscreen (ignored with modifiers or while typing). */
 export function sceneKeys(doc: Document, follower: Follower): () => void {
   const onKey = (e: KeyboardEvent) => {
     if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
     if ((e.target as Element | null)?.closest?.('input, textarea, select, [contenteditable]')) return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') follower.step(e.key === 'ArrowRight' ? 'next' : 'prev', false);
     else if (/^[1-9]$/.test(e.key)) follower.show(Number(e.key) - 1);
+    else if (e.key === 'f' || e.key === 'F') toggleFullscreen(doc);
   };
   doc.addEventListener('keydown', onKey);
   return () => doc.removeEventListener('keydown', onKey);
+}
+
+type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void; webkitFullscreenEnabled?: boolean };
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => void };
+const fsElement = (d: FsDoc) => d.fullscreenElement ?? d.webkitFullscreenElement ?? null;
+
+/** Enters/leaves fullscreen with the standard API, webkit-prefixed fallback (older Safari/Android). */
+export function toggleFullscreen(doc: Document): void {
+  const d = doc as FsDoc, el = d.documentElement as FsEl;
+  if (fsElement(d)) void (d.exitFullscreen ? d.exitFullscreen().catch(() => {}) : d.webkitExitFullscreen?.());
+  else void (el.requestFullscreen ? el.requestFullscreen().catch(() => {}) : el.webkitRequestFullscreen?.());
+}
+
+const FS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+
+/** Discreet fullscreen toggle appended to `parent`; null (no button) when the Fullscreen API is unsupported. */
+export function fullscreenButton(doc: Document, parent: Element): HTMLButtonElement | null {
+  const d = doc as FsDoc, el = d.documentElement as FsEl;
+  if (!el.requestFullscreen && !el.webkitRequestFullscreen) return null;
+  const btn = doc.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fs-toggle';
+  btn.innerHTML = FS_ICON;
+  const sync = () => { const label = fsElement(d) ? 'Salir de pantalla completa' : 'Pantalla completa'; btn.setAttribute('aria-label', label); btn.title = label; };
+  sync();
+  doc.addEventListener('fullscreenchange', sync);
+  doc.addEventListener('webkitfullscreenchange', sync);
+  btn.addEventListener('click', () => toggleFullscreen(doc));
+  parent.append(btn);
+  return btn;
 }

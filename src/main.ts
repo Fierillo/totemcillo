@@ -5,7 +5,7 @@ import { createPool, followCutoff, profileLoader, startNostr } from './nostr/poo
 import { LnurlResolver } from './nostr/lnurl';
 import { configureProfiles, profiles } from './nostr/profiles';
 import { cachedCanZap } from './zapcache';
-import { Follower, sceneKeys } from './follow';
+import { Follower, sceneKeys, fullscreenButton } from './follow';
 import { buildScenes } from './scenes';
 import { Announcement } from './announcement';
 import { createRemote } from './remote';
@@ -52,6 +52,8 @@ if (isMobileViewport()) {
   follower = new Follower(scene, buildScenes(cfg, store, announcement, window.location.origin, canZap), { announcement, pollMs: cfg.settingsPollMs, onModeration: moderate });
   void follower.start();
   sceneKeys(document, follower);
+  const footer = document.querySelector('.footer');
+  if (footer) fullscreenButton(document, footer); // bottom-right corner of the footer, clear of the QR/posts
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
 // Dev only (tree-shaken from production), wired once the totem's follower exists: window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
