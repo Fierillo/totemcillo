@@ -125,6 +125,7 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-body { flex: 1; min-width: 0; }
 .m-side { flex: 0 0 auto; align-self: center; display: flex; flex-direction: column; gap: 1rem; }
 .m-post .m-side .zap-btn { display: grid; justify-items: center; gap: .2rem; padding: .5rem; font-size: .75rem; }
+.m-zap-label { font-weight: 700; text-shadow: 0 0 6px currentColor; }
 .m-bolt { fill: rgba(199, 255, 91, .18); stroke: #eaffb8; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 8px var(--accent)); } /* neon bolt, no circle */
 .m-top { list-style: none; padding: 0; margin: 0 0 6.5rem; }
 .m-top-row { border-bottom: 1px solid #222; }

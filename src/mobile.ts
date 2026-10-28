@@ -4,7 +4,7 @@ import type { Announcement } from './announcement';
 import { noteUri } from './nostr/link';
 import { recentPosts, EMPTY_POSTS } from './scenes/post';
 import { EMPTY_ANUNCIO } from './scenes/anuncio';
-import { ago, esc, sats } from './util';
+import { ago, esc, pending, sats } from './util';
 import { authorHtml } from './nostr/profiles';
 import { live, liveMarks } from './scenes/live';
 import { showIndicator } from './livefeed';
@@ -12,7 +12,7 @@ import { FX } from './fx';
 import type { LiveEvent } from './nostr/store';
 import { domMeasurer, fitText, type Measurer } from './fit';
 import { loadPendingZap, openZapDialog, type InvoiceRequester } from './zap-dialog';
-import { BOLT_OFF, boltSats } from './bolt';
+import { BOLT, BOLT_OFF, boltSats } from './bolt';
 import { COMPOSE_FAB, NO_MARKS, SKEL_POST, SKEL_ROWS, empty, panel as panelHtml, scrubber as scrubberHtml } from './mobile-templates';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
@@ -89,7 +89,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
         ${web ? `<div class="m-post-footer"><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}</div>
         ${web ? `<div class="m-side">${zap.off(s.post!.pubkey)
           ? `<button class="zap-btn m-total is-unzappable${c}" type="button" aria-disabled="true" aria-label="No se puede zapear: el autor no tiene una wallet que acepte zaps">${BOLT_OFF}</button>`
-          : `<button class="zap-btn m-total${c}" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog" aria-label="Zapear · ${sats(s.msats)} sats">${boltSats(s.msats, store.ready, ' sats', '')}</button>`}</div>` : ''}
+          : `<button class="zap-btn m-total${c}" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog" aria-label="Zapear · ${sats(s.msats)} sats">${BOLT}<span class="m-zap-label">Zapear</span>${s.msats > 0 ? pending(`${sats(s.msats)} sats`, store.ready) : ''}</button>`}</div>` : ''}
       </article>`;
   };
   /** Top row: amount first, message on one line; tapping toggles the full card in place. */

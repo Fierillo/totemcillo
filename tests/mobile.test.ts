@@ -75,6 +75,8 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       expect(cards[0].querySelectorAll('.m-total')).toHaveLength(1);
       expect(cards[0].textContent).not.toContain('⚡'); // neon SVG bolt instead of the emoji
       expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
+      // «Zapear» right under the bolt
+      expect(zap.querySelector('svg.m-bolt + .m-zap-label')?.textContent).toBe('Zapear');
     } finally { off(); }
   });
   it('un redibujado justo después de scrollear (antes del evento scroll) no pierde la posición del feed', () => {
@@ -98,7 +100,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     try {
       const zap = root.querySelectorAll('#mobile-posts .m-reel > .m-post')[1].querySelector('.m-total')!;
       expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
-      expect(zap.textContent!.trim()).toBe('');
+      expect(zap.textContent!.trim()).toBe('Zapear'); // label only, never "0 sats"
     } finally { off(); }
   });
   it('el anuncio se pliega al tocar su título y titila cuando llega uno nuevo hasta que lo abrís', () => {
