@@ -18,7 +18,7 @@ import { COMPOSE_FAB, NO_MARKS, SKEL_POST, SKEL_ROWS, empty, panel as panelHtml,
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
 
 /** Post text size range (px): shrinks to fit its area, truncates only below the minimum. */
-export const MOBILE_FONT = { max: 24, min: 10 };
+export const MOBILE_FONT = { max: 32, min: 10 };
 export const MOBILE_POST_MAX_CHARS = 2000; // full posts on phones, still bounded for localStorage (maxPosts × this)
 import { zappability, type CanZap } from './zapcache';
 import { bootSplash, SPLASH_MS, type SplashMs } from './mobile-splash';

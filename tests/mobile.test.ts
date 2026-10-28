@@ -138,7 +138,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
   it('vuelve a ajustar el texto cuando terminan de cargar las fuentes', async () => {
     const root = document.createElement('div'), s = store();
     s.addPost({ id: hex(7), pubkey: 'a'.repeat(64), content: 'mediano '.repeat(8).trim(), created_at: Math.floor(Date.now() / 1000) });
-    let room = 2000, loaded!: () => void; // fake area: the real font is wider than the fallback
+    let room = 3000, loaded!: () => void; // fake area: the real font is wider than the fallback
     Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: new Promise<void>((r) => { loaded = r; }) } });
     const m = { fits: (el: HTMLElement) => el.textContent!.length * parseFloat(el.style.fontSize) <= room, setSize: (el: HTMLElement, px: number) => { el.style.fontSize = `${px}px`; } };
     const off = renderMobile(root, s, defaultConfig, new Announcement(''), { measure: m });
@@ -190,7 +190,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       const mid = parseFloat(ex(hex(6)).style.fontSize);
       expect(mid).toBeLessThan(MOBILE_FONT.max);
       expect(mid).toBeGreaterThanOrEqual(MOBILE_FONT.min);
-      expect(MOBILE_FONT).toEqual({ max: 24, min: 10 }); // shrink further before truncating
+      expect(MOBILE_FONT).toEqual({ max: 32, min: 10 }); // shrink further before truncating
       expect(ex(hex(6)).textContent).not.toContain('…');
       expect(ex(hex(7)).style.fontSize).toBe(`${MOBILE_FONT.min}px`);
       expect(ex(hex(7)).textContent!.endsWith('…')).toBe(true);
