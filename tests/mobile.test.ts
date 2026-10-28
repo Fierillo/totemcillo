@@ -76,8 +76,10 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       expect(cards[0].querySelectorAll('.m-total')).toHaveLength(1);
       expect(cards[0].textContent).not.toContain('⚡'); // neon SVG bolt instead of the emoji
       expect(zap.querySelectorAll('svg.m-bolt')).toHaveLength(1);
-      // «Zapear» right under the bolt
-      expect(zap.querySelector('svg.m-bolt + .m-zap-label')?.textContent).toBe('Zapear');
+      // bolt, then the (larger) sats number, then «Zapear» below it
+      expect(zap.querySelector('svg.m-bolt + .m-zap-sats')?.textContent).toBe('21 sats');
+      expect(zap.querySelector('.m-zap-sats + .m-zap-label')?.textContent).toBe('Zapear');
+      expect(zap.lastElementChild!.classList.contains('m-zap-label')).toBe(true);
     } finally { off(); }
   });
   it('un redibujado justo después de scrollear (antes del evento scroll) no pierde la posición del feed', () => {
