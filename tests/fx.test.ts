@@ -13,6 +13,9 @@ describe('duraciones de efectos: una sola fuente para JS y CSS', () => {
     expect(st.getPropertyValue('--fx-drop')).toBe(`${FX.dropMs}ms`);
   });
 
+  it('el tótem siempre muestra el puntero del mouse', () => {
+    expect(readFileSync('src/style.css', 'utf8')).not.toMatch(/cursor:\s*none/);
+  });
   it('style.css no repite las duraciones a mano', () => {
     const css = readFileSync('src/style.css', 'utf8');
     expect(css).not.toMatch(/glow 3\.5s|zap-flash 3\.5s|\.25s|ind-drop 2\.2s/);

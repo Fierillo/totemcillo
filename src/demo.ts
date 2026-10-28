@@ -84,7 +84,7 @@ export function demoButtons(doc: Document, demo: Demo, dev: boolean, follower?: 
   if (!doc.querySelector('style[data-demo-aim]')) {
     const st = doc.createElement('style');
     st.dataset.demoAim = '';
-    st.textContent = `html.demo-aiming, html.demo-aiming * { cursor: ${CROSSHAIR}, crosshair !important; }`; // overrides the kiosk's cursor:none only while aiming
+    st.textContent = `html.demo-aiming, html.demo-aiming * { cursor: ${CROSSHAIR}, crosshair !important; }`; // crosshair only while aiming
     doc.head.append(st);
   }
   const disarm = () => {

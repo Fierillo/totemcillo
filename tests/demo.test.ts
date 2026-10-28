@@ -96,7 +96,7 @@ describe('botones de simulación (solo desarrollo)', () => {
       button('+ zap').click();
       expect(zapped(s)).toEqual([]);
       expect(button('+ zap').getAttribute('aria-pressed')).toBe('true');
-      expect(document.documentElement.classList.contains('demo-aiming')).toBe(true); // the kiosk hides the cursor; only aiming shows the crosshair
+      expect(document.documentElement.classList.contains('demo-aiming')).toBe(true); // only aiming shows the crosshair
       expect(document.querySelector('style[data-demo-aim]')!.textContent).toMatch(/html\.demo-aiming[^{]*\{[^}]*crosshair !important/);
       (scene.querySelector(`[data-id="${a}"]`)!.firstElementChild as HTMLElement ?? scene.querySelector(`[data-id="${a}"]`)!).dispatchEvent(new MouseEvent('click', { bubbles: true }));
       expect(zapped(s)).toEqual([a]);
