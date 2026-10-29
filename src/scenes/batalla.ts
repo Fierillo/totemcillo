@@ -6,7 +6,6 @@ import { zappability, type CanZap } from '../zapcache';
 import { live, liveMarks } from './live';
 import { appQr } from './post';
 import { fitText } from '../fit';
-import { toArInput } from '../startline';
 
 export const MAX_BARS = 50; // as many as fit; the store ranks up to this many
 /** Legible floor of a bar's message (px): it shrinks down to it, using its bar's whole height, before it's truncated. */
@@ -41,8 +40,6 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
     name: 'batalla',
     render(root) {
       let closed = false;
-      const ar = store.since === undefined ? '' : toArInput(new Date(store.since * 1000).toISOString()); // 'YYYY-MM-DDTHH:MM'
-      const desde = ar ? ` desde ${ar.slice(8, 10)}/${ar.slice(5, 7)} ${ar.slice(11)}` : '';
       const zap = zappability(canZap, () => { if (!closed) draw(); });
       root.innerHTML = `<h1>${BOLT} Batalla de zaps</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
       const ol = root.querySelector<HTMLOListElement>('.batalla')!;
@@ -71,7 +68,7 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
         const list = rows();
         marks.begin(list.map((s) => s.postId));
         root.querySelector('.empty-msg')?.remove();
-        if (!list.length) ol.insertAdjacentHTML('beforebegin', `<p class="empty-msg">Todavía no hay zaps${desde}</p>`);
+        if (!list.length) ol.insertAdjacentHTML('beforebegin', `<p class="empty-msg">Todavía no hay zaps</p>`);
         const ids = new Set(list.map((s) => s.postId));
         ol.querySelectorAll<HTMLElement>(':scope > li').forEach((li) => { if (!ids.has(li.dataset.id!)) li.remove(); });
         const max = list[0]?.msats || 1;

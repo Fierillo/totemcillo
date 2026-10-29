@@ -373,7 +373,7 @@ describe('Batalla de zaps', () => {
     s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: '2027-01-01T00:00:00-03:00' });
     const root = document.createElement('div');
     const off = batallaScene(s).render(root) as () => void;
-    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps desde 01/01 00:00');
+    expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay zaps');
     off();
   });
 });
