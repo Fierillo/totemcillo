@@ -259,7 +259,7 @@ for (const [w, h] of [[915, 412], [800, 360], [851, 393], [932, 430], [915, 350]
 }
 
 for (const [w, h] of [[1920, 1080], [915, 412]]) {
-  test(`firma «totemcillo fue hecho con ❤️ por Fierillo» abajo a la derecha, sin pisar nada, en ${w}x${h}`, async () => {
+  test(`firma «totemcillo fue hecho con 💚 por Fierillo» abajo a la derecha, sin pisar nada, en ${w}x${h}`, async () => {
     const page = await openApp(app.browser, { viewport: { width: w, height: h }, zappable: true, data: { posts: mixPosts, zaps: mixZaps } });
     await kiosk(page, { post: 60000, batalla: 60000, anuncio: 60000 });
     await page.goto(`${BASE}/`);
@@ -274,7 +274,7 @@ for (const [w, h] of [[1920, 1080], [915, 412]]) {
         right: innerWidth - b.right, bottom: innerHeight - b.bottom, center: b.left > innerWidth / 2 };
     });
     assert.equal(r.missing, undefined, 'falta la firma');
-    assert.equal(r.text, 'totemcillo fue hecho con ❤️ por Fierillo');
+    assert.equal(r.text, 'totemcillo fue hecho con 💚 por Fierillo');
     assert.deepEqual([r.href, r.label, r.target], ['https://github.com/Fierillo', 'Fierillo', '_blank']);
     assert.match(r.rel, /noopener/);
     assert.deepEqual(r.others, []);
