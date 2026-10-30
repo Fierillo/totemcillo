@@ -110,7 +110,7 @@ export function check(scene) {
     if (ol && /POST VIEJO|1\.000\.000\.000/.test(ol.textContent)) P.push('la batalla incluye un post vencido');
     if (ol) [...ol.children].map((li) => li.getBoundingClientRect()).sort((a, b) => a.top - b.top).forEach((r, i, all) => {
       const gap = i ? r.top - all[i - 1].bottom : Infinity;
-      if (gap < 7.5) P.push(`barras ${i - 1} y ${i} sin separación mínima (${gap.toFixed(1)}px)`);
+      if (gap < (parseFloat(ol.style.getPropertyValue('--gap')) || 8) - .5) P.push(`barras ${i - 1} y ${i} sin separación mínima (${gap.toFixed(1)}px)`);
     });
     if (ol) [...ol.children].forEach((li, i) => {
       inside(`barra ${i}`, li, ol); const s = li.querySelector('.bar-sats'); inside(`sats barra ${i}`, s, ol);
@@ -118,8 +118,9 @@ export function check(scene) {
       const msg = li.querySelector('.bar-msg'), track = li.querySelector('.bar-track');
       if (!msg) return;
       const lbl = li.querySelector('.bar-label'), fs = (e) => parseFloat(getComputedStyle(e).fontSize);
-      if (fs(msg) < 14) P.push(`mensaje barra ${i}: letra ${fs(msg)}px < 14px`);
-      if (lbl && getComputedStyle(lbl).display !== 'none' && fs(lbl) < 11) P.push(`autor barra ${i}: letra ${fs(lbl)}px < 11px`);
+      const floor = parseFloat(ol.style.getPropertyValue('--bar-min')) || 14; // barSizes(): 14px on PCs, relative on short screens
+      if (fs(msg) < floor) P.push(`mensaje barra ${i}: letra ${fs(msg)}px < ${floor}px`);
+      if (lbl && getComputedStyle(lbl).display !== 'none' && fs(lbl) < Math.floor(floor * .8)) P.push(`autor barra ${i}: letra ${fs(lbl)}px < ${Math.floor(floor * .8)}px`);
       const ms = getComputedStyle(msg), lh = parseFloat(ms.lineHeight), inner = msg.clientHeight - parseFloat(ms.paddingTop) - parseFloat(ms.paddingBottom), lines = inner / lh;
       if (lines < .9 || Math.abs(inner - Math.round(lines) * lh) > 1) P.push(`mensaje barra ${i} recortado en vertical (${msg.clientHeight}px, línea ${lh}px)`);
       // fit order: shrink the font → use the bar's whole height → truncate last. A cut message is at the 14px floor and fills its bar down to the line.

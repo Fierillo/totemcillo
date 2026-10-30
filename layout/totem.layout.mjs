@@ -283,3 +283,22 @@ for (const [w, h] of [[1920, 1080], [915, 412]]) {
     await page.close();
   });
 }
+
+// Batalla on a phone in landscape (mirrored onto a TV): bars scale with the height like the PC's, not a fixed px minimum.
+const batallaPosts = Array.from({ length: 20 }, (_, i) => ({ id: hex(900 + i), pubkey: AUTHOR, content: `Mensaje de la batalla número ${i + 1} con #lacrypta`, created_at: now - 100 - i }));
+const batallaZaps = batallaPosts.map((p, i) => ({ id: hex(1900 + i), postId: p.id, sender: 'cd'.repeat(32), msats: (30 - i) * 1000, domain: 'getalby.com', comment: '', created_at: now - 30 - i }));
+for (const [w, h] of [[915, 412], [800, 360], [851, 393]]) {
+  test(`Batalla: un celular apaisado muestra casi tantos puestos como la PC (1366x768) en ${w}x${h}`, async () => {
+    const page = await openApp(app.browser, { viewport: { width: w, height: h }, dpr: 3, zappable: true, data: { posts: batallaPosts, zaps: batallaZaps } });
+    const k = await kiosk(page, { post: 60000, batalla: 60000 });
+    await page.goto(`${BASE}/`);
+    await k.show('batalla');
+    await page.waitForSelector('.batalla > li', { timeout: 15000 });
+    await settled(page);
+    const n = await page.evaluate(() => document.querySelectorAll('.batalla > li').length);
+    assert.ok(n >= 8, `sólo ${n} puestos`);
+    assert.deepEqual(await page.evaluate(check, 'batalla'), []);
+    await page.screenshot({ path: `${out}/${w}x${h}-batalla-phone.png` });
+    await page.close();
+  });
+}

@@ -13,6 +13,14 @@ export const BAR_MSG_MIN_PX = 14;
 /** Minimum height per bar (px): short windows show fewer bars instead of clipping the text. */
 export const BAR_MIN_PX = 46; // 1 line of 14px text (+padding) + neon line + 11px sats
 export const BAR_GAP = 8; // fixed space between bars
+/** Below this window height (px, a phone in landscape mirrored onto a TV) the floors scale with the height, as in the messages scene. */
+const SHORT_VH = 480, BAR_MSG_MIN_VH = 2.1, BAR_MSG_FLOOR_PX = 7;
+/** The message floor, bar minimum and gap (px) for a window `vh` tall: fixed on PCs, relative on short screens. */
+export function barSizes(vh: number) {
+  if (vh >= SHORT_VH) return { msg: BAR_MSG_MIN_PX, bar: BAR_MIN_PX, gap: BAR_GAP };
+  const msg = Math.max(BAR_MSG_FLOOR_PX, Math.min(12, Math.floor((BAR_MSG_MIN_VH * vh) / 100)));
+  return { msg, bar: Math.round(msg * 2.8), gap: Math.max(4, Math.round(msg / 2)) };
+}
 const GLOBO_MS = 6000;
 const HINCHADA_MS = 1200;
 const AVISO_MS = 4000;
@@ -22,8 +30,9 @@ function fitMessage(li: HTMLElement) {
   const msg = li.querySelector<HTMLElement>('.bar-msg'), text = li.querySelector<HTMLElement>('.bar-text');
   if (!msg || !text) return;
   msg.style.fontSize = '';
-  const max = parseFloat(getComputedStyle(msg).fontSize) || BAR_MSG_MIN_PX;
-  const { truncated } = fitText(text, { max, min: Math.min(max, BAR_MSG_MIN_PX) }, {
+  const floor = barSizes(window.innerHeight).msg;
+  const max = parseFloat(getComputedStyle(msg).fontSize) || floor;
+  const { truncated } = fitText(text, { max, min: Math.min(max, floor) }, {
     setSize: (_, px) => { msg.style.fontSize = `${px}px`; },
     fits: () => msg.scrollHeight <= msg.clientHeight + 1,
   });
@@ -64,7 +73,9 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
       const rows = () => store.top(MAX_BARS).filter((s) => zap.ok(s.post!.pubkey)).slice(0, fitN);
       const marks = liveMarks(store, 'batalla', ['zap'], (id) => rows().some((s) => s.postId === id));
       const draw = () => {
-        fitN = ol.clientHeight ? Math.max(1, Math.min(MAX_BARS, Math.floor((ol.clientHeight + BAR_GAP) / (BAR_MIN_PX + BAR_GAP)))) : MAX_BARS;
+        const sz = barSizes(window.innerHeight);
+        ol.style.setProperty('--bar-min', `${sz.msg}px`);
+        fitN = ol.clientHeight ? Math.max(1, Math.min(MAX_BARS, Math.floor((ol.clientHeight + sz.gap) / (sz.bar + sz.gap)))) : MAX_BARS;
         const list = rows();
         marks.begin(list.map((s) => s.postId));
         root.querySelector('.empty-msg')?.remove();
@@ -84,7 +95,7 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
           li.querySelector('.bar-sats')!.innerHTML = boltSats(s.msats, store.ready);
         });
         ol.style.setProperty('--n', String(fitN));
-        ol.style.setProperty('--gap', `${BAR_GAP}px`);
+        ol.style.setProperty('--gap', `${sz.gap}px`);
         ol.querySelectorAll<HTMLElement>(':scope > li').forEach(fitMessage);
         // Overtake notice: a bar that climbed over the one that held its new place.
         for (const [id, i] of next) {

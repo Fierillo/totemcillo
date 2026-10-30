@@ -216,8 +216,8 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .bar-label .avatar { display: inline-block; width: 1em; height: 1em; margin-right: .3em; vertical-align: -.15em; }
 .bar-label .author { display: inline; color: inherit; font-weight: inherit; vertical-align: baseline; }
 /* The message is the protagonist; the bar is a thin neon line under it */
-.bar-msg { grid-column: 1 / -1; overflow: hidden; font-size: clamp(14px, min(18cqh, 3.6cqw), 44px); font-weight: 600; line-height: 1.4; padding-block: .15em; min-height: 1.7em; max-height: 100%; align-self: end; color: var(--fg); overflow-wrap: anywhere; } /* as many lines as its bar holds: batalla.ts shrinks the font, then truncates */
-.bar-track { grid-column: 1 / -1; position: relative; display: flex; align-items: center; gap: .5em; min-height: 0; font-size: clamp(11px, 12cqh, 26px); line-height: 1.4; margin-top: .25em; }
+.bar-msg { grid-column: 1 / -1; overflow: hidden; font-size: clamp(var(--bar-min, 14px), min(18cqh, 3.6cqw), 44px); font-weight: 600; line-height: 1.4; padding-block: .15em; min-height: 1.7em; max-height: 100%; align-self: end; color: var(--fg); overflow-wrap: anywhere; } /* as many lines as its bar holds: batalla.ts shrinks the font, then truncates */
+.bar-track { grid-column: 1 / -1; position: relative; display: flex; align-items: center; gap: .5em; min-height: 0; font-size: clamp(calc(var(--bar-min, 14px) * .8), 12cqh, 26px); line-height: 1.4; margin-top: .25em; }
 .bar-fill { height: 3px; min-width: .4em; border-radius: 2px; background: linear-gradient(90deg, #6f9a1f, var(--accent)); box-shadow: 0 0 .6em #c7ff5b55; transition: width .7s var(--ease-out-soft); }
 .bar-sats { color: var(--accent); font-weight: 900; white-space: nowrap; }
 .bar-sats .m-bolt { width: .75em; height: 1em; vertical-align: -.12em; }
