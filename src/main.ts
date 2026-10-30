@@ -30,7 +30,7 @@ const devZappable = new Set<string>(); // dev only: authors of the "+ post ⚡" 
 const scene = document.getElementById('scene')!;
 const wallet = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS);
 // Same cached check on both views: the totem only uses it for the red bolt (no zapping there).
-const canZap = cachedCanZap(async (pk) => (import.meta.env.DEV && devZappable.has(pk)) || !!(await wallet.resolveInfo(pk)), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
+const canZap = cachedCanZap(async (pk) => (__TOTEM_DEMO__ && devZappable.has(pk)) || !!(await wallet.resolveInfo(pk)), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
 const app = document.getElementById('app')!;
 zapFx(store); // ⚡ + sats at the bottom when the zapped post is not on screen
 
@@ -56,5 +56,5 @@ if (isMobileViewport()) {
   if (footer) fullscreenButton(document, footer); // bottom-right corner of the footer, clear of the QR/posts
   document.addEventListener('dblclick', () => document.documentElement.requestFullscreen?.());
 }
-// Dev only (tree-shaken from production), wired once the totem's follower exists: window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
-if (import.meta.env.DEV) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store, undefined, devZappable), import.meta.env.DEV, follower));
+// Dev and Vercel preview only (tree-shaken from production), wired once the totem's follower exists: window.__totemDemo.post()/zap(), the "+ post" / "+ zap" buttons and, on the totem, local scene arrows.
+if (__TOTEM_DEMO__) void import('./demo').then((m) => m.demoButtons(document, m.installDemo(window, store, undefined, devZappable), __TOTEM_DEMO__, follower));
