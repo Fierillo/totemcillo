@@ -259,7 +259,7 @@ for (const [w, h] of [[915, 412], [800, 360], [851, 393], [932, 430], [915, 350]
 }
 
 for (const [w, h] of [[1920, 1080], [915, 412]]) {
-  test(`firma «totemcillo fue hecho con 💚 por Fierillo» abajo a la derecha, sin pisar nada, en ${w}x${h}`, async () => {
+  test(`firma «totemcillo fue hecho con 💚 por Fierillo» pegada a la esquina inferior derecha, chica, sin pisar nada, en ${w}x${h}`, async () => {
     const page = await openApp(app.browser, { viewport: { width: w, height: h }, zappable: true, data: { posts: mixPosts, zaps: mixZaps } });
     await kiosk(page, { post: 60000, batalla: 60000, anuncio: 60000 });
     await page.goto(`${BASE}/`);
@@ -271,7 +271,7 @@ for (const [w, h] of [[1920, 1080], [915, 412]]) {
       const b = f.getBoundingClientRect(), hit = (e) => { const o = e.getBoundingClientRect(); return o.width && b.right > o.left && b.left < o.right && b.bottom > o.top && b.top < o.bottom; };
       const others = [...document.querySelectorAll('figure.qr, .post-row, .fs-toggle, .repo-link, #live-strip > *')].filter(hit).map((e) => e.className || e.tagName);
       return { text: f.textContent.replace(/\s+/g, ' ').trim(), href: a.href, label: a.textContent.trim(), target: a.target, rel: a.rel, others,
-        right: innerWidth - b.right, bottom: innerHeight - b.bottom, center: b.left > innerWidth / 2 };
+        right: innerWidth - b.right, bottom: innerHeight - b.bottom, center: b.left > innerWidth / 2, ratio: parseFloat(getComputedStyle(f).fontSize) / parseFloat(getComputedStyle(f.closest('.footer')).fontSize) };
     });
     assert.equal(r.missing, undefined, 'falta la firma');
     assert.equal(r.text, 'totemcillo fue hecho con 💚 por Fierillo');
@@ -279,7 +279,9 @@ for (const [w, h] of [[1920, 1080], [915, 412]]) {
     assert.match(r.rel, /noopener/);
     assert.deepEqual(r.others, []);
     assert.ok(r.center && r.bottom < h * 0.06, `no está abajo a la derecha: ${JSON.stringify(r)}`);
-    await page.screenshot({ path: `/workspace/totemcillo-firma2-${w}x${h}.png` });
+    assert.ok(r.right < 44 && r.bottom < Math.max(6, h * 0.012), `no está pegada a la esquina: ${JSON.stringify(r)}`);
+    assert.ok(r.ratio <= 0.57, `letra de la firma no achicada: ${JSON.stringify(r)}`);
+    await page.screenshot({ path: `/workspace/totemcillo-firma3-${w}x${h}.png` });
     await page.close();
   });
 }
