@@ -257,3 +257,29 @@ for (const [w, h] of [[915, 412], [800, 360], [851, 393], [932, 430], [915, 350]
     await page.close();
   });
 }
+
+for (const [w, h] of [[1920, 1080], [915, 412]]) {
+  test(`firma «Hecho con ❤️ por Fierillo» abajo a la derecha, sin pisar nada, en ${w}x${h}`, async () => {
+    const page = await openApp(app.browser, { viewport: { width: w, height: h }, zappable: true, data: { posts: mixPosts, zaps: mixZaps } });
+    await kiosk(page, { post: 60000, batalla: 60000, anuncio: 60000 });
+    await page.goto(`${BASE}/`);
+    await page.waitForSelector('.scene-post .post-row');
+    await settled(page);
+    const r = await page.evaluate(() => {
+      const f = document.querySelector('.firma'), a = f?.querySelector('a');
+      if (!f || !a) return { missing: true };
+      const b = f.getBoundingClientRect(), hit = (e) => { const o = e.getBoundingClientRect(); return o.width && b.right > o.left && b.left < o.right && b.bottom > o.top && b.top < o.bottom; };
+      const others = [...document.querySelectorAll('figure.qr, .post-row, .fs-toggle, .repo-link, #live-strip > *')].filter(hit).map((e) => e.className || e.tagName);
+      return { text: f.textContent.replace(/\s+/g, ' ').trim(), href: a.href, label: a.textContent.trim(), target: a.target, rel: a.rel, others,
+        right: innerWidth - b.right, bottom: innerHeight - b.bottom, center: b.left > innerWidth / 2 };
+    });
+    assert.equal(r.missing, undefined, 'falta la firma');
+    assert.equal(r.text, 'Hecho con ❤️ por Fierillo');
+    assert.deepEqual([r.href, r.label, r.target], ['https://github.com/Fierillo', 'Fierillo', '_blank']);
+    assert.match(r.rel, /noopener/);
+    assert.deepEqual(r.others, []);
+    assert.ok(r.center && r.bottom < h * 0.06, `no está abajo a la derecha: ${JSON.stringify(r)}`);
+    await page.screenshot({ path: `/workspace/totemcillo-firma-${w}x${h}.png` });
+    await page.close();
+  });
+}

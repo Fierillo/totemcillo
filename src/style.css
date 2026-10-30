@@ -307,7 +307,13 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 }
 
 /* Off-scene new-post icons: each one at a random spot/tilt in the lower band (set from JS). */
-#live-strip { position: absolute; right: 48px; bottom: .4em; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
+/* Bottom right, left of the fullscreen button: the live indicators, then the signature (both in the footer, clear of the QR/posts) */
+.footer-end { position: absolute; right: calc(var(--icon, 32px) * 1.5); bottom: 0; top: 0; display: flex; align-items: center; gap: .6em; pointer-events: none; }
+.firma { color: var(--muted); font-size: .7em; white-space: nowrap; pointer-events: auto; }
+.firma a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
+.firma a:hover, .firma a:focus-visible { color: var(--accent); }
+.is-mobile .firma { display: none; }
+#live-strip { position: static; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
 .live-ind { position: fixed; bottom: var(--y, 6vh); display: block; height: clamp(2.5rem, 4vw, 4rem); rotate: var(--tilt, 0deg); animation: ind-pop 1.5s ease-out forwards; }
 .live-ind svg { height: 100%; width: auto; display: block; }
 .live-ind.post svg { fill: var(--accent); filter: drop-shadow(0 0 .35em var(--accent)); }
