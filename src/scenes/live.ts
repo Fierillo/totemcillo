@@ -1,7 +1,7 @@
 import type { LiveEvent, ZapStore } from '../nostr/store';
 import { feedFor } from '../livefeed';
 import { profiles } from '../nostr/profiles';
-import { strike } from '../strike';
+import { strike, STRIKE_MS } from '../strike';
 import { sats } from '../util';
 import { FX } from '../fx';
 
@@ -31,6 +31,7 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
   const feed = feedFor(store);
   const marks = new Map<string, Set<string>>();
   const gains = new Map<string, number>(); // msats each zapped post gained since the last draw
+  const struck = new Set<string>(); // zapped rows already struck at their old place (charge)
   let first = true;
   const add = (e: LiveEvent) => {
     const m = marks.get(e.postId) ?? new Set<string>();
@@ -48,16 +49,41 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
     },
     attrs(id: string) {
       const m = marks.get(id);
-      return { cls: m ? ` ${[...m].join(' ')}` : '' };
+      const cls = m ? [...m].filter((c) => !(c === 'is-zapped' && struck.has(id))) : [];
+      return { cls: cls.length ? ` ${cls.join(' ')}` : '' };
     },
+    /**
+     * Zap order: the strike lands on the row where it IS, the row charges there (`update`) and only after STRIKE_MS
+     * `redraw` moves it to its new place. Returns true while holding (the caller skips this draw).
+     */
+    charge(find: (id: string) => HTMLElement | null, update: (el: HTMLElement, id: string) => void, redraw: () => void): boolean {
+      const els = [...marks].flatMap(([id, m]) => {
+        const el = m.has('is-zapped') && !struck.has(id) ? find(id) : null;
+        return el ? [[id, el] as const] : [];
+      });
+      if (!els.length) return false;
+      for (const [id, el] of els) {
+        el.classList.add('is-zapped');
+        update(el, id);
+        const msats = gains.get(id);
+        strike(el, Math.random, undefined, msats ? `+${sats(msats)} sats` : undefined);
+        struck.add(id);
+      }
+      setTimeout(redraw, STRIKE_MS);
+      return true;
+    },
+    /** True for a row that already got its strike at its old place (its effect keeps running, not restarted). */
+    struck: (id: string) => struck.has(id),
     /** Call after drawing: strikes the zapped rows now on screen in `root` ("+N sats" at the impact), then forgets the marks. */
     consume(root: ParentNode, center = false) {
       root.querySelectorAll<HTMLElement>('.is-zapped').forEach((el) => {
+        if (struck.has(el.dataset.id!)) return; // already struck at its old place
         const msats = gains.get(el.dataset.id!);
         strike(el, Math.random, undefined, msats ? `+${sats(msats)} sats` : undefined, center);
       });
       marks.clear();
       gains.clear();
+      struck.clear();
     },
     off,
   };

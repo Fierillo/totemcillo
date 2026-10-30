@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { STRIKE_MS } from '../src/strike';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
 import { postScene, fitBoxes, LONG_COMMENT, MAX_BOXES, BOX_MIN_PX, BOX_COMFORT_PX, BOX_MIN_RATIO } from '../src/scenes/post';
@@ -114,6 +115,8 @@ describe('Mensajes como cajas flotantes', () => {
       const off = postScene(s, { publicUrl: 'https://x/' }).render(root)!;
       expect(ids(root)).toEqual([hex(1), hex(2), hex(3)]);
       zap(s, 3, 1_000, '', 1);
+      expect(ids(root)).toEqual([hex(1), hex(2), hex(3)]); // the strike lands at its old place first
+      vi.advanceTimersByTime(STRIKE_MS);
       expect(ids(root)).toEqual([hex(3), hex(1), hex(2)]);
       off();
     });
@@ -201,7 +204,7 @@ describe('Mensajes como cajas flotantes', () => {
   it('un comentario de zap que llega en vivo entra con el efecto de post nuevo (sólo esa caja, una vez)', async () => {
     const { s, root, off } = scene();
     zap(s, 12, 21_000, 'c'.repeat(LONG_COMMENT), 1);
-    await vi.advanceTimersByTimeAsync(200);
+    await vi.advanceTimersByTimeAsync(STRIKE_MS + 200); // post 12 charges in place first
     const box = root.querySelector('.msg-zap')!;
     expect(box.classList.contains('is-new')).toBe(true);
     expect(root.querySelectorAll('.is-new')).toHaveLength(1);
@@ -217,7 +220,7 @@ describe('Mensajes como cajas flotantes', () => {
     const { s, root, off } = scene();
     s.addPost({ id: hex(99), pubkey: pk('9'), content: 'nuevo', created_at: NOW });
     zap(s, 12, 21_000);
-    await vi.advanceTimersByTimeAsync(150);
+    await vi.advanceTimersByTimeAsync(STRIKE_MS + 150); // post 12 charges in place, then the list redraws
     const row = () => root.querySelector<HTMLElement>(`[data-id="${hex(99)}"]`)!;
     const zrow = () => root.querySelector<HTMLElement>(`[data-id="${hex(12)}"]`)!;
     expect(row().classList.contains('is-new')).toBe(true);
@@ -240,8 +243,8 @@ describe('Mensajes como cajas flotantes', () => {
   it('un zap en vivo a un post en pantalla: sólo el rayo real (strike) y sats al día, sin ícono simbólico encima', async () => {
     const { s, root, off } = scene();
     zap(s, 12, 21_000); zap(s, 12, 42_000);
-    await vi.advanceTimersByTimeAsync(200);
-    expect(document.querySelector('svg.strike')).not.toBeNull();
+    expect(document.querySelector('svg.strike')).not.toBeNull(); // at its old place
+    await vi.advanceTimersByTimeAsync(STRIKE_MS + 200);
     expect(root.querySelector(`[data-id="${hex(12)}"] .row-total`)!.textContent).toContain('63');
     off();
   });
@@ -256,7 +259,7 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     const ol = root.querySelector<HTMLElement>('.batalla')!;
     Object.defineProperty(ol, 'clientHeight', { configurable: true, value: 900 });
     zap(s, 1, 1);
-    await vi.advanceTimersByTimeAsync(150);
+    await vi.advanceTimersByTimeAsync(STRIKE_MS + 150);
     const n = Math.floor((900 + BAR_GAP) / (BAR_MIN_PX + BAR_GAP));
     expect(n).toBeGreaterThan(6);
     expect(BAR_GAP).toBeGreaterThanOrEqual(8);
@@ -275,12 +278,12 @@ describe('Batalla de zaps: el mensaje es protagonista', () => {
     const ol = root.querySelector<HTMLElement>('.batalla')!;
     Object.defineProperty(ol, 'clientHeight', { configurable: true, value: BAR_MIN_PX * 2.5 });
     zap(s, 1, 1);
-    await vi.advanceTimersByTimeAsync(150);
+    await vi.advanceTimersByTimeAsync(STRIKE_MS + 150);
     expect(root.querySelectorAll('.batalla > li')).toHaveLength(2);
     expect(ol.style.getPropertyValue('--n')).toBe('2');
     Object.defineProperty(ol, 'clientHeight', { configurable: true, value: 10 });
     zap(s, 1, 1);
-    await vi.advanceTimersByTimeAsync(150);
+    await vi.advanceTimersByTimeAsync(STRIKE_MS + 150);
     expect(root.querySelectorAll('.batalla > li')).toHaveLength(1);
     off?.();
   });
@@ -355,6 +358,8 @@ describe('Batalla de zaps', () => {
     const li2 = root.querySelector<HTMLElement>(`[data-id="${hex(2)}"]`)!;
     zap(s, 2, 15_000, '¡vamos!', 1);
     await vi.advanceTimersByTimeAsync(150);
+    expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(1), hex(2), hex(3)]); // charging at its old place
+    await vi.advanceTimersByTimeAsync(STRIKE_MS);
     expect(bars(root).map((li) => li.dataset.id)).toEqual([hex(2), hex(1), hex(3)]);
     expect(root.querySelector(`[data-id="${hex(2)}"]`)).toBe(li2);
     expect(li2.querySelector<HTMLElement>('.bar-fill')!.style.width).toBe('100%');

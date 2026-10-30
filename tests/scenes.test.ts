@@ -13,6 +13,7 @@ import { sats } from '../src/util';
 import { installDemo } from '../src/demo';
 import { feedFor, showIndicator, MAX_PENDING } from '../src/livefeed';
 import { profiles } from '../src/nostr/profiles';
+import { STRIKE_MS } from '../src/strike';
 
 const NOW = 1_800_000_000;
 const hex = (n: number) => n.toString(16).padStart(64, '0');
@@ -83,6 +84,40 @@ describe('animación de post nuevo en la lista', () => {
 });
 
 describe('animación de zap (rayo) en la fila visible', () => {
+  it('mensajes: el rayo cae en el puesto viejo, el post se carga ahí y recién después sube', () => {
+    const s = mkStore();
+    s.addPost(post(1, NOW - 3600)); s.addPost(post(2, NOW - 60)); // 2 is first, 1 second
+    const root = document.createElement('div');
+    postScene(s, { publicUrl: 'https://x/' }).render(root);
+    vi.advanceTimersByTime(200);
+    s.addZap(zap(1, 1, NOW - 1, 2_100_000));
+    const ids = () => [...root.querySelectorAll<HTMLElement>('.post-row')].map((r) => r.dataset.id);
+    expect(ids()).toEqual([hex(2), hex(1)]); // still at its old place
+    const r = root.querySelector(`.post-row[data-id="${hex(1)}"]`)!;
+    expect(r.classList.contains('is-zapped')).toBe(true);
+    expect(r.querySelector('.row-total')!.textContent).toContain('2.100'); // charged there
+    expect(document.querySelectorAll('svg.strike')).toHaveLength(1);
+    vi.advanceTimersByTime(STRIKE_MS);
+    expect(ids()).toEqual([hex(1), hex(2)]); // then it moves
+    expect(document.querySelectorAll('svg.strike')).toHaveLength(0); // one strike only (no second one at the new place)
+  });
+  it('batalla: el rayo cae en el puesto viejo, la barra se carga ahí y recién después sube', () => {
+    const s = mkStore();
+    s.addPost(post(1)); s.addPost(post(2));
+    s.addZap(zap(1, 1, NOW - 3600, 1_000_000)); s.addZap(zap(2, 2, NOW - 3600, 2_000_000));
+    const root = document.createElement('div');
+    bat(s).render(root);
+    vi.advanceTimersByTime(200);
+    const li = () => root.querySelector<HTMLElement>(`li[data-id="${hex(1)}"]`)!;
+    expect(li().style.getPropertyValue('--rank')).toBe('1');
+    s.addZap(zap(3, 1, NOW - 1, 5_000_000));
+    expect(li().style.getPropertyValue('--rank')).toBe('1'); // still at its old place
+    expect(li().querySelector('.bar-sats')!.textContent).toContain('6.000'); // charged there
+    expect(document.querySelectorAll('svg.strike')).toHaveLength(1);
+    vi.advanceTimersByTime(STRIKE_MS);
+    expect(li().style.getPropertyValue('--rank')).toBe('0'); // then it moves
+    expect(document.querySelectorAll('svg.strike')).toHaveLength(0);
+  });
   it('lista de posts: la fila zapeada recibe is-zapped, un rayo real cae sobre ella y el total se actualiza', () => {
     const s = mkStore();
     s.addPost(post(1)); s.addPost(post(2));
@@ -199,7 +234,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     s.addZap(zap(1, 1, NOW - 1));
     expect(r.querySelector('.is-zapped')).not.toBeNull();
     s.addPost(post(9, NOW - 1));
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(STRIKE_MS); // the zapped box charges in place first; then the list redraws
     expect(r.querySelector('.is-new')).not.toBeNull();
     expect(ind).toEqual([]);
     expect(feedFor(s).pending).toHaveLength(0);

@@ -235,7 +235,15 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
       const zap = zappability(opts.canZap, () => { if (!closed) draw(); });
       const effects = rowEffects((li) => li.dataset.id ?? `z:${li.dataset.zap}`);
       let seen: Set<string> | undefined; // zap messages already on screen (live marks are per post, so new ones are tracked here)
+      let holding = false; // a zapped box is charging at its old place: the reorder waits
       const draw = () => {
+        if (holding || closed) return;
+        holding = marks.charge((id) => root.querySelector<HTMLElement>(`.post-list > .post-row[data-id="${id}"]`), (el, id) => {
+          effects.start([el]); // the flash starts here, and continues at the new place
+          const s = store.stats().find((x) => x.postId === id), total = el.querySelector('.row-total');
+          if (s && total && !total.matches('.is-unzappable, .bolt-pending')) total.innerHTML = boltSats(s.msats, store.ready);
+        }, () => { holding = false; draw(); });
+        if (holding) return;
         const list = messages(store);
         const box = (m: Message) => {
           if (m.zap) return zapRow(m.zap, seen && !seen.has(m.zap.id) ? ' is-new' : '');
@@ -252,7 +260,7 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         fitRegions(root);
         fitBoxes(root);
         const rows = [...root.querySelectorAll<HTMLElement>('.post-list > li')];
-        effects.start(rows);
+        effects.start(rows.filter((li) => !marks.struck(li.dataset.id ?? '')));
         marks.consume(root); // strikes only the fresh marks, aimed at the box's new place
         effects.resume(rows);
         slide(rows.filter((li) => li.matches('.post-row')), before, key);

@@ -72,7 +72,16 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
       let fitN = MAX_BARS;
       const rows = () => store.top(MAX_BARS).filter((s) => zap.ok(s.post!.pubkey)).slice(0, fitN);
       const marks = liveMarks(store, 'batalla', ['zap'], (id) => rows().some((s) => s.postId === id));
+      let holding = false; // a zapped bar is charging at its old place: the reorder waits
       const draw = () => {
+        if (holding || closed) return;
+        holding = marks.charge((id) => ol.querySelector<HTMLElement>(`:scope > li[data-id="${id}"]`), (li, id) => {
+          const top = store.top(MAX_BARS), s = top.find((x) => x.postId === id), max = Math.max(top[0]?.msats || 1, s?.msats ?? 0);
+          if (!s) return;
+          li.querySelector<HTMLElement>('.bar-fill')!.style.width = `${Math.round((s.msats / max) * 10000) / 100}%`;
+          li.querySelector('.bar-sats')!.innerHTML = boltSats(s.msats, store.ready);
+        }, () => { holding = false; draw(); });
+        if (holding) return;
         const sz = barSizes(window.innerHeight);
         ol.style.setProperty('--bar-min', `${sz.msg}px`);
         fitN = ol.clientHeight ? Math.max(1, Math.min(MAX_BARS, Math.floor((ol.clientHeight + sz.gap) / (sz.bar + sz.gap)))) : MAX_BARS;
