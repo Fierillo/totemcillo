@@ -25,6 +25,8 @@ export const BOX_MIN_PX = 12;
 export const BOX_COMFORT_PX = 16;
 /** …and on big windows it scales with the height (vh). */
 const BOX_COMFORT_VH = 1.8; // ≈19px at 1080p: smaller boxes, more of them
+/** Below this window height (px, a phone in landscape) a smaller font that places more boxes wins over the comfort floor. */
+const SHORT_VH = 480;
 /** Largest message font the list grows to while filling its area, in vh and vw. */
 const BOX_MAX_VH = 3, BOX_MAX_VW = 2; // ≈32px at 1080p (was 43): no oversized boxes when few messages
 /** Zap comments at least this long also show up as messages. */
@@ -151,10 +153,19 @@ export function fitBoxes(root: HTMLElement, m: Measurer = domMeasurer, vh = wind
   const cap = Math.max(floor, Math.floor(Math.min(Number(ul.dataset.max) * vh, Number(ul.dataset.maxw ?? Infinity) * vw) / 100));
   const all = [...ul.querySelectorAll<HTMLElement>('.post-row')];
   const keep = (k: number) => all.forEach((box, i) => { box.hidden = i >= k; });
-  const count = (s: number) => { sizeBoxes(ul, s, m); return largest(1, all.length, (k) => { keep(k); return arrange(root, ul, fits) >= 0; }) ?? 1; };
-  const atMin = floor <= BOX_COMFORT_PX ? count(BOX_MIN_PX) : 0, atFloor = count(floor);
-  const kept = Math.max(atFloor, atMin); // a short screen (fixed comfort floor): a smaller font before dropping boxes; big ones (vh comfort) keep fewer, comfortable boxes
-  if (atMin > atFloor) sizeBoxes(ul, BOX_MIN_PX, m);
+  /** At font s: how many candidates go in without overflowing (k) and how many of them the masonry actually places. */
+  const count = (s: number) => {
+    sizeBoxes(ul, s, m);
+    const k = largest(1, all.length, (n) => { keep(n); return arrange(root, ul, fits) >= 0; }) ?? 1;
+    keep(k);
+    return { k, placed: Math.max(1, arrange(root, ul, fits)) };
+  };
+  const atMin = floor <= BOX_COMFORT_PX ? count(BOX_MIN_PX) : { k: 0, placed: 0 }, atFloor = count(floor);
+  // a short screen (fixed comfort floor): a smaller font before dropping boxes; big ones (vh comfort) keep fewer, comfortable boxes.
+  // A phone-landscape screen (mirrored onto a TV) also counts the boxes the masonry leaves out, so it doesn't stay mostly empty.
+  const small = vh < SHORT_VH ? atMin.placed > atFloor.placed : atMin.k > atFloor.k;
+  const kept = small ? atMin.k : atFloor.k;
+  if (small) sizeBoxes(ul, BOX_MIN_PX, m);
   all.slice(kept).forEach((box) => box.remove()); // the oldest that don't fit
   keep(kept);
   const need = Math.max(1, arrange(root, ul, fits));
