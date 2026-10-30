@@ -304,3 +304,18 @@ for (const [w, h] of [[915, 412], [800, 360], [851, 393]]) {
     await page.close();
   });
 }
+
+// An author whose profile hasn't loaded yet but cached as zappable: the name's skeleton stays inline, so the bar still shows the message (not just "…").
+test('Batalla: con el perfil del autor cargando, la barra muestra el mensaje', async () => {
+  const stranger = 'cd'.repeat(32), p = { id: hex(990), pubkey: stranger, content: 'Mensaje de un autor sin perfil todavía #lacrypta', created_at: now - 100 };
+  const page = await openApp(app.browser, { viewport: { width: 1920, height: 1080 }, data: { posts: [p], zaps: [{ id: hex(1990), postId: p.id, sender: 'ef'.repeat(32), msats: 21_000, domain: 'getalby.com', comment: '', created_at: now - 30 }] } });
+  await page.addInitScript(([k, pk]) => localStorage.setItem(k, JSON.stringify({ [pk]: [1, Date.now(), 0] })), ['totemcillo:canzap:v1', stranger]);
+  await kiosk(page, { post: 0, batalla: 60000, anuncio: 0 });
+  await page.goto(`${BASE}/`);
+  await page.waitForSelector('.batalla > li');
+  await settled(page);
+  const r = await page.evaluate(() => ({ text: document.querySelector('.bar-text').textContent, skel: !!document.querySelector('.bar-label .skel') }));
+  assert.ok(r.skel, 'el perfil ya cargó: el test no prueba el esqueleto');
+  assert.equal(r.text, 'Mensaje de un autor sin perfil todavía #lacrypta');
+  await page.close();
+});
