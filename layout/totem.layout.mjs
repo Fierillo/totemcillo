@@ -180,7 +180,7 @@ for (const [w, h] of viewports) {
     const k = await kiosk(page, { post: 60000, batalla: 60000 });
     await page.goto(`${BASE}/`);
     const problems = [];
-    for (const [scene, expected] of [['post', 'Todavía no hay posts con #lacrypta'], ['batalla', 'Todavía no hay zaps'], ['anuncio', 'Sin anuncios por ahora']]) {
+    for (const [scene, expected] of [['post', 'Todavía no hay posts con #lacrypta'], ['batalla', 'Todavía no hay zaps']]) { // no announcement: its scene is skipped
       await k.show(scene);
       await settled(page);
       problems.push(...tagged(scene, await page.evaluate(checkEmpty, [scene, expected])));

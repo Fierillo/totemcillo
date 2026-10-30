@@ -102,7 +102,7 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
         const now = d.now();
         let next = applyPatch(cur, v.patch);
         const { announcement, command, zapProviders, startLine, ...sched } = v.patch;
-        if (Object.keys(sched).length) next = reanchor(cur, next, now);
+        if (Object.keys(sched).length || announcement !== undefined) next = reanchor(cur, next, now); // an emptied/filled announcement drops/adds its scene
         if (command) next = shiftSchedule(next, now, command);
         return { ok: true, settings: next };
       });

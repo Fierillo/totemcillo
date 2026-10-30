@@ -107,6 +107,7 @@ export async function kiosk(page, durations, extra = {}) {
   await page.route('**/api/kiosk*', (r) => r.fulfill({ json: st }));
   await page.route('**/api/version*', (r) => r.fulfill({ json: { version: st.version } }));
   const durs = { post: 42000, batalla: 28000, anuncio: 10000, ...durations }; // DEFAULT_SCENE_MS
+  if (!String(st.announcement ?? '').trim()) durs.anuncio = 0; // no announcement: the schedule skips its scene
   return {
     async show(scene, reload = true) {
       const i = ORDER.indexOf(scene);

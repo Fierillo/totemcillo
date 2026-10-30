@@ -2,7 +2,7 @@
 import { DEFAULT_SCENE_MS, SCENES, SCHEDULE_DEFAULTS, type Action, type Settings } from './settings.js';
 
 /** The minimum needed to compute the schedule. */
-export type ScheduleInputs = Pick<Settings, 'sceneDurations' | 'videoEveryCycles' | 'videoMode' | 'videoClipSeconds' | 'videoDurationSec' | 'epoch'>;
+export type ScheduleInputs = Pick<Settings, 'sceneDurations' | 'videoEveryCycles' | 'videoMode' | 'videoClipSeconds' | 'videoDurationSec' | 'epoch'> & { announcement?: string };
 
 export const ORDER: readonly string[] = [...SCENES, 'video'];
 const VIDEO = ORDER.length - 1;
@@ -12,6 +12,7 @@ export interface Position { scene: string; index: number; cycle: number; sceneSt
 interface Plan { durs: number[]; every: number; videoMs: number; clipRange: number }
 function plan(s: ScheduleInputs): Plan {
   const d = { ...DEFAULT_SCENE_MS, ...s.sceneDurations };
+  if (typeof s.announcement === 'string' && !s.announcement.trim()) d.anuncio = 0; // no announcement: its scene is skipped
   const every = s.videoEveryCycles ?? SCHEDULE_DEFAULTS.videoEveryCycles;
   const full = (s.videoDurationSec ?? SCHEDULE_DEFAULTS.videoDurationSec) * 1000;
   const clip = (s.videoClipSeconds ?? SCHEDULE_DEFAULTS.videoClipSeconds) * 1000;

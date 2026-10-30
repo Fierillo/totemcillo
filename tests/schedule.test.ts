@@ -10,7 +10,7 @@ import type { Scene } from '../src/scenes/types';
 import { videoScene } from '../src/scenes/video';
 
 const D = { post: 1000, batalla: 2000, anuncio: 3000 }; // base 6000
-const S = (o: Partial<Settings> = {}): Settings => ({ ...DEFAULT_SETTINGS, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 10, epoch: 100_000, ...o });
+const S = (o: Partial<Settings> = {}): Settings => ({ ...DEFAULT_SETTINGS, announcement: 'Aviso', sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoDurationSec: 10, epoch: 100_000, ...o });
 
 describe('positionAt (determinístico)', () => {
   it('recorre escenas con sus duraciones; la vuelta 0 incluye video, la 1 no', () => {
@@ -314,7 +314,7 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
   });
   it('el Follower le pasa al video la posición esperada según el reloj corregido', async () => {
     let t = 7000;
-    const inputs = { epoch: 0, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: '', version: 1 };
+    const inputs = { epoch: 0, sceneDurations: D, videoEveryCycles: 2, videoMode: 'full', videoClipSeconds: 21, videoDurationSec: 10, announcement: 'Aviso', version: 1 };
     const f = vi.fn(async (url: string) => ({ ok: true, json: async () => (url === '/api/time' ? { now: t } : url.startsWith('/api/kiosk') ? inputs : { version: 1 }) }));
     const names = ['post', 'batalla', 'anuncio'];
     await new Follower(root, [...names.map(mk), videoScene('/v.webm')], { fetchFn: f as any, clock: () => t, pollMs: 21_000 }).start();
@@ -324,5 +324,19 @@ describe('re-sync de reloj y corrección de deriva del video', () => {
     t = 9000; v.currentTime = 0.5; // expected 3 s → jump
     vi.advanceTimersByTime(1000);
     expect(v.currentTime).toBe(3);
+  });
+});
+
+describe('anuncio vacío', () => {
+  it('sin anuncio la escena anuncio se saltea (dura 0): post → batalla → video/post', () => {
+    const s = S({ announcement: '' });
+    expect(positionAt(s, 102_999)).toMatchObject({ scene: 'batalla', sceneEndsAt: 103_000 });
+    expect(positionAt(s, 103_000)).toMatchObject({ scene: 'video', sceneStartedAt: 103_000 });
+    const seen = new Set(Array.from({ length: 60 }, (_, i) => positionAt(s, 100_000 + i * 500).scene));
+    expect(seen.has('anuncio')).toBe(false);
+  });
+  it('con anuncio (sólo espacios cuenta como vacío) la escena vuelve', () => {
+    expect(positionAt(S({ announcement: '   ' }), 103_500).scene).toBe('video');
+    expect(positionAt(S({ announcement: 'Hola' }), 103_500).scene).toBe('anuncio');
   });
 });
