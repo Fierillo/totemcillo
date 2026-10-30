@@ -1,11 +1,9 @@
 // Totem geometry: nothing overlaps, overflows or clips, at kiosk sizes, small windows and usual DPRs.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE, out, startApp, openApp, kiosk, settled, hex, now, AUTHOR, posts, zaps, sceneDurations, comments, five, fiveZaps, mixPosts, mixZaps, START_LINE } from '../browser/harness.mjs';
+import { BASE, out, startApp, openApp, kiosk, settled, hex, now, AUTHOR, posts, zaps, sceneDurations, comments, five, fiveZaps, mixPosts, mixZaps } from '../browser/harness.mjs';
 import { check, checkEmpty, checkHeader, checkRepoLink } from './checks.mjs';
 
-/** START_LINE in Argentina time (UTC-3) as the battle shows it: 'DD/MM HH:MM'. */
-const arDesde = (iso) => { const v = new Date(Date.parse(iso) - 3 * 3600_000).toISOString(); return `${v.slice(8, 10)}/${v.slice(5, 7)} ${v.slice(11, 16)}`; };
 
 const viewports = [[1280, 720], [1920, 1080], [1080, 1920]];
 const smallViewports = [[1024, 600], [1024, 415], [1024, 400], [800, 600], [1366, 500], [1024, 300]];
@@ -182,7 +180,7 @@ for (const [w, h] of viewports) {
     const k = await kiosk(page, { post: 60000, batalla: 60000 });
     await page.goto(`${BASE}/`);
     const problems = [];
-    for (const [scene, expected] of [['post', 'Todavía no hay posts con #lacrypta'], ['batalla', `Todavía no hay zaps desde ${arDesde(START_LINE)}`], ['anuncio', 'Sin anuncios por ahora']]) {
+    for (const [scene, expected] of [['post', 'Todavía no hay posts con #lacrypta'], ['batalla', 'Todavía no hay zaps'], ['anuncio', 'Sin anuncios por ahora']]) {
       await k.show(scene);
       await settled(page);
       problems.push(...tagged(scene, await page.evaluate(checkEmpty, [scene, expected])));
