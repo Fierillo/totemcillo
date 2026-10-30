@@ -222,3 +222,23 @@ for (const [w, h] of viewports) {
     await page.close();
   });
 }
+
+for (const [w, h] of [[915, 412], [1280, 720], [1920, 1080]]) {
+  test(`Mensajes: pocos mensajes llenan la pantalla (medidas relativas) en ${w}x${h}`, async () => {
+    const page = await openApp(app.browser, { viewport: { width: w, height: h }, data: { posts: five, zaps: fiveZaps } });
+    await kiosk(page, { post: 60000, batalla: 60000, anuncio: 60000 });
+    await page.goto(`${BASE}/`);
+    await page.waitForSelector('.scene-post .post-row');
+    await settled(page);
+    const r = await page.evaluate(() => {
+      const ul = document.querySelector('.post-list').getBoundingClientRect(), rows = [...document.querySelectorAll('.post-row')].map((b) => b.getBoundingClientRect());
+      const q = document.querySelector('figure.qr').getBoundingClientRect(); // the width counts up to the QR's lane
+      const top = Math.min(...rows.map((b) => b.top)), bottom = Math.max(...rows.map((b) => b.bottom));
+      const left = Math.min(...rows.map((b) => b.left)), right = Math.min(q.left, Math.max(...rows.map((b) => b.right)));
+      return { h: (bottom - top) / ul.height, w: (right - left) / (q.left - ul.left) };
+    });
+    assert.ok(r.h >= 0.7, `las cajas ocupan sólo ${Math.round(r.h * 100)}% del alto`);
+    assert.ok(r.w >= 0.85, `las cajas ocupan sólo ${Math.round(r.w * 100)}% del ancho`);
+    await page.close();
+  });
+}

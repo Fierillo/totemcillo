@@ -5,6 +5,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 #app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: relative; }
 .footer { position: relative; min-height: max(48px, 2.3rem); background: var(--bg); }
 .repo-link { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; width: 32px; height: 32px; padding: 8px; color: var(--muted); cursor: pointer; }
+html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: relative to the screen, so short mirrored screens keep room for the messages */
 .repo-link svg { display: block; width: 100%; height: 100%; }
 .repo-link:hover, .repo-link:focus-visible { color: var(--accent); }
 .fs-toggle { position: absolute; right: 8px; bottom: 8px; width: 32px; height: 32px; padding: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; }
@@ -349,6 +350,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
   animation: bob 7s ease-in-out calc(var(--i, 0) * -1.7s) infinite alternate; }
 .post-list[data-boxes] > .post-row:nth-child(3n + 2) { animation-duration: 8.5s; }
 .post-list[data-boxes] > .post-row:nth-child(3n) { animation-duration: 9.6s; }
+@media (min-height: 700px) { .post-list[data-boxes] { --box-lines: 4; } } /* tall screens (TV): a message keeps a bigger font over more lines */
 .post-list[data-boxes] > [hidden] { display: none; } /* a box fitBoxes is trying without */
 .post-list[data-boxes] > .post-row.is-long .excerpt { /* a long message grows its box (more lines) once its font hit the minimum */ max-height: calc((var(--box-lines) * 2 + 1) * var(--box-lh)); }
 .post-list[data-boxes] .row-main { font-size: 1em; }

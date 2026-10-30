@@ -28,7 +28,7 @@ const BOX_COMFORT_VH = 1.8; // ≈19px at 1080p: smaller boxes, more of them
 /** Below this window height (px, a phone in landscape) a smaller font that places more boxes wins over the comfort floor. */
 const SHORT_VH = 480;
 /** Largest message font the list grows to while filling its area, in vh and vw. */
-const BOX_MAX_VH = 3, BOX_MAX_VW = 2; // ≈32px at 1080p (was 43): no oversized boxes when few messages
+const BOX_MAX_VH = 5, BOX_MAX_VW = 4; // relative to the viewport: few messages grow to fill the screen (mirrored onto a TV)
 /** Zap comments at least this long also show up as messages. */
 export const LONG_COMMENT = 40;
 export const QR_CAPTION = 'Escaneá y abrí esto en tu celular';
