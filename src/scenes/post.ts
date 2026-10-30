@@ -21,6 +21,9 @@ export const MAX_BOXES = 24;
 export const BOX_MIN_RATIO = 0.6;
 /** Legible floor (px): 12px still reads at arm's length on a totem screen; no message goes below it. */
 export const BOX_MIN_PX = 12;
+/** …but a phone in landscape (below SHORT_VH, mirrored onto a TV) scales it with the height, like the PC's 16px at 768px: its CSS px are big on the TV. */
+const BOX_MIN_VH = 2.1, BOX_MIN_FLOOR_PX = 7;
+let minPx = BOX_MIN_PX; // the legible floor of the list being fitted
 /** Comfortable list font (px): on short screens the list goes below it (down to BOX_MIN_PX) when that fits more boxes. */
 export const BOX_COMFORT_PX = 16;
 /** …and on big windows it scales with the height (vh). */
@@ -77,7 +80,7 @@ const zapRow = (z: Zap, cls = '') => `<li class="post-row msg-zap${cls}" data-za
 function sizeBoxes(ul: HTMLElement, size: number, m: Measurer) {
   m.setSize(ul, size);
   columns(ul); // the text wraps at the column width
-  const min = Math.max(BOX_MIN_PX, Math.floor(size * BOX_MIN_RATIO));
+  const min = Math.max(minPx, Math.floor(size * BOX_MIN_RATIO));
   ul.dataset.boxMin = String(min); // the layout check tries tall boxes at their normal height at it
   const excerpts = [...ul.querySelectorAll<HTMLElement>('.excerpt')];
   // Batched: every message at the list font in one cell, then a single read; only the ones that don't fit go down the ladder.
@@ -149,6 +152,7 @@ export function fitBoxes(root: HTMLElement, m: Measurer = domMeasurer, vh = wind
   if (!ul) return;
   const boxFits = m.fitsBox ?? m.fits;
   const fits = () => boxFits(ul) && [...ul.querySelectorAll<HTMLElement>('.post-row:not([hidden]):not([data-out])')].every((b) => boxFits(b)); // masonry already keeps them apart and off the QR
+  minPx = vh < SHORT_VH ? Math.max(BOX_MIN_FLOOR_PX, Math.min(BOX_MIN_PX, Math.floor((BOX_MIN_VH * vh) / 100))) : BOX_MIN_PX;
   const floor = Math.max(Number(ul.dataset.floor), Math.floor((Number(ul.dataset.comfort ?? 0) * vh) / 100));
   const cap = Math.max(floor, Math.floor(Math.min(Number(ul.dataset.max) * vh, Number(ul.dataset.maxw ?? Infinity) * vw) / 100));
   const all = [...ul.querySelectorAll<HTMLElement>('.post-row')];
@@ -160,17 +164,17 @@ export function fitBoxes(root: HTMLElement, m: Measurer = domMeasurer, vh = wind
     keep(k);
     return { k, placed: Math.max(1, arrange(root, ul, fits)) };
   };
-  const atMin = floor <= BOX_COMFORT_PX ? count(BOX_MIN_PX) : { k: 0, placed: 0 }, atFloor = count(floor);
+  const atMin = floor <= BOX_COMFORT_PX ? count(minPx) : { k: 0, placed: 0 }, atFloor = count(floor);
   // a short screen (fixed comfort floor): a smaller font before dropping boxes; big ones (vh comfort) keep fewer, comfortable boxes.
   // A phone-landscape screen (mirrored onto a TV) also counts the boxes the masonry leaves out, so it doesn't stay mostly empty.
   const small = vh < SHORT_VH ? atMin.placed > atFloor.placed : atMin.k > atFloor.k;
   const kept = small ? atMin.k : atFloor.k;
-  if (small) sizeBoxes(ul, BOX_MIN_PX, m);
+  if (small) sizeBoxes(ul, minPx, m);
   all.slice(kept).forEach((box) => box.remove()); // the oldest that don't fit
   keep(kept);
   const need = Math.max(1, arrange(root, ul, fits));
   const tryAt = (s: number) => { sizeBoxes(ul, s, m); return arrange(root, ul, fits) >= need; };
-  const best = largest(floor, cap, tryAt) ?? largest(BOX_MIN_PX, floor - 1, tryAt) ?? BOX_MIN_PX; // a tiny window: down to the legible floor
+  const best = largest(floor, cap, tryAt) ?? largest(minPx, floor - 1, tryAt) ?? minPx; // a tiny window: down to the legible floor
   sizeBoxes(ul, best, m);
   if (arrange(root, ul, fits) < 1) { squeeze(ul, m); arrange(root, ul, fits); }
   const out = [...ul.querySelectorAll<HTMLElement>('.post-row[data-out]')];

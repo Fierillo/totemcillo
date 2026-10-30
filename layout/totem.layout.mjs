@@ -242,3 +242,18 @@ for (const [w, h] of [[915, 412], [1280, 720], [1920, 1080]]) {
     await page.close();
   });
 }
+
+// A phone in landscape mirrored onto a TV: its CSS px are big on screen, so the legible floor scales with the height (like the PC's).
+for (const [w, h] of [[915, 412], [800, 360], [851, 393], [932, 430], [915, 350]]) {
+  test(`Mensajes: un celular apaisado muestra casi tantos mensajes como la PC (1366x768) en ${w}x${h}`, async () => {
+    const page = await openApp(app.browser, { viewport: { width: w, height: h }, dpr: 3, zappable: true, data: { posts: mixPosts, zaps: mixZaps } });
+    await kiosk(page, { post: 60000, batalla: 60000, anuncio: 60000 });
+    await page.goto(`${BASE}/`);
+    await page.waitForSelector('.scene-post .post-row');
+    await settled(page);
+    const n = await page.evaluate(() => document.querySelectorAll('.post-list > .post-row').length);
+    assert.ok(n >= 10, `sólo ${n} mensajes`);
+    assert.deepEqual(await page.evaluate(check, 'post'), []);
+    await page.close();
+  });
+}
