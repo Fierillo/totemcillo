@@ -309,7 +309,7 @@ h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3e
 .firma { color: var(--muted); font-size: .7em; white-space: nowrap; pointer-events: auto; }
 .firma a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 .firma a:hover, .firma a:focus-visible { color: var(--accent); }
-.is-mobile .firma { display: none; }
+.is-mobile .footer-end { left: 0; right: 0; justify-content: center; } /* phone: the signature centered, where the GitHub icon was */
 #live-strip { position: static; height: 1.4em; display: flex; align-items: center; gap: .4em; pointer-events: none; }
 .live-ind { position: fixed; bottom: var(--y, 6vh); display: block; height: clamp(2.5rem, 4vw, 4rem); rotate: var(--tilt, 0deg); animation: ind-pop 1.5s ease-out forwards; }
 .live-ind svg { height: 100%; width: auto; display: block; }

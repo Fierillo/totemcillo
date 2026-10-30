@@ -49,3 +49,20 @@ test('un anuncio con una URL de 300 caracteres no ensancha la página del celula
   assert.ok(r.sw <= r.vw, JSON.stringify(r));
   await page.close();
 });
+
+test('celular: la firma «totemcillo fue hecho con ❤️ por Fierillo» al pie, con sus dos enlaces, sin taparse', async () => {
+  const page = await openMobile(app.browser, [390, 844]);
+  await feedReady(page);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const r = await page.evaluate(() => {
+    const f = document.querySelector('footer .firma');
+    if (!f || !f.getBoundingClientRect().width) return { missing: true };
+    const b = f.getBoundingClientRect(), fab = document.querySelector('.m-fab').getBoundingClientRect();
+    return { text: f.textContent.replace(/\s+/g, ' ').trim(), links: [...f.querySelectorAll('a')].map((a) => [a.textContent, a.href, a.target, /noopener/.test(a.rel)]),
+      out: b.left < 0 || b.right > innerWidth || b.bottom > innerHeight + 1, fab: !(b.right <= fab.left || b.left >= fab.right || b.bottom <= fab.top || b.top >= fab.bottom),
+      icon: !!document.querySelector('.repo-link') };
+  });
+  assert.deepEqual(r, { text: 'totemcillo fue hecho con ❤️ por Fierillo', links: [['totemcillo', 'https://github.com/Fierillo/totemcillo', '_blank', true], ['Fierillo', 'https://github.com/Fierillo', '_blank', true]], out: false, fab: false, icon: false });
+  await page.screenshot({ path: '/workspace/totemcillo-firma2-mobile-390x844-footer.png' });
+  await page.close();
+});
