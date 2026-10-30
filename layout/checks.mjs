@@ -191,19 +191,13 @@ export function checkHeader() {
 }
 
 export function checkRepoLink() {
-  const link = document.querySelector('a.repo-link');
-  if (!link) return ['falta el enlace al repo'];
   const problems = [];
-  if (link.href !== 'https://github.com/Fierillo/totemcillo' || !link.getAttribute('aria-label')) problems.push('enlace incorrecto o sin nombre accesible');
-  if (!link.querySelector('svg') || link.textContent.trim()) problems.push('debe mostrar solo el ícono de GitHub');
-  const footer = document.querySelector('footer');
-  if (!footer || !footer.contains(link)) problems.push('falta la banda inferior con el enlace');
-  if (footer) {
-    const f = footer.getBoundingClientRect(), main = document.querySelector('#scene').getBoundingClientRect();
-    if (f.top < main.bottom - 1 || f.bottom > innerHeight + 1) problems.push('banda inferior superpuesta o fuera de pantalla');
-  }
-  const r = link.getBoundingClientRect();
-  if (r.width < 16 || r.width > 36 || r.height < 16 || r.height > 36) problems.push('ícono no es pequeño');
-  if (Math.abs((r.left + r.right) / 2 - innerWidth / 2) > 1 || r.bottom > innerHeight || innerHeight - r.bottom > 24) problems.push('enlace fuera del centro inferior');
+  const icon = document.querySelector('a.repo-link');
+  if (icon && icon.getBoundingClientRect().width) problems.push('el ícono de GitHub sigue visible en el totem');
+  const link = document.querySelector('footer .firma a[href="https://github.com/Fierillo/totemcillo"]');
+  if (!link) return [...problems, 'falta el enlace al repo en la firma'];
+  if (link.textContent.trim() !== 'totemcillo' || link.target !== '_blank' || !/noopener/.test(link.rel)) problems.push('enlace al repo incorrecto');
+  const footer = document.querySelector('footer'), f = footer.getBoundingClientRect(), main = document.querySelector('#scene').getBoundingClientRect();
+  if (f.top < main.bottom - 1 || f.bottom > innerHeight + 1) problems.push('banda inferior superpuesta o fuera de pantalla');
   return problems;
 }

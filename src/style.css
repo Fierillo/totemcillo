@@ -4,10 +4,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(14px, min(1.6vw, 2.6vh), 40px); }
 #app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: relative; }
 .footer { position: relative; min-height: max(48px, 2.3rem); background: var(--bg); }
-.repo-link { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; width: 32px; height: 32px; padding: 8px; color: var(--muted); cursor: pointer; }
 html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: relative to the screen, so short mirrored screens keep room for the messages */
-.repo-link svg { display: block; width: 100%; height: 100%; }
-.repo-link:hover, .repo-link:focus-visible { color: var(--accent); }
 .fs-toggle { position: absolute; right: 8px; bottom: 8px; width: 32px; height: 32px; padding: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; }
 .fs-toggle svg { display: block; width: 100%; height: 100%; }
 .fs-toggle:hover, .fs-toggle:focus-visible { color: var(--accent); }
