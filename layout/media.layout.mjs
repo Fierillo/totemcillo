@@ -32,26 +32,28 @@ for (const [w, h] of [[390, 844], [412, 915]]) {
     await page.goto(`${BASE}/`); await splashGone(page);
     await page.waitForFunction(() => document.querySelector('.m-reel > .m-post .m-media img')?.complete); await settled(page);
     const inCard = (sel) => page.evaluate((s) => { const c = document.querySelector(s), i = c.querySelector('.m-media img'), r = i.getBoundingClientRect(), b = c.getBoundingClientRect();
-      return { loaded: i.naturalWidth === 2400, inside: r.left >= b.left - 1 && r.right <= b.right + 1 && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1, urlShown: c.querySelector('.m-excerpt').textContent.includes('https://') }; }, sel);
-    assert.deepEqual(await inCard('.m-reel > .m-post'), { loaded: true, inside: true, urlShown: false });
+      return { loaded: i.naturalWidth === 2400, big: r.height >= innerHeight * 0.4 || r.width >= c.querySelector('.m-body').getBoundingClientRect().width - 1, inside: r.left >= b.left - 1 && r.right <= b.right + 1 && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1, urlShown: c.querySelector('.m-excerpt').textContent.includes('https://') }; }, sel);
+    assert.deepEqual(await inCard('.m-reel > .m-post'), { loaded: true, big: true, inside: true, urlShown: false });
     await page.getByRole('tab', { name: 'Top posts' }).click();
     await page.locator('.m-top-head').first().click();
     await page.waitForFunction(() => document.querySelector('.m-top-row > .m-post .m-media img')?.complete);
-    assert.deepEqual(await inCard('.m-top-row > .m-post'), { loaded: true, inside: true, urlShown: false });
+    assert.deepEqual(await inCard('.m-top-row > .m-post'), { loaded: true, big: true, inside: true, urlShown: false });
     assert.deepEqual(direct, []);
     await page.close();
   });
 }
 
 for (const [w, h] of [[1920, 1080], [1280, 720]]) {
-  test(`TV: un post con imagen muestra una miniatura acotada y no achica la cantidad de cajas en ${w}x${h}`, async () => {
+  test(`TV: un post con imagen es una caja grande con la imagen protagonista, sin pisar nada, en ${w}x${h}`, async () => {
     const count = async (posts) => {
       const page = await openApp(app.browser, { viewport: { width: w, height: h }, zappable: true, data: { posts, zaps: mixZaps } });
       await serve(page); await kiosk(page, sceneDurations);
       await page.goto(`${BASE}/`); await page.waitForSelector('.scene-post .post-row'); await settled(page);
       await page.waitForFunction(() => [...document.querySelectorAll('.row-media img')].every((i) => i.complete)); await settled(page);
       const r = await page.evaluate(() => { const i = document.querySelector('.row-media img'), b = i?.closest('.post-row').getBoundingClientRect(), m = i?.getBoundingClientRect();
-        return { n: document.querySelectorAll('.post-list > li:not([hidden])').length, thumb: m ? m.height <= innerHeight * 0.07 && m.right <= b.right + 1 && m.bottom <= b.bottom + 1 : null }; });
+        const others = [...document.querySelectorAll('.post-list > li:not([hidden])')].filter((li) => !li.querySelector('.row-media')).map((li) => li.getBoundingClientRect().height).sort((x, y) => x - y);
+        return { n: others.length, thumb: m ? m.height >= innerHeight * 0.18 && m.height <= innerHeight * 0.3 && m.right <= b.right + 1 && m.bottom <= b.bottom + 1
+          && b.height >= 1.75 * others[others.length >> 1] : null }; });
       const issues = await page.evaluate(check, 'post');
       await page.close();
       return { ...r, issues };
@@ -60,6 +62,6 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
     assert.deepEqual(withImg.issues, []);
     assert.equal(withImg.thumb, true);
     assert.deepEqual(direct, []);
-    assert.ok(withImg.n >= plain.n - 1, `cajas con imagen ${withImg.n} vs sin ${plain.n}`);
+    assert.ok(withImg.n >= plain.n / 2, `cajas con imagen ${withImg.n} vs sin ${plain.n}`); // the image box takes room, the rest still shows
   });
 }
