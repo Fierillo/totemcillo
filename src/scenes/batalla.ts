@@ -4,7 +4,7 @@ import { authorHtml } from '../nostr/profiles';
 import { BOLT, boltSats } from '../bolt';
 import { zappability, type CanZap } from '../zapcache';
 import { live, liveMarks } from './live';
-import { APP_HEADER, appQr } from './post';
+import { appQr } from './post';
 import { fitText } from '../fit';
 
 export const MAX_BARS = 50; // as many as fit; the store ranks up to this many
@@ -50,7 +50,7 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
     render(root) {
       let closed = false;
       const zap = zappability(canZap, () => { if (!closed) draw(); });
-      root.innerHTML = `${publicUrl ? APP_HEADER : ''}<h1>${BOLT} Batalla de zaps</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
+      root.innerHTML = `<h1>${BOLT} Batalla de zaps</h1><div class="batalla-wrap"><p class="batalla-aviso" aria-live="polite"></p><ol class="batalla"></ol></div>` + (publicUrl ? appQr(publicUrl) : '');
       const ol = root.querySelector<HTMLOListElement>('.batalla')!;
       const aviso = root.querySelector<HTMLElement>('.batalla-aviso')!;
       const timers = new Set<ReturnType<typeof setTimeout>>();

@@ -8,12 +8,14 @@ html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: r
 .fs-toggle { position: absolute; right: 8px; bottom: 8px; width: 32px; height: 32px; padding: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; }
 .fs-toggle svg { display: block; width: 100%; height: 100%; }
 .fs-toggle:hover, .fs-toggle:focus-visible { color: var(--accent); }
-.topbar { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
+.topbar { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .5em 1.2em;
   min-width: 0; overflow: hidden; white-space: nowrap; }
 .brand { display: block; height: 1.8em; width: auto; max-width: 40vw; object-fit: contain; flex: 0 0 auto; } /* official logo (white), header height */
 /* Header CTA (top right): one line, clipped with … rather than overlapping the logo */
 .cta { color: var(--muted); font-size: 1.1em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .cta b { color: var(--accent); }
+.app-url { position: absolute; left: 50%; transform: translateX(-50%); color: #fff; font-size: 1.1em; font-weight: 700; } /* TV: centered between logo and CTA */
+.is-mobile .app-url { display: none; }
 .scene { position: relative; padding: 1em 1.5em var(--strip-room); min-width: 0; min-height: 0; overflow: hidden; animation: fade .6s ease; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .muted { color: var(--muted); }
@@ -44,7 +46,6 @@ html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: r
 .qr-box { position: absolute; right: 1.5em; bottom: var(--strip-room); }
 .qr { width: 18vw; width: min(28vh, 18vw); background: #fff; padding: .45em; border-radius: .5em; text-align: center; overflow: hidden; }
 .qr svg, .qr img { display: block; width: 100%; height: auto; shape-rendering: crispEdges; image-rendering: pixelated; }
-.app-url { margin: 0 0 .15em; text-align: center; color: #fff; font-weight: 700; font-size: clamp(12px, 1.8vh, 26px); line-height: 1.2; }
 .qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.6vh, 22px); margin-top: .25em; line-height: 1.2; }
 
 /* Content uses the full width; fitRegions reserves only the QR's actual rectangle. */

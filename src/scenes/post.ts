@@ -63,8 +63,6 @@ const postRow = (s: PostStats, { cls, ready, images, zap }: RowOptions) => `<li 
     </li>`;
 
 const qrCache = new Map<string, string>();
-/** Header above the title of every TV scene that shows the app QR. */
-export const APP_HEADER = '<p class="app-url">totemcillo.vercel.app</p>';
 /** QR as an <img> data URL with an intrinsic size: old TV WebViews (Chromecast/Google TV) painted the inline SVG blank. */
 function qrImg(data: string): string {
   const svg = renderSVG(data, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' });
@@ -272,7 +270,7 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         marks.begin(list.flatMap((m) => m.post ? [m.post.postId] : []));
         const key = (li: HTMLElement) => li.dataset.id ?? `z:${li.dataset.zap}`;
         const before = new Map([...root.querySelectorAll<HTMLElement>('.post-list > .post-row')].map((li) => [key(li), li.getBoundingClientRect()]));
-        root.innerHTML = `${APP_HEADER}<h1>Últimos mensajes</h1>` + (list.length
+        root.innerHTML = '<h1>Últimos mensajes</h1>' + (list.length
           ? `<section class="posts"><ul class="post-list" data-boxes data-max="${BOX_MAX_VH}" data-maxw="${BOX_MAX_VW}" data-floor="${BOX_COMFORT_PX}" data-comfort="${BOX_COMFORT_VH}">${list.map(box).join('')}</ul></section>`
           : `<div class="empty-state"><p class="empty-msg" data-fit="text" data-max="7" data-min="16">${EMPTY_POSTS}</p></div>`) + qr();
         root.querySelectorAll<HTMLElement>('.post-list > li').forEach((li, i) => li.style.setProperty('--i', String(i))); // float phase
