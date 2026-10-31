@@ -1,9 +1,9 @@
-:root { --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; --ease-out-soft: cubic-bezier(.22, 1, .36, 1); }
+:root { --footer-h: max(48px, 2.3rem); --fab-w: 10.5rem; --cta-bottom: 3.6rem; --neon-yellow: #fff000; --violet: #8b5cf6; --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; --ease-out-soft: cubic-bezier(.22, 1, .36, 1); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(14px, min(1.6vw, 2.6vh), 40px); }
 #app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: relative; }
-.footer { position: relative; min-height: max(48px, 2.3rem); background: var(--bg); }
+.footer { position: relative; min-height: var(--footer-h); background: var(--bg); }
 html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: relative to the screen, so short mirrored screens keep room for the messages */
 .fs-toggle { position: absolute; right: 8px; bottom: 8px; width: 32px; height: 32px; padding: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; }
 .fs-toggle svg { display: block; width: 100%; height: 100%; }
@@ -127,9 +127,9 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-side { flex: 0 0 auto; align-self: center; display: flex; flex-direction: column; gap: 1rem; }
 .m-post .m-side .zap-btn { display: grid; justify-items: center; gap: .2rem; padding: .5rem; font-size: .75rem; }
 .m-reel > .m-post { position: relative; }
-.m-zap-cta { display: flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; margin-top: .6rem; padding: 0 1.2rem; border: 1px solid var(--accent); border-radius: 999px; background: transparent; color: var(--accent); font: 800 1rem system-ui, sans-serif; text-shadow: 0 0 6px currentColor; box-shadow: 0 0 .6rem #c7ff5b44; cursor: pointer; }
+.m-zap-cta { display: flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; margin-top: .6rem; padding: 0 1.2rem; border: 1px solid var(--neon-yellow); border-radius: 999px; background: transparent; color: var(--neon-yellow); font: 800 1rem system-ui, sans-serif; text-shadow: 0 0 6px currentColor; box-shadow: 0 0 .6rem #fff00055; cursor: pointer; } /* neon yellow */
 .m-zap-cta:disabled { opacity: .35; cursor: default; box-shadow: none; text-shadow: none; }
-.m-reel > .m-post > .m-zap-cta { position: absolute; left: 1.75rem; right: 1rem; bottom: 3.6rem; margin: 0; } /* full width, just above the compose pill, inside the 7.5rem bottom padding */
+.m-reel > .m-post > .m-zap-cta { position: absolute; left: 1.75rem; right: calc(1.1rem + var(--fab-w) + env(safe-area-inset-right)); bottom: var(--cta-bottom); height: 44px; margin: 0; } /* shares the row with the compose pill, at its left */
 .m-zap-sats { font-size: 1.15rem; }
 .m-bolt { fill: rgba(199, 255, 91, .18); stroke: #eaffb8; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 8px var(--accent)); } /* neon bolt, no circle */
 .m-top { list-style: none; padding: 0; margin: 0 0 6.5rem; }
@@ -143,7 +143,7 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-top-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-top-head[aria-expanded="true"] .m-top-line { color: var(--muted); }
 .m-top-row > .m-post { display: flex; gap: .75rem; border: 0; padding-top: 0; }
-.m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(3.5rem + env(safe-area-inset-bottom)); z-index: 5; display: inline-flex; align-items: center; gap: .35rem; height: 2.4rem; min-height: 40px; padding: 0 .85rem; border: 0; border-radius: 999px; background: var(--accent); color: #0b0d0a; font: 800 .72rem system-ui, sans-serif; white-space: nowrap; box-shadow: 0 .3rem 1rem #000a; cursor: pointer; } /* small pill in the bottom-right corner, raised; sits inside the 6.5rem bottom padding of feed items and the Top list */
+.m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(var(--footer-h) + var(--cta-bottom)); width: var(--fab-w); justify-content: center; z-index: 5; display: inline-flex; align-items: center; gap: .35rem; height: 44px; padding: 0 .85rem; border: 0; border-radius: 999px; background: var(--violet); color: #fff; font: 800 .72rem system-ui, sans-serif; white-space: nowrap; box-shadow: 0 .3rem 1rem #000a; cursor: pointer; } /* violet pill at the bottom right, on the same row as Zapear */
 .m-fab svg { width: 1rem; height: 1rem; }
 .m-compose-warn { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; color: #ff3b3b; font-weight: 700; }
 .m-compose-warn svg { flex: none; width: 1.2rem; height: 1.6rem; } /* the red struck-through bolt of unzappable authors */

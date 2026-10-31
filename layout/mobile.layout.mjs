@@ -28,9 +28,12 @@ for (const [w, h] of [[360, 640], [390, 700], [390, 844], [412, 915]]) {
         ctaOff: (() => { const b = card.querySelector('.m-zap-cta')?.getBoundingClientRect(), hits = (r) => !(b.right <= r.left || b.left >= r.right || b.bottom <= r.top || b.top >= r.bottom);
           return !b || b.height < 40 || b.bottom > innerHeight || b.left < 0 || hits(e) || hits(s) || hits(fab) || (!!link && hits(link)); })(),
         scrubHits: [...document.querySelectorAll('.m-side')].some(hit) || hit(document.querySelector('.m-fab')) || hit(card.querySelector('.m-body')),
+        // Zapear and «Mandá mensaje anónimo» share one row: same vertical center, Zapear on the left.
+        rowOff: (() => { const b = card.querySelector('.m-zap-cta').getBoundingClientRect(); return Math.abs((b.top + b.bottom) / 2 - (fab.top + fab.bottom) / 2) > 2 || b.right > fab.left; })(),
+        ctaColor: getComputedStyle(card.querySelector('.m-zap-cta')).color, fabBg: getComputedStyle(document.querySelector('.m-fab')).backgroundColor,
       };
     });
-    assert.deepEqual(m, { cardOut: false, textOverflow: false, underFab: false, scrollInside: false, smallFont: false, pageScroll: false, fabOff: false, ctaOff: false, scrubOut: false, scrubHits: false });
+    assert.deepEqual(m, { cardOut: false, textOverflow: false, underFab: false, scrollInside: false, smallFont: false, pageScroll: false, fabOff: false, ctaOff: false, scrubOut: false, scrubHits: false, rowOff: false, ctaColor: 'rgb(255, 240, 0)', fabBg: 'rgb(139, 92, 246)' });
     assert.deepEqual(await page.evaluate(checkHeader), []);
     await page.screenshot({ path: `${out}/${w}x${h}-mobile.png` });
     await page.close();
