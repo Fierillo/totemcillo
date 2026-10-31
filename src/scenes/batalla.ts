@@ -72,14 +72,17 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
       let fitN = MAX_BARS;
       const rows = () => store.top(MAX_BARS).filter((s) => zap.ok(s.post!.pubkey)).slice(0, fitN);
       const marks = liveMarks(store, 'batalla', ['zap'], (id) => rows().some((s) => s.postId === id));
+      /** Bar width relative to `max` and its sats label (shared by the charge and the normal draw). */
+      const paintBar = (li: HTMLElement, msats: number, max: number) => {
+        li.querySelector<HTMLElement>('.bar-fill')!.style.width = `${Math.round((msats / max) * 10000) / 100}%`;
+        li.querySelector('.bar-sats')!.innerHTML = boltSats(msats, store.ready);
+      };
       let holding = false; // a zapped bar is charging at its old place: the reorder waits
       const draw = () => {
         if (holding || closed) return;
         holding = marks.charge((id) => ol.querySelector<HTMLElement>(`:scope > li[data-id="${id}"]`), (li, id) => {
           const top = store.top(MAX_BARS), s = top.find((x) => x.postId === id), max = Math.max(top[0]?.msats || 1, s?.msats ?? 0);
-          if (!s) return;
-          li.querySelector<HTMLElement>('.bar-fill')!.style.width = `${Math.round((s.msats / max) * 10000) / 100}%`;
-          li.querySelector('.bar-sats')!.innerHTML = boltSats(s.msats, store.ready);
+          if (s) paintBar(li, s.msats, max);
         }, () => { holding = false; draw(); });
         if (holding) return;
         const sz = barSizes(window.innerHeight);
@@ -100,8 +103,7 @@ export function batallaScene(store: ZapStore, publicUrl?: string, canZap?: CanZa
           if (marks.attrs(s.postId).cls.includes('is-zapped')) li.classList.add('is-zapped');
           li.querySelector('.bar-label')!.innerHTML = `<span class="rank">#${i + 1}</span>${authorHtml(s.post!.pubkey)}`;
           li.querySelector('.bar-text')!.textContent = s.post!.content.trim().replace(/\s+/g, ' ');
-          li.querySelector<HTMLElement>('.bar-fill')!.style.width = `${Math.round((s.msats / max) * 10000) / 100}%`;
-          li.querySelector('.bar-sats')!.innerHTML = boltSats(s.msats, store.ready);
+          paintBar(li, s.msats, max);
         });
         ol.style.setProperty('--n', String(fitN));
         ol.style.setProperty('--gap', `${sz.gap}px`);
