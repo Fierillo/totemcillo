@@ -358,3 +358,13 @@ it('producción (proxy de avatares) cuenta el rate limit en Redis cuando está c
     expect(res.statusCode).toBe(429);
   } finally { vi.unstubAllEnvs(); vi.doUnmock('@upstash/redis'); }
 });
+
+it('producción rechaza ADMIN_PASSWORD de menos de 16 caracteres (login 503); dev sigue aceptando claves cortas', async () => {
+  const { depsFromEnv, devDeps } = await import('../server/node');
+  const base = { UPSTASH_REDIS_REST_URL: 'https://redis.example.invalid', UPSTASH_REDIS_REST_TOKEN: 't', SESSION_SECRET: 's'.repeat(32) };
+  const short = { ...depsFromEnv({ ...base, ADMIN_PASSWORD: 'a'.repeat(15) }), storage: memoryStorage() };
+  expect((await handle(req('POST', '/api/login', { password: 'a'.repeat(15) }), short)).status).toBe(503);
+  const long = { ...depsFromEnv({ ...base, ADMIN_PASSWORD: 'a'.repeat(16) }), storage: memoryStorage() };
+  expect((await handle(req('POST', '/api/login', { password: 'a'.repeat(16) }), long)).status).toBe(200);
+  expect(devDeps({ ADMIN_PASSWORD: 'corta' }).env.ADMIN_PASSWORD).toBe('corta');
+});
