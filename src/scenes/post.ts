@@ -62,6 +62,8 @@ const postRow = (s: PostStats, { cls, ready, images, zap }: RowOptions) => `<li 
       </div>
     </li>`;
 
+/** Show the app QR card on the TV; false hides it (CSS) and lets content use its space. */
+const TV_QR = false;
 const qrCache = new Map<string, string>();
 /** QR as an <img> data URL with an intrinsic size: old TV WebViews (Chromecast/Google TV) painted the inline SVG blank. */
 function qrImg(data: string): string {
@@ -73,7 +75,7 @@ function qrImg(data: string): string {
 export function appQr(publicUrl: string): string {
   let h = qrCache.get(publicUrl);
   if (!h) {
-    h = `<aside class="qr-box"><figure class="qr" data-uri="${esc(publicUrl)}">${qrImg(publicUrl)}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
+    h = `<aside class="qr-box${TV_QR ? '' : ' qr-off'}"><figure class="qr" data-uri="${esc(publicUrl)}">${qrImg(publicUrl)}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
     qrCache.set(publicUrl, h);
   }
   return h;

@@ -44,6 +44,7 @@ html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: r
 @media (prefers-reduced-motion: reduce) { .bolt-in .m-bolt { animation: none; } .row-total.bolt-pending .m-bolt { animation: none; opacity: .45; } }
 .row-total small { font-weight: 700; font-size: .7em; color: var(--muted); }
 .qr-box { position: absolute; right: 1.5em; bottom: var(--strip-room); }
+.qr-box.qr-off { display: none; }
 .qr { width: 18vw; width: min(28vh, 18vw); background: #fff; padding: .45em; border-radius: .5em; text-align: center; overflow: hidden; }
 .qr svg, .qr img { display: block; width: 100%; height: auto; shape-rendering: crispEdges; image-rendering: pixelated; }
 .qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.6vh, 22px); margin-top: .25em; line-height: 1.2; }

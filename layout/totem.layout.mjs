@@ -232,7 +232,7 @@ for (const [w, h] of [[915, 412], [1280, 720], [1920, 1080]]) {
     await settled(page);
     const r = await page.evaluate(() => {
       const ul = document.querySelector('.post-list').getBoundingClientRect(), rows = [...document.querySelectorAll('.post-row')].map((b) => b.getBoundingClientRect());
-      const q = document.querySelector('figure.qr').getBoundingClientRect(); // the width counts up to the QR's lane
+      const qb = document.querySelector('figure.qr').getBoundingClientRect(), q = qb.width ? qb : { left: ul.right }; // up to the QR's lane, or the list's edge if hidden
       const top = Math.min(...rows.map((b) => b.top)), bottom = Math.max(...rows.map((b) => b.bottom));
       const left = Math.min(...rows.map((b) => b.left)), right = Math.min(q.left, Math.max(...rows.map((b) => b.right)));
       return { h: (bottom - top) / ul.height, w: (right - left) / (q.left - ul.left) };
@@ -334,5 +334,22 @@ for (const [w, h, H] of [[1920, 969, 1080], [1920, 947, 1080], [1280, 631, 720]]
   await settled(page);
   const full = await count();
   assert.ok(full >= windowed, `pantalla completa ${full} < ventana ${windowed}`);
+  await page.close();
+});
+
+test('con el QR oculto las cajas usan su zona (más cajas que con QR) en 1920x1080', async () => {
+  const page = await openApp(app.browser, { viewport: { width: 1920, height: 1080 }, zappable: true, data: { posts: mixPosts, zaps: mixZaps } });
+  await kiosk(page, sceneDurations);
+  await page.goto(`${BASE}/`);
+  await page.waitForSelector('.scene-post .post-row');
+  await settled(page);
+  const placed = () => page.evaluate(() => document.querySelectorAll('.post-list > .post-row:not([hidden]):not([data-out])').length);
+  const hidden = await placed();
+  assert.equal(await page.evaluate(() => document.querySelector('figure.qr').getBoundingClientRect().width), 0, 'el QR de la TV debería estar oculto');
+  await page.evaluate(() => { document.querySelector('.qr-box').classList.remove('qr-off'); dispatchEvent(new Event('resize')); });
+  await settled(page);
+  const shown = await placed();
+  console.log(`cajas 1920x1080: QR oculto ${hidden}, QR visible ${shown}`);
+  assert.ok(hidden > shown, `QR oculto ${hidden} cajas, visible ${shown}`);
   await page.close();
 });

@@ -407,6 +407,7 @@ describe('composición y QR', () => {
     expect(Number(img.getAttribute('width'))).toBeGreaterThan(0);
     expect(img.getAttribute('width')).toBe(img.getAttribute('height'));
     expect(qr[0].querySelector('figcaption')!.textContent).toBe(QR_CAPTION);
+    expect(root.querySelector('.qr-box')!.classList.contains('qr-off')).toBe(true); // TV QR hidden for now (TV_QR flag)
     expect(root.querySelector('.app-url')).toBeNull(); // the URL lives in the top bar, not in the scene
     cleanup?.();
   });

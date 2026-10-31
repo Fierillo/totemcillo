@@ -1,5 +1,6 @@
 // In-page geometry checks (run with page.evaluate): each returns a list of problems, empty when the layout is right.
 export function check(scene) {
+  const shownQr = () => { const q = document.querySelector('figure.qr'); return q && q.getBoundingClientRect().width ? q : null; };
   const P = [];
   const q = (s) => document.querySelector(s);
   const R = (el) => el.getBoundingClientRect();
@@ -43,8 +44,8 @@ export function check(scene) {
   disjoint([['topbar', top], ['escena', main]]);
   [['topbar', top], ['escena', main]].forEach(([n, el]) => inside(n, el, VP));
   if (scene === 'post') {
-    const list = need('ul.post-list'), qr = need('figure.qr');
-    inside('lista', list, main); inside('QR', qr, main);
+    const list = need('ul.post-list'), qr = shownQr(); // the TV QR may be hidden (TV_QR flag)
+    inside('lista', list, main); if (qr) inside('QR', qr, main);
     if (qr && qr.getBoundingClientRect().width < Math.min(120, innerHeight * .25)) P.push(`QR demasiado chico (${qr.getBoundingClientRect().width}px)`);
     if (qr && !/Escaneá.*celular|Abrí.*celular|Escaneá y abrí/i.test(qr.textContent)) P.push('QR sin leyenda para el celular');
     const rows = [...document.querySelectorAll('.post-row')];
@@ -132,7 +133,7 @@ export function check(scene) {
       if (li.scrollHeight > li.clientHeight + 1) P.push(`barra ${i} desborda en vertical`);
     });
   }
-  const qr = document.querySelector('figure.qr');
+  const qr = shownQr();
   if (qr) {
     for (const row of document.querySelectorAll('.post-row, .batalla > li')) {
       disjoint([['fila', row], ['QR', qr]]);
