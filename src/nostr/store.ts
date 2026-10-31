@@ -202,7 +202,8 @@ export class ZapStore {
   private zapVisible(z: Zap) {
     if (this.providers && !providerAllowed(z.domain, this.providers)) return false;
     if (this.cutoff !== undefined && z.created_at < this.cutoff) return false;
-    return !(z.sender && this.banned.has(z.sender)) && this.postVisible(z.postId);
+    if (z.sender && (this.banned.has(z.sender) || z.sender === this.posts.get(z.postId)?.pubkey)) return false; // banned sender or a self-zap (checked at read time: the post may arrive later)
+    return this.postVisible(z.postId);
   }
 
   stats(since = 0): PostStats[] {

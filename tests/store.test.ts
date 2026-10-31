@@ -143,6 +143,25 @@ describe('límites de memoria y contenido', () => {
     expect(s.stats().map((p) => p.postId)).toEqual(['nuevo', 'legitimo']);
     expect(s.zaps.size).toBe(0);
   });
+  it('un autozap (sender = autor del post) no suma ni aparece; los anónimos y los de otros sí', () => {
+    const s = new ZapStore();
+    s.addPost(post);
+    const live = vi.fn(); s.onLive(live);
+    s.addZap({ ...zap, id: 'self', sender: 'p', msats: 5000 });
+    expect(live).not.toHaveBeenCalled(); // no strike / '+N sats'
+    s.addZap({ ...zap, id: 'anon', msats: 1000 });
+    s.addZap({ ...zap, id: 'otro', sender: 'q', msats: 2000 });
+    expect(s.stats().find((x) => x.postId === 'a')!.msats).toBe(3000);
+    expect(s.top(5).map((x) => x.msats)).toEqual([3000]);
+    expect(s.latestZaps(10).map((z) => z.id).sort()).toEqual(['anon', 'otro']);
+  });
+  it('un autozap que llegó antes que su post deja de contar cuando llega el post', () => {
+    const s = new ZapStore();
+    s.addZap({ ...zap, id: 'self', sender: 'p', msats: 5000 });
+    s.addPost(post);
+    expect(s.stats().find((x) => x.postId === 'a')!.msats).toBe(0);
+    expect(s.latestZaps(10)).toEqual([]);
+  });
   it('una ráfaga de un autor baneado no desplaza posts visibles ni genera cambios descartados', () => {
     const s = new ZapStore(undefined, { maxPosts: 2 });
     s.addPost({ ...post, id: 'legitimo-1', created_at: 1 });
