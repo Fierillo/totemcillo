@@ -16,8 +16,7 @@ export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
   if (!storage) throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required');
   return {
     storage,
-    // A short production password counts as unset: admin login fails closed (503).
-    env: { ADMIN_PASSWORD: (env.ADMIN_PASSWORD?.length ?? 0) >= 16 ? env.ADMIN_PASSWORD : undefined, SESSION_SECRET: env.SESSION_SECRET },
+    env: { ADMIN_PASSWORD: env.ADMIN_PASSWORD, SESSION_SECRET: env.SESSION_SECRET },
     now: Date.now,
   };
 }
