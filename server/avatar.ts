@@ -3,7 +3,7 @@ import { request } from 'node:https';
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
 import { BlockList, isIP } from 'node:net';
 import sharp from 'sharp';
-import { clientIp, serviceUnavailable } from './node.js';
+import { clientIp, redisFromEnv, serviceUnavailable } from './node.js';
 import { memoryStorage, type Storage } from './storage.js';
 
 /** Avatar proxy (also post images with img=1): fetches kind:0 pictures server-side (no stand IP leak), bounded and re-encoded small. */
@@ -156,9 +156,9 @@ export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o
   res.end(req.method === 'HEAD' ? undefined : out);
 }
 
-/** Per-instance limiter: a visitor's avatars never cost Redis commands (the CDN caches each avatar for a week). */
+/** Shared limiter in Redis (across instances); per-instance memory only when Redis isn't configured (dev/tests). */
 let storage: Storage | undefined;
 export default function vercel(req: IncomingMessage, res: ServerResponse) {
-  storage ??= memoryStorage();
+  storage ??= redisFromEnv() ?? memoryStorage();
   return avatarHandler(req, res, { storage });
 }

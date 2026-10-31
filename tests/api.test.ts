@@ -343,3 +343,18 @@ it('producción carga la agenda con los nombres reales de la integración Upstas
     expect(get).toHaveBeenCalledWith('totem:settings');
   } finally { vi.unstubAllEnvs(); vi.doUnmock('@upstash/redis'); }
 });
+
+it('producción (proxy de avatares) cuenta el rate limit en Redis cuando está configurado', async () => {
+  const incr = vi.fn(async () => 999), expire = vi.fn();
+  vi.doMock('@upstash/redis', () => ({ Redis: class { incr = incr; expire = expire; } }));
+  try {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.example.invalid');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'test-token');
+    vi.resetModules();
+    const { default: production } = await import('../server/avatar');
+    const res: any = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() };
+    await production({ method: 'GET', url: '/api/avatar?url=' + encodeURIComponent('https://img.example/a.png'), headers: { 'x-vercel-forwarded-for': '3.3.3.3' }, socket: {} } as any, res);
+    expect(incr).toHaveBeenCalledWith('totem:rl:avatar:3.3.3.3');
+    expect(res.statusCode).toBe(429);
+  } finally { vi.unstubAllEnvs(); vi.doUnmock('@upstash/redis'); }
+});

@@ -1,15 +1,21 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { handle, type Deps } from './api.js';
-import { memoryStorage, upstashStorage } from './storage.js';
+import { memoryStorage, upstashStorage, type Storage } from './storage.js';
+
+/** Upstash storage from the env (also the Vercel integration's names), or undefined when not configured. */
+export function redisFromEnv(env: NodeJS.ProcessEnv = process.env): Storage | undefined {
+  const url = env.UPSTASH_REDIS_REST_URL || env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN || env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
+  return url && token ? upstashStorage(url, token) : undefined;
+}
 
 /** Production requires shared storage for settings, rate limits and session revocation. */
 export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
-  const url = env.UPSTASH_REDIS_REST_URL || env.UPSTASH_REDIS_REST_KV_REST_API_URL;
-  const token = env.UPSTASH_REDIS_REST_TOKEN || env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
-  if (!url || !token) throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required');
+  const storage = redisFromEnv(env);
+  if (!storage) throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required');
   return {
-    storage: upstashStorage(url, token),
+    storage,
     env: { ADMIN_PASSWORD: env.ADMIN_PASSWORD, SESSION_SECRET: env.SESSION_SECRET },
     now: Date.now,
   };
