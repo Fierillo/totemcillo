@@ -9,6 +9,8 @@ const LOREM = 'Bitcoin Lightning Nostr zaps en vivo desde La Crypta, comunidad d
 const sized = (n: number) => `#lacrypta ${LOREM.repeat(Math.ceil(n / LOREM.length)).slice(0, n - '#lacrypta '.length).trimEnd()}`; // the tag first: the store may clip the end
 /** Demo texts from very short to very long (chars), to see how the boxes change shape. */
 export const DEMO_TEXTS = ['gm #lacrypta', sized(40), sized(100), sized(200), sized(280)];
+/** Stable public image for "+ post 🖼" (shown through the avatar proxy like any content image). */
+export const DEMO_IMAGE = 'https://picsum.photos/id/1015/800/600.jpg';
 /** How many posts "+ mix" adds at once: every length, some repeated. */
 const MIX_POSTS = 8;
 
@@ -78,6 +80,7 @@ export function demoButtons(doc: Document, demo: Demo, dev: boolean, follower?: 
   };
   add('+ post', () => demo.post());
   add('+ post ⚡', () => demo.zappablePost());
+  add('+ post 🖼', () => demo.post(`Así se ve un post con imagen en el tótem #lacrypta ${DEMO_IMAGE}`));
   add('+ mix', () => demo.mix());
   // "+ zap": with posts on screen it arms a crosshair and the next click zaps THAT post (Esc / click elsewhere cancels).
   const root = doc.documentElement;

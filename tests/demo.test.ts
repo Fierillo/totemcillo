@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZapStore } from '../src/nostr/store';
-import { demoButtons, installDemo, DEMO_TEXTS } from '../src/demo';
+import { demoButtons, installDemo, DEMO_TEXTS, DEMO_IMAGE } from '../src/demo';
+import { imagesOf, textWithoutImages } from '../src/media';
 import { zapFx } from '../src/zap-fx';
 import { Follower } from '../src/follow';
 import { positionAt } from '../shared/schedule';
@@ -31,6 +32,15 @@ describe('botones de simulación (solo desarrollo)', () => {
     button('+ post').click();
     expect(s.posts.size).toBe(1);
     expect(live).toEqual(['post']);
+  });
+  it('"+ post 🖼" publica un post con imagen y un poco de texto (#lacrypta) por el pipeline de imágenes', () => {
+    const s = new ZapStore(undefined, { clock: () => NOW });
+    demoButtons(document, installDemo({}, s, () => NOW), true);
+    button('+ post 🖼').click();
+    const p = [...s.posts.values()][0];
+    expect(p.content).toContain('#lacrypta');
+    expect(imagesOf(p)).toEqual([{ url: DEMO_IMAGE }]);
+    expect(textWithoutImages(p.content).length).toBeGreaterThan(0);
   });
   it('"splash" muestra la pantalla de carga hasta tocar el botón o la pantalla', () => {
     demoButtons(document, installDemo({}, new ZapStore(undefined, { clock: () => NOW }), () => NOW), true);
