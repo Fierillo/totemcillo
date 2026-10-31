@@ -7,6 +7,7 @@ import { age, esc, sats } from '../util';
 import type { Zap } from '../nostr/types';
 import { authorHtml } from '../nostr/profiles';
 import { BOLT, BOLT_OFF, boltSats } from '../bolt';
+import { imagesHtml, imagesOf, textWithoutImages } from '../media';
 import { zappability, type CanZap } from '../zapcache';
 import { masonry } from '../masonry';
 
@@ -55,7 +56,7 @@ interface RowOptions { cls: string; ready: boolean; zap: { off: boolean; cls: st
 const postRow = (s: PostStats, { cls, ready, zap }: RowOptions) => `<li class="post-row${cls}" data-id="${esc(s.postId)}">
       <div class="row-main">
         <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${age(s.post!.created_at)}</span></div>
-        <p class="excerpt" data-clip>${esc(s.post!.content.trim())}</p>
+        <p class="excerpt" data-clip>${esc(textWithoutImages(s.post!.content))}</p>${imagesHtml(imagesOf(s.post!), 'row-media', 1)}
         <div class="row-foot">${zap.off ? `<span class="row-total is-unzappable${zap.cls}" aria-label="No se puede zapear">${BOLT_OFF}</span>` : zap.cls.includes('bolt-pending') ? `<span class="row-total${zap.cls}" aria-label="Verificando si se puede zapear">${BOLT}</span>`
         : `<span class="row-total${zap.cls}">${totalHtml(s.msats, ready)}</span>`}</div>
       </div>

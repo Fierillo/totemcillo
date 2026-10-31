@@ -26,4 +26,6 @@ export interface Post {
   pubkey: string;
   content: string;
   created_at: number;
+  /** NIP-92 imeta images (validated again when shown). */
+  images?: { url: string; alt?: string }[];
 }

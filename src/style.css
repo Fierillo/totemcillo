@@ -394,3 +394,12 @@ html:not(.is-mobile) .firma { font-size: .55em; line-height: 1.2; }
 @media (prefers-reduced-motion: reduce) {
   .post-list[data-boxes] > .post-row { animation: none; }
 }
+/* Post images: bounded so cards keep their size (contain, never cropped or upscaled past the box) */
+.post-media { display: flex; gap: .4rem; min-width: 0; }
+.post-media img { display: block; min-width: 0; max-width: 100%; object-fit: contain; border-radius: .4rem; background: #ffffff0d; }
+.post-media img[hidden] { display: none; }
+.m-media { flex: 0 0 auto; margin: .4rem 0; }
+.m-media img { flex: 0 1 auto; max-height: 28dvh; width: auto; }
+.m-top-row .m-media img { max-height: 40dvh; }
+.row-media { margin-top: .3em; }
+.row-media img { height: 5.5vh; width: auto; } /* TV: fixed thumbnail height, so the fit measures it before it loads */

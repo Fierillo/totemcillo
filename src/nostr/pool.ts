@@ -1,3 +1,4 @@
+import { postImages } from '../media';
 import { SimplePool } from 'nostr-tools/pool';
 import type { Config } from '../config';
 import { LnurlResolver } from './lnurl';
@@ -142,7 +143,7 @@ export function startNostr(
       if (!validTime(ev, cutoff)) return;
       if (ev.kind !== 1 || !Array.isArray(ev.tags) || !ev.tags.some((t) => t[0] === 't' && hashtags.has(t[1])) || !isSigned(ev)) return;
       if (store.posts.has(ev.id)) return;
-      store.addPost({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });
+      store.addPost({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at, images: postImages('', ev.tags) });
       if (store.posts.has(ev.id)) watch();
     },
   });

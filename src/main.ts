@@ -14,8 +14,10 @@ import { isMobileViewport, MOBILE_POST_MAX_CHARS, renderMobile } from './mobile'
 import { zapFx } from './zap-fx';
 import { openCompose } from './compose';
 import { installFx } from './fx';
+import { hideBrokenImages } from './media';
 
 installFx(document.documentElement);
+hideBrokenImages(document);
 const cfg = await loadConfig();
 const cutoff = postCutoff({ startLine: DEFAULT_START_LINE });
 const store = new ZapStore(window.localStorage, { postMaxChars: isMobileViewport() ? MOBILE_POST_MAX_CHARS : cfg.postMaxChars, cutoff, zapProviders: DEFAULT_ZAP_PROVIDERS });
