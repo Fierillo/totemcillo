@@ -44,6 +44,7 @@ html:not(.is-mobile) .footer { min-height: clamp(32px, 6vh, 64px); } /* totem: r
 .qr-box { position: absolute; right: 1.5em; bottom: var(--strip-room); }
 .qr { width: min(28vh, 18vw); background: #fff; padding: .45em; border-radius: .5em; text-align: center; overflow: hidden; }
 .qr svg { display: block; width: 100%; height: auto; shape-rendering: crispEdges; }
+.qr-url { margin: 0 0 .3em; text-align: center; color: #fff; font-weight: 800; font-size: clamp(14px, 2.4vh, 32px); text-shadow: 0 0 .3em #000; }
 .qr figcaption { color: #000; font-weight: 800; font-size: clamp(11px, 1.6vh, 22px); margin-top: .25em; line-height: 1.2; }
 
 /* Content uses the full width; fitRegions reserves only the QR's actual rectangle. */

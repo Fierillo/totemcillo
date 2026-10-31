@@ -403,6 +403,7 @@ describe('composición y QR', () => {
     expect(qr[0].getAttribute('data-uri')).toBe(URL);
     expect(qr[0].querySelector('svg')).not.toBeNull();
     expect(qr[0].querySelector('figcaption')!.textContent).toBe(QR_CAPTION);
+    expect(root.querySelector('.qr-box .qr-url')!.textContent).toBe(new globalThis.URL(URL).host); // readable fallback if the QR fails
     cleanup?.();
   });
   it('el video no lleva QR', () => {
