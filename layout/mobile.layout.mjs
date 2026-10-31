@@ -73,3 +73,19 @@ test('celular: la firma «totemcillo fue hecho con 💚 por Fierillo» al pie, c
   await page.screenshot({ path: '/workspace/totemcillo-firma2-mobile-390x844-footer.png' });
   await page.close();
 });
+
+for (const [w, h] of [[360, 640], [390, 844], [412, 915]]) {
+  test(`celular ${w}x${h}: al deslizar hasta el fondo la firma del pie se ve entera, sin taparla los botones`, async () => {
+    const page = await openMobile(app.browser, [w, h]);
+    await feedReady(page);
+    await page.evaluate(() => { const r = document.querySelector('.m-reel'); r.scrollTop = r.scrollHeight; window.scrollTo(0, document.documentElement.scrollHeight); });
+    await page.waitForTimeout(400);
+    const r = await page.evaluate(() => {
+      const f = document.querySelector('footer .firma').getBoundingClientRect();
+      const hits = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && !(b.right <= f.left || b.left >= f.right || b.bottom <= f.top || b.top >= f.bottom); };
+      return { out: f.top < 0 || f.bottom > innerHeight + 1 || !f.width, covered: [...document.querySelectorAll('.m-fab, .m-zap-cta')].some(hits) };
+    });
+    assert.deepEqual(r, { out: false, covered: false });
+    await page.close();
+  });
+}
