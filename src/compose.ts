@@ -24,13 +24,12 @@ export function openCompose(hashtags: string[], publish: Publisher, storage?: St
   const dialog = document.createElement('dialog');
   dialog.className = 'zap-dialog m-compose';
   dialog.setAttribute('aria-labelledby', 'compose-title');
-  dialog.innerHTML = `<header><h2 id="compose-title">Mandá mensaje anónimo</h2></header>
-    <p class="m-compose-warn is-unzappable" role="note">${BOLT_OFF} Los mensajes anónimos no pueden ser zapeados</p>
+  dialog.innerHTML = `<header><h2 id="compose-title">Mandá mensaje anónimo</h2><button type="button" class="m-compose-x" data-close aria-label="Cerrar">×</button></header>
     <form><textarea name="content" rows="5" maxlength="${MOBILE_POST_MAX_CHARS}" required></textarea>
+    <p class="m-compose-warn is-unzappable" role="note">${BOLT_OFF} Los mensajes anónimos no pueden ser zapeados</p>
     <p class="m-compose-hint" aria-live="polite"></p>
     <button class="zap-btn btn btn-lime" type="submit">Publicar</button></form>
-    <p class="zap-error" role="alert"></p>
-    <button type="button" class="zap-cancel btn btn-red" data-close>Cancelar</button>`;
+    <p class="zap-error" role="alert"></p>`;
   const form = dialog.querySelector('form')!, text = form.querySelector('textarea')!, send = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
   text.value = hashtags.map((t) => `#${t}`).join(' ') + ' ';
   const missing = () => hashtags.filter((h) => !hasHashtag(text.value, h));

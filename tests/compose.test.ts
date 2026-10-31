@@ -43,10 +43,24 @@ describe('editor de mensaje anónimo', () => {
     expect(warn.querySelector('svg .m-bolt-x')).not.toBeNull(); // the red struck-through bolt, not a warning sign
     expect(dialog.textContent).not.toContain('⚠️');
   });
-  it('Publicar y Cancelar usan la base común de botones', () => {
+  it('Publicar usa la base común de botones', () => {
     const { dialog } = open();
     expect(dialog.querySelector('[type="submit"]')!.classList.contains('btn')).toBe(true);
-    expect(dialog.querySelector('[data-close]')!.classList.contains('btn')).toBe(true);
+  });
+  it('sin botón Cancelar: una cruz «Cerrar» arriba en el encabezado cierra sin publicar', () => {
+    const { publish, dialog } = open();
+    expect([...dialog.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Cancelar')).toBe(false);
+    const x = dialog.querySelector<HTMLButtonElement>('header button[data-close]')!;
+    expect(x.getAttribute('aria-label')).toBe('Cerrar');
+    expect(x.textContent!.trim()).toBe('×');
+    x.click();
+    expect(document.querySelector('dialog.m-compose')).toBeNull();
+    expect(publish).not.toHaveBeenCalled();
+  });
+  it('el aviso de no zapeable va debajo del texto', () => {
+    const { dialog } = open();
+    const warn = dialog.querySelector('.m-compose-warn')!, text = dialog.querySelector('textarea')!;
+    expect(text.compareDocumentPosition(warn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it('sin el texto explicativo gris', () => {
     const { dialog } = open();
