@@ -106,3 +106,19 @@ test('celular 390x844: el modal anónimo no deja huecos vacíos y el título res
   assert.deepEqual(r, { empties: [], gapBeforeSend: true, titleTop: true, titleToX: true, belowText: true });
   await page.close();
 });
+
+for (const [w, h] of [[390, 844], [700, 900]]) {
+  test(`Top posts: el mensaje ampliado sigue la estructura del feed (texto y rayo arriba, Zapear abajo a lo ancho) en ${w}x${h}`, async () => {
+    const page = await openMobile(app.browser, [w, h]);
+    await feedReady(page);
+    await page.getByRole('tab', { name: 'Top posts' }).click();
+    await page.locator('.m-top-head').first().click();
+    const m = await page.evaluate(() => {
+      const c = document.querySelector('.m-top-row > .m-post'), r = (s) => c.querySelector(s).getBoundingClientRect();
+      const body = r('.m-body'), side = r('.m-side'), cta = r('.m-zap-cta'), card = c.getBoundingClientRect();
+      return { ctaBelow: cta.top >= Math.max(body.bottom, side.bottom) - 1, sideRight: side.left >= body.right - 1, ctaWide: cta.width > card.width * 0.6, bodyWide: body.width > card.width * 0.5 };
+    });
+    assert.deepEqual(m, { ctaBelow: true, sideRight: true, ctaWide: true, bodyWide: true });
+    await page.close();
+  });
+}
