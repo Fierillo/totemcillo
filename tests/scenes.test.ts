@@ -319,6 +319,8 @@ describe('renderizado de posts', () => {
   it('pasa del estado vacío a la lista al llegar un post, manteniendo un QR', () => {
     const s = new ZapStore(), root = document.createElement('div');
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
+    expect(root.querySelector('.app-url + h1')!.textContent).toBe('Últimos mensajes');
+    expect(root.querySelector('.app-url')!.textContent).toBe('totemcillo.vercel.app');
     expect(root.querySelector('h1')!.textContent).toBe('Últimos mensajes');
     expect(root.querySelector('.empty-msg')!.textContent).toBe('Todavía no hay posts con #lacrypta');
     expect(root.querySelectorAll('figure.qr')).toHaveLength(1);
@@ -407,7 +409,9 @@ describe('composición y QR', () => {
     expect(Number(img.getAttribute('width'))).toBeGreaterThan(0);
     expect(img.getAttribute('width')).toBe(img.getAttribute('height'));
     expect(qr[0].querySelector('figcaption')!.textContent).toBe(QR_CAPTION);
-    expect(root.querySelector('.qr-box .qr .qr-url')!.textContent).toBe('totemcillo.vercel.app'); // fixed, inside the card: readable fallback if the QR fails
+    expect(root.querySelector('.qr .app-url')).toBeNull(); // header above the scene title, not in the QR card
+    expect(root.querySelector('.app-url + h1')).not.toBeNull();
+    expect(root.querySelector('.app-url')!.textContent).toBe('totemcillo.vercel.app');
     cleanup?.();
   });
   it('el video no lleva QR', () => {
