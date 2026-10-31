@@ -405,8 +405,8 @@ html:not(.is-mobile) .firma { font-size: .55em; line-height: 1.2; }
 .post-media img { display: block; min-width: 0; max-width: 100%; object-fit: contain; border-radius: .4rem; background: #ffffff0d; }
 .post-media img[hidden] { display: none; }
 .m-media { flex: 0 0 auto; margin: .4rem 0; }
-.m-media img { flex: 1 1 auto; width: 100%; height: auto; max-height: 55dvh; } /* the image is the protagonist */
-.m-top-row .m-media img { max-height: 60dvh; }
+.m-media img { flex: 1 1 auto; width: 100%; height: auto; max-height: 65dvh; } /* the image is the protagonist */
+.m-top-row .m-media img { max-height: 70dvh; }
 .row-media { margin-top: .3em; }
-.row-media img { width: 100%; height: 22vh; } /* TV: the image leads its box; fixed height so the fit measures it before it loads */
-.post-row:has(.row-media) .excerpt { font-size: .8em; } /* text smaller below the image */
+.row-media img { width: 100%; height: 34vh; } /* TV: the image leads its box; fixed height so the fit measures it before it loads */
+.post-row:has(.row-media) .excerpt { font-size: .75em; } /* text smaller below the image */
