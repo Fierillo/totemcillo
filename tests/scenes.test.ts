@@ -6,7 +6,7 @@ import { batallaScene } from '../src/scenes/batalla';
 import { anuncioScene, EMPTY_ANUNCIO } from '../src/scenes/anuncio';
 import { Announcement } from '../src/announcement';
 import { buildScenes } from '../src/scenes';
-import { live } from '../src/scenes/live';
+import { live, liveMarks } from '../src/scenes/live';
 import { defaultConfig, publicUrlOf } from '../src/config';
 import { ORDER } from '../shared/schedule';
 import { sats } from '../src/util';
@@ -460,5 +460,21 @@ describe('el rediseño móvil no toca el tótem de escritorio', () => {
       expect(root.querySelector('.m-fab, [data-compose], .m-reel, .m-top, .m-side, .m-tabs'), scene.name).toBeNull();
       cleanup?.();
     }
+  });
+});
+
+describe('liveMarks: el redraw pendiente del rayo', () => {
+  it('off() cancela el setTimeout(redraw) de charge, así una escena cerrada no redibuja', () => {
+    vi.useFakeTimers();
+    const s = mkStore();
+    s.addPost(post(1));
+    const marks = liveMarks(s, 'leak-test', ['zap'], () => true);
+    s.addZap(zap(1, 1, NOW - 1));
+    const el = document.createElement('div');
+    const redraw = vi.fn();
+    expect(marks.charge(() => el, () => {}, redraw)).toBe(true);
+    marks.off();
+    vi.advanceTimersByTime(STRIKE_MS * 2);
+    expect(redraw).not.toHaveBeenCalled();
   });
 });

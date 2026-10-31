@@ -33,6 +33,7 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
   const gains = new Map<string, number>(); // msats each zapped post gained since the last draw
   const struck = new Set<string>(); // zapped rows already struck at their old place (charge)
   let first = true;
+  let held: ReturnType<typeof setTimeout> | undefined; // pending redraw after a strike (cleared on off)
   const add = (e: LiveEvent) => {
     const m = marks.get(e.postId) ?? new Set<string>();
     m.add(e.type === 'post' ? 'is-new' : 'is-zapped');
@@ -69,7 +70,8 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
         strike(el, Math.random, undefined, msats ? `+${sats(msats)} sats` : undefined);
         struck.add(id);
       }
-      setTimeout(redraw, STRIKE_MS);
+      clearTimeout(held);
+      held = setTimeout(redraw, STRIKE_MS);
       return true;
     },
     /** True for a row that already got its strike at its old place (its effect keeps running, not restarted). */
@@ -85,7 +87,7 @@ export function liveMarks(store: ZapStore, name: string, kinds: LiveEvent['type'
       gains.clear();
       struck.clear();
     },
-    off,
+    off() { clearTimeout(held); off(); },
   };
 }
 
