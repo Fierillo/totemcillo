@@ -78,7 +78,7 @@ describe('/api/kiosk (sólo lectura)', () => {
   it('GET devuelve las entradas de la agenda, anuncio y versión (sin hora: es cacheable)', async () => {
     const r = await handle(req('GET', '/api/kiosk'), deps());
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'clip', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [], zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE });
+    expect(r.body).toEqual({ epoch: 0, sceneDurations: {}, videoEveryCycles: 2, videoMode: 'clip', videoClipSeconds: 21, videoDurationSec: 88.4, announcement: '', version: 0, hiddenPosts: [], bannedPubkeys: [], zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE, showImages: true });
   });
   it('GET /api/version: diminuto y cacheable unos segundos en el CDN', async () => {
     const r = await handle(req('GET', '/api/version'), deps());
