@@ -99,7 +99,9 @@ test('celular 390x844: el modal anónimo no deja huecos vacíos y el título res
     const d = document.querySelector('dialog.m-compose'), t = d.querySelector('textarea'), w = d.querySelector('.m-compose-warn'), send = d.querySelector('[type="submit"]');
     const h = d.querySelector('h2').getBoundingClientRect(), x = d.querySelector('.m-compose-x').getBoundingClientRect(), box = d.getBoundingClientRect();
     const empties = [...d.querySelectorAll('p, div')].filter((el) => !el.textContent.trim() && !el.querySelector('svg, textarea, button') && el.getBoundingClientRect().height > 0).map((el) => el.className);
-    return { empties, gapBeforeSend: Math.round(send.getBoundingClientRect().top - w.getBoundingClientRect().bottom) <= 20, titleTop: h.top - box.top >= 26, titleToX: x.left - h.right >= 12, belowText: w.getBoundingClientRect().top >= t.getBoundingClientRect().bottom };
+    return {
+      empties, gapBeforeSend: Math.round(send.getBoundingClientRect().top - w.getBoundingClientRect().bottom) <= 20,
+      titleTop: h.top - box.top >= 26, titleToX: x.left - h.right >= 12, belowText: w.getBoundingClientRect().top >= t.getBoundingClientRect().bottom };
   });
   assert.deepEqual(r, { empties: [], gapBeforeSend: true, titleTop: true, titleToX: true, belowText: true });
   await page.close();
