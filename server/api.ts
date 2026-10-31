@@ -117,7 +117,7 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       const st = await publicSettings(d);
       // No time inside, so the CDN can cache it. Always the bare path; a stale copy is retried by the totem.
       return json(200, { ...scheduleInputs(st), announcement: st.announcement, version: st.version ?? 0,
-        hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [], zapProviders: st.zapProviders ?? DEFAULT_ZAP_PROVIDERS, startLine: st.startLine ?? DEFAULT_START_LINE }, { 'cache-control': CDN });
+        hiddenPosts: st.hiddenPosts ?? [], bannedPubkeys: st.bannedPubkeys ?? [], zapProviders: st.zapProviders ?? DEFAULT_ZAP_PROVIDERS, startLine: st.startLine ?? DEFAULT_START_LINE, showImages: st.showImages !== false }, { 'cache-control': CDN });
     }
     case 'GET /api/version':
       // Cheap check, cacheable for a few seconds on the CDN (many screens → few reads). No query (see CANONICAL).
