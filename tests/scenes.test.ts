@@ -359,8 +359,8 @@ describe('renderizado de posts', () => {
     s.addZap({ ...zap(1, 1, 2), sender: '<svg onload=alert(1)>' });
     profiles.set('<img src=x onerror=alert(1)>', null);
     const cleanup = postScene(s, { publicUrl: URL }).render(root);
-    expect(root.querySelector('img')).toBeNull();
-    expect(root.querySelectorAll('svg:not(.m-bolt)')).toHaveLength(1);
+    expect([...root.querySelectorAll('img')].filter((i) => !i.closest('.qr'))).toHaveLength(0);
+    expect(root.querySelectorAll('svg:not(.m-bolt)')).toHaveLength(0);
     expect(root.querySelector('.author')!.textContent).toContain('<img');
     s.addPost({ ...post(9, 999), content: 'nuevo' });
     expect(excerpts(root)[0]).toBe('nuevo');
@@ -401,7 +401,11 @@ describe('composición y QR', () => {
     const root = document.createElement('div'), cleanup = scene.render(root), qr = root.querySelectorAll('figure.qr');
     expect(qr).toHaveLength(1);
     expect(qr[0].getAttribute('data-uri')).toBe(URL);
-    expect(qr[0].querySelector('svg')).not.toBeNull();
+    const img = qr[0].querySelector('img')!; // a bitmap-like <img>, not inline SVG: old TV WebViews painted it blank
+    expect(img.getAttribute('src')).toMatch(/^data:image\/svg\+xml,/);
+    expect(decodeURIComponent(img.getAttribute('src')!.slice(19))).toContain('<path');
+    expect(Number(img.getAttribute('width'))).toBeGreaterThan(0);
+    expect(img.getAttribute('width')).toBe(img.getAttribute('height'));
     expect(qr[0].querySelector('figcaption')!.textContent).toBe(QR_CAPTION);
     expect(root.querySelector('.qr-box .qr-url')!.textContent).toBe(new globalThis.URL(URL).host); // readable fallback if the QR fails
     cleanup?.();

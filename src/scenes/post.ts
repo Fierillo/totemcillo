@@ -64,11 +64,17 @@ const postRow = (s: PostStats, { cls, ready, images, zap }: RowOptions) => `<li 
 
 const qrCache = new Map<string, string>();
 const hostOf = (u: string) => { try { return new URL(u).host; } catch { return u; } };
+/** QR as an <img> data URL with an intrinsic size: old TV WebViews (Chromecast/Google TV) painted the inline SVG blank. */
+function qrImg(data: string): string {
+  const svg = renderSVG(data, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' });
+  const side = Number(/viewBox="0 0 (\d+)/.exec(svg)![1]);
+  return `<img src="data:image/svg+xml,${encodeURIComponent(svg)}" width="${side}" height="${side}" alt="">`;
+}
 /** Single app QR (same component in posts, tops and announcement); generated once per URL. */
 export function appQr(publicUrl: string): string {
   let h = qrCache.get(publicUrl);
   if (!h) {
-    h = `<aside class="qr-box"><p class="qr-url">${esc(hostOf(publicUrl))}</p><figure class="qr" data-uri="${esc(publicUrl)}">${renderSVG(publicUrl, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' })}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
+    h = `<aside class="qr-box"><p class="qr-url">${esc(hostOf(publicUrl))}</p><figure class="qr" data-uri="${esc(publicUrl)}">${qrImg(publicUrl)}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
     qrCache.set(publicUrl, h);
   }
   return h;
