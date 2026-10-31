@@ -21,6 +21,8 @@ const CDN = 'public, max-age=0, s-maxage=20, stale-while-revalidate=20';
 export const PUBLIC_SNAPSHOT_MS = 20_000;
 const snapshots = new WeakMap<Storage, { at: number; settings: Settings }>();
 const RATE = { max: 10, windowSec: 600 };
+/** Login attempts across all IPs, so a distributed guess can't scale with the number of addresses. */
+const GLOBAL_RATE = { max: 100, windowSec: 600 };
 /** Public GETs cached by the CDN: Vercel keys the cache on the full URL, so a query would bypass it. */
 const CANONICAL = new Set(['/api/kiosk', '/api/version', '/api/settings']);
 /** The redirect itself is static, so the CDN may keep it for a long time (no Redis behind it). */
@@ -127,7 +129,8 @@ export async function handle(req: ApiRequest, d: Deps): Promise<ApiResponse> {
       return json(200, { now: d.now() });
     case 'POST /api/login': {
       if (!configured(d.env)) return json(503, { error: 'admin no configurado' });
-      if ((await d.storage.incr(`totem:rl:${req.ip}`, RATE.windowSec)) > RATE.max) return json(429, { error: 'demasiados intentos, probá en unos minutos' });
+      if ((await d.storage.incr(`totem:rl:${req.ip}`, RATE.windowSec)) > RATE.max
+        || (await d.storage.incr('totem:rl:login:all', GLOBAL_RATE.windowSec)) > GLOBAL_RATE.max) return json(429, { error: 'demasiados intentos, probá en unos minutos' });
       const pass = (req.body as { password?: unknown } | null)?.password;
       if (!passwordMatches(pass, d.env.ADMIN_PASSWORD!)) return json(401, { error: 'clave incorrecta' });
       const token = signSession(d.env.SESSION_SECRET!, d.now(), SESSION_TTL);

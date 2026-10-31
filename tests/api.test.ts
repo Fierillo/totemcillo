@@ -54,6 +54,11 @@ describe('POST /api/login', () => {
     expect(r.status).toBe(429);
     expect((await handle(req('POST', '/api/login', { password: PASS }, {}, '2.2.2.2'), d)).status).toBe(200);
   });
+  it('limita intentos globales (todas las IPs, 100 cada 10 min) para frenar ataques distribuidos', async () => {
+    const d = deps();
+    for (let i = 0; i < 100; i++) expect((await handle(req('POST', '/api/login', { password: 'mal' }, {}, `10.0.${i >> 8}.${i & 255}`), d)).status).toBe(401);
+    expect((await handle(req('POST', '/api/login', { password: PASS }, {}, '2.2.2.2'), d)).status).toBe(429);
+  });
   it('sólo POST', async () => {
     expect((await handle(req('GET', '/api/login'), deps())).status).toBe(405);
   });
