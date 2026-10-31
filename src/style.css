@@ -220,8 +220,7 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .wallet-qr { width: min(100%, 16rem); justify-self: center; padding: .5rem; border: 0; border-radius: 2px; background: #fff; cursor: copy; }
 .wallet-qr svg { display: block; width: 100%; height: auto; }
 
-h1 { color: var(--accent); font-size: clamp(24px, 6vh, 90px); margin-bottom: .3em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scene-batalla h1 { font-size: clamp(24px, min(6vh, 4.2vw), 90px); }
+h1 { color: var(--accent); font-size: clamp(24px, min(6vh, 4.2vw), 90px); margin-bottom: .3em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rank { color: var(--accent); font-weight: 900; }
 
 /* Zap battle: keyed bars; position (--rank) and width animate on every live zap */
