@@ -407,7 +407,7 @@ describe('composición y QR', () => {
     expect(Number(img.getAttribute('width'))).toBeGreaterThan(0);
     expect(img.getAttribute('width')).toBe(img.getAttribute('height'));
     expect(qr[0].querySelector('figcaption')!.textContent).toBe(QR_CAPTION);
-    expect(root.querySelector('.qr-box .qr-url')!.textContent).toBe(new globalThis.URL(URL).host); // readable fallback if the QR fails
+    expect(root.querySelector('.qr-box .qr .qr-url')!.textContent).toBe('totemcillo.vercel.app'); // fixed, inside the card: readable fallback if the QR fails
     cleanup?.();
   });
   it('el video no lleva QR', () => {

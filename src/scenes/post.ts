@@ -63,7 +63,7 @@ const postRow = (s: PostStats, { cls, ready, images, zap }: RowOptions) => `<li 
     </li>`;
 
 const qrCache = new Map<string, string>();
-const hostOf = (u: string) => { try { return new URL(u).host; } catch { return u; } };
+const QR_HOST = 'totemcillo.vercel.app';
 /** QR as an <img> data URL with an intrinsic size: old TV WebViews (Chromecast/Google TV) painted the inline SVG blank. */
 function qrImg(data: string): string {
   const svg = renderSVG(data, { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' });
@@ -74,7 +74,7 @@ function qrImg(data: string): string {
 export function appQr(publicUrl: string): string {
   let h = qrCache.get(publicUrl);
   if (!h) {
-    h = `<aside class="qr-box"><p class="qr-url">${esc(hostOf(publicUrl))}</p><figure class="qr" data-uri="${esc(publicUrl)}">${qrImg(publicUrl)}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
+    h = `<aside class="qr-box"><figure class="qr" data-uri="${esc(publicUrl)}"><p class="qr-url">${QR_HOST}</p>${qrImg(publicUrl)}<figcaption>${QR_CAPTION}</figcaption></figure></aside>`;
     qrCache.set(publicUrl, h);
   }
   return h;
