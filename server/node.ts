@@ -24,6 +24,8 @@ export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): Deps {
 
 /** Deps for `pnpm dev`/`pnpm preview`: memory and, without variables, a development password. */
 export function devDeps(env: NodeJS.ProcessEnv = process.env): Deps {
+  if (!env.ADMIN_PASSWORD && !['', 'localhost', '127.0.0.1', '::1'].includes(env.TOTEM_HOST ?? ''))
+    throw new Error('ADMIN_PASSWORD is required when the dev server listens beyond localhost (TOTEM_HOST)');
   const ADMIN_PASSWORD = env.ADMIN_PASSWORD || 'admin';
   if (!env.ADMIN_PASSWORD) console.warn('[totemcillo] dev: /admin password = "admin" (set ADMIN_PASSWORD to change it)');
   return { storage: memoryStorage(), env: { ADMIN_PASSWORD, SESSION_SECRET: env.SESSION_SECRET || randomBytes(32).toString('hex') }, now: Date.now };

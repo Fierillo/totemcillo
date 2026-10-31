@@ -244,7 +244,7 @@ it('identifica la IP del cliente usando cabeceras de plataforma, proxy y socket 
   expect(clientIp({}, undefined)).toBe('desconocida');
 });
 
-it('dev permite la red local, preview usa loopback y ambos rechazan túneles no autorizados', async () => {
+it('dev y preview escuchan en loopback por defecto y ambos rechazan túneles no autorizados', async () => {
   const { createServer, preview } = await import('vite');
   const { get } = await import('node:http');
   for (const mode of ['dev', 'preview']) {
@@ -256,9 +256,8 @@ it('dev permite la red local, preview usa loopback y ambos rechazan túneles no 
       const address = server.httpServer!.address();
       expect(address && typeof address === 'object').toBe(true);
       if (!address || typeof address === 'string') throw new Error('missing listener');
-      if (mode === 'dev') expect(address.address).toBe('0.0.0.0');
-      else expect(['127.0.0.1', '::1']).toContain(address.address);
-      const host = mode === 'dev' ? '127.0.0.1' : address.family === 'IPv6' ? `[${address.address}]` : address.address;
+      expect(['127.0.0.1', '::1']).toContain(address.address);
+      const host = address.family === 'IPv6' ? `[${address.address}]` : address.address;
       const base = `http://${host}:${address.port}`;
       const response = await fetch(`${base}/api/session`);
       expect(response.status).toBe(200);
@@ -372,4 +371,12 @@ it('producción rechaza ADMIN_PASSWORD de menos de 16 caracteres (login 503); de
   const long = { ...depsFromEnv({ ...base, ADMIN_PASSWORD: 'a'.repeat(16) }), storage: memoryStorage() };
   expect((await handle(req('POST', '/api/login', { password: 'a'.repeat(16) }), long)).status).toBe(200);
   expect(devDeps({ ADMIN_PASSWORD: 'corta' }).env.ADMIN_PASSWORD).toBe('corta');
+});
+
+it('dev solo usa la clave "admin" de respaldo si escucha en localhost', async () => {
+  const { devDeps } = await import('../server/node');
+  expect(devDeps({}).env.ADMIN_PASSWORD).toBe('admin');
+  expect(devDeps({ TOTEM_HOST: '127.0.0.1' }).env.ADMIN_PASSWORD).toBe('admin');
+  expect(() => devDeps({ TOTEM_HOST: '0.0.0.0' })).toThrow(/ADMIN_PASSWORD/);
+  expect(devDeps({ TOTEM_HOST: '0.0.0.0', ADMIN_PASSWORD: 'propia' }).env.ADMIN_PASSWORD).toBe('propia');
 });
