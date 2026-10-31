@@ -153,12 +153,13 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-top-row > .m-post { display: flex; gap: .75rem; border: 0; padding-top: 0; }
 .m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(var(--footer-h) + var(--cta-bottom)); width: var(--fab-w); z-index: 5; --btn-px: .5rem; --btn-fs: .68rem; gap: .3rem; white-space: nowrap; text-align: left; box-shadow: 0 .3rem 1rem #000a; } /* violet pill at the bottom right, on the same row as Zapear */
 .m-fab svg { width: 1rem; height: 1rem; }
-.m-compose header { position: relative; padding-right: 2.5rem; }
+.m-compose header { position: relative; padding: .5rem 2.8rem .25rem 0; } /* room for the title, clear of the × */
 .zap-dialog.m-compose .m-compose-x { position: absolute; top: 50%; right: -.4rem; transform: translateY(-50%); width: 44px; height: 44px; padding: 0; border: 0; background: none; color: var(--muted); font: 400 1.8rem/1 system-ui, sans-serif; cursor: pointer; } /* close, top right */
 .zap-dialog.m-compose .m-compose-x:hover, .zap-dialog.m-compose .m-compose-x:focus-visible { color: var(--fg); }
 .m-compose-warn { display: flex; align-items: center; gap: .35rem; margin: .4rem 0 0; color: #ff3b3b; font-size: .75rem; font-weight: 700; }
 .m-compose-warn svg { flex: none; width: .8rem; height: 1.1rem; } /* the red struck-through bolt of unzappable authors */
-.m-compose-hint { min-height: 1.2em; margin: .3rem 0; color: #ff6b6b; font-size: .8rem; }
+.m-compose-hint { margin: 0; color: #ff6b6b; font-size: .8rem; }
+.m-compose-hint:empty { display: none; } /* no reserved gap while the hashtag is there */
 .m-compose textarea { width: 100%; padding: .6rem; border: 1px solid #35402d; border-radius: .4rem; background: #11150e; color: var(--fg); font: inherit; resize: vertical; }
 
 /* Partial totals: the number blinks until the backfill ends; pending text/images: skeleton shimmer (.skel, below) */
