@@ -39,8 +39,31 @@ describe('editor de mensaje anónimo', () => {
   it('avisa claramente que los mensajes anónimos no podrán ser zapeados', () => {
     const { dialog } = open();
     const warn = dialog.querySelector('.m-compose-warn')!;
-    expect(warn.textContent).toBe('⚠️ Los mensajes anónimos NO PODRÁN SER ZAPEADOS');
-    expect(warn.querySelector('strong')!.textContent).toBe('NO PODRÁN SER ZAPEADOS');
+    expect(warn.textContent!.trim()).toBe('Los mensajes anónimos no pueden ser zapeados');
+    expect(warn.querySelector('svg .m-bolt-x')).not.toBeNull(); // the red struck-through bolt, not a warning sign
+    expect(dialog.textContent).not.toContain('⚠️');
+  });
+  it('sin el texto explicativo gris', () => {
+    const { dialog } = open();
+    expect(dialog.querySelector('.zap-note')).toBeNull();
+    expect(dialog.textContent).not.toContain('identidad anónima');
+  });
+  it('no deja publicar sin el hashtag #lacrypta (entero, sin importar mayúsculas)', async () => {
+    const { publish, dialog } = open();
+    const text = dialog.querySelector('textarea')!, send = dialog.querySelector<HTMLButtonElement>('[type="submit"]')!;
+    const type = (v: string) => { text.value = v; text.dispatchEvent(new Event('input', { bubbles: true })); };
+    expect(send.disabled).toBe(false);
+    for (const v of ['hola', '#lacryptaX hola', 'lacrypta hola', '#crypta']) {
+      type(v);
+      expect(send.disabled, v).toBe(true);
+      expect(dialog.querySelector('.m-compose-hint')!.textContent).toContain('#lacrypta');
+    }
+    dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    expect(publish).not.toHaveBeenCalled();
+    type('hola #LaCrypta!');
+    expect(send.disabled).toBe(false);
+    expect(dialog.querySelector('.m-compose-hint')!.textContent).toBe('');
   });
   it('firma siempre con la clave anónima aunque haya extensión NIP-07', async () => {
     const signEvent = vi.fn();
@@ -57,7 +80,6 @@ describe('editor de mensaje anónimo', () => {
     const { publish, dialog } = open();
     const text = dialog.querySelector('textarea')!;
     expect(text.value).toBe('#lacrypta ');
-    expect(dialog.textContent).toContain('anónima');
     text.value = '#lacrypta hola tótem';
     dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await vi.waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
