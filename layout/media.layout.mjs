@@ -12,7 +12,12 @@ const png = (() => { const w = 2400, h = 1800, ih = Buffer.alloc(13); ih.writeUI
   const row = Buffer.alloc(1 + w * 3, 0x7a); row[0] = 0; const raw = Buffer.concat(Array.from({ length: h }, () => row));
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ih), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]); })();
 export const IMG = 'https://img.e2e.invalid/foto.png?w=2400';
-const serve = (page) => page.route('https://img.e2e.invalid/**', (r) => r.fulfill({ body: png, contentType: 'image/png' }));
+// Images go through the server proxy (/api/avatar?img=1): stub it, and fail the test if the browser ever asks the image host directly.
+const direct = [];
+const serve = async (page) => {
+  await page.route('**/api/avatar?img=1*', (r) => r.fulfill({ body: png, contentType: 'image/png' }));
+  await page.route('https://img.e2e.invalid/**', (r) => { direct.push(r.request().url()); return r.abort(); });
+};
 const imgPost = { id: hex(600), pubkey: AUTHOR, content: `Foto del stand #lacrypta ${IMG}`, created_at: now - 2 };
 
 let app;
@@ -33,6 +38,7 @@ for (const [w, h] of [[390, 844], [412, 915]]) {
     await page.locator('.m-top-head').first().click();
     await page.waitForFunction(() => document.querySelector('.m-top-row > .m-post .m-media img')?.complete);
     assert.deepEqual(await inCard('.m-top-row > .m-post'), { loaded: true, inside: true, urlShown: false });
+    assert.deepEqual(direct, []);
     await page.close();
   });
 }
@@ -53,6 +59,7 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
     const plain = await count(mixPosts), withImg = await count([imgPost, ...mixPosts]);
     assert.deepEqual(withImg.issues, []);
     assert.equal(withImg.thumb, true);
+    assert.deepEqual(direct, []);
     assert.ok(withImg.n >= plain.n - 1, `cajas con imagen ${withImg.n} vs sin ${plain.n}`);
   });
 }

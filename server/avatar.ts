@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { clientIp, serviceUnavailable } from './node.js';
 import { memoryStorage, type Storage } from './storage.js';
 
-/** Avatar proxy: fetches kind:0 pictures server-side (no stand IP leak), bounded and re-encoded small. */
+/** Avatar proxy (also post images with img=1): fetches kind:0 pictures server-side (no stand IP leak), bounded and re-encoded small. */
 export const AVATAR_SIZE = 128;
 export const MAX_BYTES = 5 * 1024 * 1024;
 export const MAX_REDIRECTS = 3;
@@ -114,6 +114,16 @@ export async function fetchAvatar(start: URL, o: FetchOpts = {}): Promise<Buffer
   }
 }
 
+/** Post images: fit inside this box (no crop, never enlarged). */
+export const POST_IMAGE_SIZE = 800;
+export function renderPostImage(input: Buffer): Promise<Buffer> {
+  return sharp(input, { animated: false, limitInputPixels: 40_000_000 })
+    .rotate()
+    .resize(POST_IMAGE_SIZE, POST_IMAGE_SIZE, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 70 })
+    .toBuffer();
+}
+
 /** Small square WebP (cover crop); animated inputs keep only their first frame. */
 export function renderAvatar(input: Buffer): Promise<Buffer> {
   return sharp(input, { animated: false, limitInputPixels: 40_000_000 })
@@ -127,7 +137,8 @@ export function renderAvatar(input: Buffer): Promise<Buffer> {
 export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o: FetchOpts = {}) {
   const fail = (status: number) => { res.statusCode = status; res.setHeader('cache-control', 'public, max-age=300, s-maxage=3600'); res.end(); };
   if (req.method !== 'GET' && req.method !== 'HEAD') return fail(405);
-  const url = parseAvatarUrl(new URL(req.url ?? '/', 'http://x').searchParams.get('url'));
+  const q = new URL(req.url ?? '/', 'http://x').searchParams, url = parseAvatarUrl(q.get('url'));
+  const render = q.get('img') === '1' ? renderPostImage : renderAvatar; // img=1: a post image, bounded but not cropped
   if (!url) return fail(400);
   if (o.storage) {
     const ip = clientIp(req.headers, req.socket?.remoteAddress);
@@ -136,7 +147,7 @@ export async function avatarHandler(req: IncomingMessage, res: ServerResponse, o
     if (n > AVATAR_RATE.max) { res.statusCode = 429; res.setHeader('cache-control', 'no-store'); res.setHeader('retry-after', String(AVATAR_RATE.windowSec)); return res.end(); }
   }
   let out: Buffer;
-  try { out = await renderAvatar(await fetchAvatar(url, o)); } catch { return fail(502); }
+  try { out = await render(await fetchAvatar(url, o)); } catch { return fail(502); }
   res.statusCode = 200;
   res.setHeader('content-type', 'image/webp');
   res.setHeader('cache-control', CACHE);

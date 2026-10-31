@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
-import { avatarHandler, AVATAR_RATE, fetchAvatar, isBlockedIp, parseAvatarUrl, readLimited, renderAvatar, safeLookup, devAvatarFetcher, type Fetcher } from '../server/avatar';
+import { avatarHandler, AVATAR_RATE, fetchAvatar, isBlockedIp, parseAvatarUrl, readLimited, renderAvatar, renderPostImage, POST_IMAGE_SIZE, safeLookup, devAvatarFetcher, type Fetcher } from '../server/avatar';
 import { memoryStorage } from '../server/storage';
 
 const png = (w: number, h: number) => sharp({ create: { width: w, height: h, channels: 3, background: '#f00' } }).png().toBuffer();
@@ -71,6 +71,16 @@ describe('fetchAvatar', () => {
     await expect(fetchAvatar(new URL('https://a.example/a'), { fetcher: toLocal })).rejects.toThrow();
     const loop: Fetcher = async (u) => ({ status: 302, headers: { location: u.href + 'x' }, body: chunks() });
     await expect(fetchAvatar(new URL('https://a.example/a'), { fetcher: loop })).rejects.toThrow(/redirect/);
+  });
+});
+
+describe('renderPostImage (imágenes de posts por el proxy)', () => {
+  it('reduce sin recortar ni agrandar: entra en POST_IMAGE_SIZE y mantiene la proporción', async () => {
+    const m = await sharp(await renderPostImage(await png(2400, 1200))).metadata();
+    expect(m.format).toBe('webp');
+    expect([m.width, m.height]).toEqual([POST_IMAGE_SIZE, POST_IMAGE_SIZE / 2]);
+    const s = await sharp(await renderPostImage(await png(100, 50))).metadata();
+    expect([s.width, s.height]).toEqual([100, 50]);
   });
 });
 

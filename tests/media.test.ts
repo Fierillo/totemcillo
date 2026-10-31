@@ -27,7 +27,7 @@ describe('imágenes en posts', () => {
     expect(imgs[0].getAttributeNames().sort()).toEqual(['alt', 'decoding', 'loading', 'referrerpolicy', 'src']);
     expect(imgs[0].getAttribute('referrerpolicy')).toBe('no-referrer');
     expect(imgs[0].getAttribute('loading')).toBe('lazy');
-    expect(imgs[0].getAttribute('src')!.startsWith('https://a.example/')).toBe(true);
+    expect(imgs[0].getAttribute('src')).toBe(`/api/avatar?img=1&url=${encodeURIComponent('https://a.example/x.png?q=%22%3E%3Cscript%3Ealert(1)%3C/script%3E')}`); // via the proxy: no stand IP leak, bounded size
   });
   it('sin imágenes no agrega nada; une las del post guardadas y las del texto sin repetir', () => {
     expect(imagesHtml([], 'x')).toBe('');

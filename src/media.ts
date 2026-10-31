@@ -42,10 +42,13 @@ export function imagesOf(p: { content: string; images?: unknown }): PostImage[] 
   return [...stored, ...postImages(p.content).filter((i) => !seen.has(i.url))].slice(0, MAX_IMAGES);
 }
 
+/** Through the server proxy (/api/avatar img=1): the stand's IP never reaches the image host, and huge images arrive bounded and re-encoded. */
+export const proxied = (url: string) => `/api/avatar?img=1&url=${encodeURIComponent(url)}`;
+
 /** Escaped <img> list (lazy, no referrer, no inline handlers); '' without images. */
 export function imagesHtml(images: PostImage[], cls: string, max = MAX_IMAGES): string {
   const ok = images.flatMap((i) => { const url = safeImageUrl(i.url); return url ? [{ url, alt: i.alt ?? '' }] : []; }).slice(0, max);
-  return ok.length ? `<div class="post-media ${esc(cls)}">${ok.map((i) => `<img src="${esc(i.url)}" alt="${esc(i.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`).join('')}</div>` : '';
+  return ok.length ? `<div class="post-media ${esc(cls)}">${ok.map((i) => `<img src="${esc(proxied(i.url))}" alt="${esc(i.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`).join('')}</div>` : '';
 }
 
 /** Hides post images that fail to load (one capture listener: error doesn't bubble). */
