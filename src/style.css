@@ -378,3 +378,4 @@ html:not(.is-mobile) .firma { font-size: .55em; line-height: 1.2; }
 @media (prefers-reduced-motion: reduce) {
   .post-list[data-boxes] > .post-row { animation: none; }
 }
+.m-compose .zap-btn:disabled { opacity: .4; cursor: not-allowed; } /* no #lacrypta yet */
