@@ -82,7 +82,7 @@ describe('la factura pendiente sobrevive a recargar la página', () => {
       expect(dialog.querySelector<HTMLElement>('.zap-choices')!.hidden).toBe(true);
       expect(dialog.textContent).toContain('21 sats');
       expect(requestInvoice).not.toHaveBeenCalled();
-      s.addZap({ id: hex(90), postId: hex(2), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() });
+      s.addZap({ id: hex(90), postId: hex(2), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now(), bolt11: p.invoice });
       expect(document.querySelector('dialog')).toBeNull();
       expect(selected()).toBe('posts');
       expect((reveal.mock.contexts[0] as HTMLElement).dataset.id).toBe(hex(2));
@@ -110,9 +110,9 @@ describe('la factura pendiente sobrevive a recargar la página', () => {
     try {
       expect(document.querySelector('dialog')).not.toBeNull();
       s.addZap({ id: hex(91), postId: hex(3), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() - 200 }); // other post
-      s.addZap({ id: hex(92), postId: hex(2), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() - 400 }); // older than the invoice
+      s.addZap({ id: hex(92), postId: hex(2), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() - 400, bolt11: p.invoice }); // older than the invoice
       expect(document.querySelector('dialog')).not.toBeNull();
-      s.addZap({ id: hex(93), postId: hex(2), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() - 200 }); // too old to be "live"
+      s.addZap({ id: hex(93), postId: hex(2), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() - 200, bolt11: p.invoice }); // too old to be "live"
       expect(document.querySelector('dialog')).toBeNull();
       expect(selected()).toBe('posts');
       expect(localStorage.getItem(PENDING_ZAP_KEY)).toBeNull();

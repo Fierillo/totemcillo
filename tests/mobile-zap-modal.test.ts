@@ -18,7 +18,7 @@ beforeEach(() => { PAID_CLOSE_MS.ms = 0; }); // closes at once; the 3 s success 
 
 describe('pago confirmado desde el modal móvil', () => {
   const now = () => Math.floor(Date.now() / 1000);
-  const receipt = (n: number, postId: string) => ({ id: hex(n), postId, sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() });
+  const receipt = (n: number, postId: string) => ({ id: hex(n), postId, sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now(), bolt11: 'lnbc210n1ptestinvoice' });
   /** Shows the wallet invoice in an already open zap dialog. */
   const showInvoice = async () => {
     const dialog = document.querySelector<HTMLDialogElement>('dialog')!;
@@ -180,6 +180,9 @@ describe('el modal de zap solo se cierra al pagar o con Cancelar', () => {
     s.addZap({ id: hex(80), postId: hex(1), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now(), bolt11: 'lnbc210n1potherinvoice' });
     stillOpen(dialog);
     expect(onPaid).not.toHaveBeenCalled();
+    s.addZap({ id: hex(82), postId: hex(1), sender: 'd'.repeat(64), msats: 21_000, comment: '', created_at: now() }); // receipt without bolt11
+    stillOpen(dialog);
+    expect(onPaid).not.toHaveBeenCalled();
     s.addZap({ id: hex(81), postId: hex(1), msats: 21_000, comment: '', created_at: now(), bolt11: 'LNBC210N1PTESTINVOICE' });
     expect(onPaid).toHaveBeenCalledTimes(1);
     expect(document.querySelector('dialog')).toBeNull();
@@ -198,7 +201,7 @@ describe('el modal de zap solo se cierra al pagar o con Cancelar', () => {
     dialog.close(); // what Chrome's CloseWatcher does when it skips the cancel event
     await vi.waitFor(() => stillOpen(dialog));
     expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull(); // same invoice, not reset
-    s.addZap({ id: hex(70), postId: hex(1), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now() });
+    s.addZap({ id: hex(70), postId: hex(1), sender: 'c'.repeat(64), msats: 21_000, comment: '', created_at: now(), bolt11: 'lnbc210n1ptestinvoice' });
     expect(onPaid).toHaveBeenCalledTimes(1);
     expect(document.querySelector('dialog')).toBeNull();
   });

@@ -418,7 +418,7 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
       dialog.querySelector<HTMLButtonElement>('[data-wallet]')!.click();
       dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
       await vi.waitFor(() => expect(dialog.querySelector('[data-open-wallet]')).not.toBeNull());
-      s.addZap({ id: hex(9), postId: hex(1), sender: hex(8), msats: 21_000, comment: '', created_at: Math.floor(Date.now() / 1000) });
+      s.addZap({ id: hex(9), postId: hex(1), sender: hex(8), msats: 21_000, comment: '', created_at: Math.floor(Date.now() / 1000), bolt11: 'lnbc210n1ptestinvoice' });
       await vi.waitFor(() => expect(document.querySelector('dialog')).toBeNull());
       expect(root.querySelector('.m-post.is-zapped')).not.toBeNull();
       expect(document.querySelector('svg.strike')).not.toBeNull();

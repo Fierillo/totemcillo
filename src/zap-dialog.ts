@@ -147,8 +147,8 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
     result.querySelector<HTMLAnchorElement>('[data-open-wallet]')!.focus();
     savePendingZap(p);
     if (!store) return;
-    // A receipt carrying a bolt11 must be for this invoice (someone else may zap the same post); without one, the post is enough.
-    const mine = (b?: string) => !b || b.toLowerCase() === invoice.toLowerCase();
+    // Only a receipt for this very invoice counts: someone else may zap the same post, and a receipt without bolt11 proves nothing.
+    const mine = (b?: string) => !!b && b.toLowerCase() === invoice.toLowerCase();
     const paid = () => {
       if (closing || paidShown) return;
       if (!PAID_CLOSE_MS.ms) { close(); opts.onPaid?.(); return; }
