@@ -117,3 +117,15 @@ export function rowEffects(key: (row: HTMLElement) => string, now = () => Date.n
     },
   };
 }
+
+/** Re-fits `root` without redrawing when its size changes (header/QR/strip, scene entering) or an avatar finishes loading. */
+export function refitOn(root: HTMLElement, fit: () => void): () => void {
+  const size = () => { const r = root.getBoundingClientRect(); return `${r.width}x${r.height}`; };
+  let last = size();
+  const run = () => { last = size(); fit(); };
+  const onLoad = (e: Event) => { if ((e.target as Element)?.tagName === 'IMG') run(); };
+  const ro = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => { if (size() !== last) run(); });
+  ro?.observe(root);
+  root.addEventListener('load', onLoad, true); // load doesn't bubble
+  return () => { ro?.disconnect(); root.removeEventListener('load', onLoad, true); };
+}

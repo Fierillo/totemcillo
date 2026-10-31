@@ -1,7 +1,7 @@
 import { renderSVG } from 'uqr';
 import type { Scene } from './types';
 import type { PostStats, ZapStore } from '../nostr/store';
-import { live, liveMarks, rowEffects } from './live';
+import { live, liveMarks, refitOn, rowEffects } from './live';
 import { domMeasurer, fitRegions, largest, fitText, untruncate, type Measurer } from '../fit';
 import { age, esc, sats } from '../util';
 import type { Zap } from '../nostr/types';
@@ -274,7 +274,8 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         seen = new Set(list.flatMap((m) => (m.zap ? [m.zap.id] : [])));
       };
       const off = live(store, draw);
-      return () => { closed = true; off(); marks.off(); zap.stop(); };
+      const offFit = refitOn(root, () => { if (!closed && !holding) { fitRegions(root); fitBoxes(root); } }); // layout changed after the fit: re-fit, no redraw
+      return () => { closed = true; off(); offFit(); marks.off(); zap.stop(); };
     },
   };
 }
