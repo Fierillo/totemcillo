@@ -43,6 +43,11 @@ describe('editor de mensaje anónimo', () => {
     expect(warn.querySelector('svg .m-bolt-x')).not.toBeNull(); // the red struck-through bolt, not a warning sign
     expect(dialog.textContent).not.toContain('⚠️');
   });
+  it('Publicar y Cancelar usan la base común de botones', () => {
+    const { dialog } = open();
+    expect(dialog.querySelector('[type="submit"]')!.classList.contains('btn')).toBe(true);
+    expect(dialog.querySelector('[data-close]')!.classList.contains('btn')).toBe(true);
+  });
   it('sin el texto explicativo gris', () => {
     const { dialog } = open();
     expect(dialog.querySelector('.zap-note')).toBeNull();

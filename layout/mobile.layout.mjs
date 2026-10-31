@@ -30,10 +30,14 @@ for (const [w, h] of [[360, 640], [390, 700], [390, 844], [412, 915]]) {
         scrubHits: [...document.querySelectorAll('.m-side')].some(hit) || hit(document.querySelector('.m-fab')) || hit(card.querySelector('.m-body')),
         // Zapear and «Mandá mensaje anónimo» share one row: same vertical center, Zapear on the left.
         rowOff: (() => { const b = card.querySelector('.m-zap-cta').getBoundingClientRect(); return Math.abs((b.top + b.bottom) / 2 - (fab.top + fab.bottom) / 2) > 2 || b.right > fab.left; })(),
-        ctaColor: getComputedStyle(card.querySelector('.m-zap-cta')).color, fabBg: getComputedStyle(document.querySelector('.m-fab')).backgroundColor,
+        ctaBg: getComputedStyle(card.querySelector('.m-zap-cta')).backgroundColor, fabBg: getComputedStyle(document.querySelector('.m-fab')).backgroundColor,
+        // Same height, Zapear clearly wider, the anonymous label compact on two lines.
+        shape: (() => { const b = card.querySelector('.m-zap-cta').getBoundingClientRect(), f = document.querySelector('.m-fab'), r = document.createRange(); r.selectNodeContents(f.querySelector('.m-fab-label'));
+          const lines = new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size, fs = (el) => parseFloat(getComputedStyle(el).fontSize);
+          return { sameHeight: Math.abs(b.height - fab.height) < 0.5, wider: b.width > fab.width * 1.6, lines, smaller: fs(f) < fs(card.querySelector('.m-zap-cta')) }; })(),
       };
     });
-    assert.deepEqual(m, { cardOut: false, textOverflow: false, underFab: false, scrollInside: false, smallFont: false, pageScroll: false, fabOff: false, ctaOff: false, scrubOut: false, scrubHits: false, rowOff: false, ctaColor: 'rgb(255, 240, 0)', fabBg: 'rgb(139, 92, 246)' });
+    assert.deepEqual(m, { cardOut: false, textOverflow: false, underFab: false, scrollInside: false, smallFont: false, pageScroll: false, fabOff: false, ctaOff: false, scrubOut: false, scrubHits: false, rowOff: false, ctaBg: 'rgb(199, 255, 91)', fabBg: 'rgb(139, 92, 246)', shape: { sameHeight: true, wider: true, lines: 2, smaller: true } });
     assert.deepEqual(await page.evaluate(checkHeader), []);
     await page.screenshot({ path: `${out}/${w}x${h}-mobile.png` });
     await page.close();

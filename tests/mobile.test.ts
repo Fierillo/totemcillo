@@ -239,7 +239,9 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     try {
       expect(root.querySelector('.m-fab')!.closest('[role="tabpanel"]')).toBeNull();
       const fab = root.querySelector<HTMLButtonElement>('.m-fab')!;
-      expect(fab.textContent!.trim()).toBe('Mandá mensaje anónimo');
+      expect(fab.textContent!.replace(/\s+/g, ' ').trim()).toBe('Mandá mensaje anónimo');
+      expect(fab.classList.contains('btn')).toBe(true); // shared button base, violet variant
+      expect(root.querySelector('.m-zap-cta')?.classList.contains('btn') ?? true).toBe(true);
       expect(fab.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
       expect(fab.hasAttribute('aria-label')).toBe(false); // the visible text is the name
       root.querySelector<HTMLButtonElement>('[data-tab="top"]')!.click();

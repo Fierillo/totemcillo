@@ -28,9 +28,9 @@ export function openCompose(hashtags: string[], publish: Publisher, storage?: St
     <p class="m-compose-warn is-unzappable" role="note">${BOLT_OFF} Los mensajes anónimos no pueden ser zapeados</p>
     <form><textarea name="content" rows="5" maxlength="${MOBILE_POST_MAX_CHARS}" required></textarea>
     <p class="m-compose-hint" aria-live="polite"></p>
-    <button class="zap-btn" type="submit">Publicar</button></form>
+    <button class="zap-btn btn btn-lime" type="submit">Publicar</button></form>
     <p class="zap-error" role="alert"></p>
-    <button type="button" class="zap-cancel" data-close>Cancelar</button>`;
+    <button type="button" class="zap-cancel btn btn-red" data-close>Cancelar</button>`;
   const form = dialog.querySelector('form')!, text = form.querySelector('textarea')!, send = form.querySelector<HTMLButtonElement>('[type="submit"]')!;
   text.value = hashtags.map((t) => `#${t}`).join(' ') + ' ';
   const missing = () => hashtags.filter((h) => !hasHashtag(text.value, h));

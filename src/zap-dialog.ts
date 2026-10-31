@@ -101,9 +101,9 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
     <form hidden>
     <label>Monto (sats)<input name="sats" type="number" inputmode="numeric" min="1" step="1" value="21" required></label>
     <label>Mensaje (opcional)<input name="message" type="text" maxlength="${MAX_COMMENT}" autocomplete="off" placeholder="Se publica con el zap"></label>
-    <button class="zap-btn" type="submit">Generar factura</button></form>
+    <button class="zap-btn btn btn-lime" type="submit">Generar factura</button></form>
     <p class="zap-error" role="alert"></p><div data-invoice hidden></div>
-    <button type="button" class="zap-cancel" data-close>Cancelar</button>`;
+    <button type="button" class="zap-cancel btn btn-red" data-close>Cancelar</button>`;
   const form = dialog.querySelector('form')!;
   const amount = form.querySelector<HTMLInputElement>('[name="sats"]')!;
   const message = form.querySelector<HTMLInputElement>('[name="message"]')!;
@@ -120,7 +120,7 @@ export function openZapDialog(post: Post, relays: string[], requestInvoice?: Inv
     result.innerHTML = `<p class="zap-note">${esc(String(p.sats))} sats</p>
       <button type="button" class="wallet-qr" data-copy aria-label="Copiar factura">${renderSVG(invoice.toUpperCase(), { ecc: 'M', border: 2 })}</button>
       <p class="zap-note" role="status"></p>
-      <a class="zap-btn" data-open-wallet href="lightning:${esc(invoice)}">Abrir wallet</a>
+      <a class="zap-btn btn btn-lime" data-open-wallet href="lightning:${esc(invoice)}">Abrir wallet</a>
       <p class="zap-note">El total se actualiza al confirmarse el pago.</p>`;
     result.querySelector<HTMLButtonElement>('[data-copy]')!.addEventListener('click', async () => {
       const status = result.querySelector<HTMLElement>('[role="status"]')!;

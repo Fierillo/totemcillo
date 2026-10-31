@@ -90,7 +90,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
         ${web ? `<div class="m-side">${zap.off(s.post!.pubkey)
           ? `<button class="zap-btn m-total is-unzappable${c}" type="button" aria-disabled="true" aria-label="No se puede zapear: el autor no tiene una wallet que acepte zaps">${BOLT_OFF}</button>`
           : `<button class="zap-btn m-total${c}" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog" aria-label="Zapear · ${sats(s.msats)} sats">${BOLT}${s.msats > 0 ? `<b class="m-zap-sats">${pending(`${sats(s.msats)} sats`, store.ready)}</b>` : ''}</button>`}</div>
-        <button class="m-zap-cta" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog"${zap.off(s.post!.pubkey) ? ' disabled' : ''}>Zapear</button>` : ''}
+        <button class="m-zap-cta btn btn-lime" type="button" data-zap="${esc(s.postId)}" aria-haspopup="dialog"${zap.off(s.post!.pubkey) ? ' disabled' : ''}>Zapear</button>` : ''}
       </article>`;
   };
   /** Top row: amount first, message on one line; tapping toggles the full card in place. */
@@ -110,7 +110,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
   const postsHtml = (list: PostStats[], loading: boolean) => {
     const posts = list.map((s) => card(s, selected === 'posts' && !boot.booting ? marks.attrs(s.postId) : NO_MARKS)).join('');
     const reel = posts ? `<div class="m-reel">${posts}</div>${scrubber(list.length, Math.max(0, list.findIndex((x) => x.postId === view.post)))}` : loading ? SKEL_POST.repeat(2) : empty(EMPTY_POSTS);
-    return panel('posts', 'Últimos posts', (newer ? '<button type="button" class="m-newer" data-newer>↑ Ver último post</button>' : '') + reel);
+    return panel('posts', 'Últimos posts', (newer ? '<button type="button" class="m-newer btn btn-lime" data-newer>↑ Ver último post</button>' : '') + reel);
   };
   const topHtml = (loading: boolean) => {
     const topList = topRows(), top = topList.map(row).join('');

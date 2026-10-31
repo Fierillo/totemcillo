@@ -1,4 +1,4 @@
-:root { --footer-h: max(48px, 2.3rem); --fab-w: 10.5rem; --cta-bottom: 3.6rem; --neon-yellow: #fff000; --violet: #8b5cf6; --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; --ease-out-soft: cubic-bezier(.22, 1, .36, 1); }
+:root { --footer-h: max(48px, 2.3rem); --fab-w: 6.6rem; --cta-bottom: 3.6rem; --violet: #8b5cf6; --accent: #C7FF5B; --bg: #0b0d0a; --fg: #f2f2f2; --muted: #8a8f86; --card: #161a14; --strip-room: 2.2em; --ease-out-soft: cubic-bezier(.22, 1, .36, 1); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: clamp(14px, min(1.6vw, 2.6vh), 40px); }
@@ -89,6 +89,15 @@ html.is-mobile #app { height: 100dvh; overflow: hidden; display: flex; flex-dire
 .is-mobile .m-post.is-new { animation: slide-in-x 1.3s var(--ease-out-soft) both, glow var(--fx-glow) ease-out; } /* sideways: doesn't cover the heading */
 @keyframes slide-in-x { from { transform: translateX(-1.5em); opacity: 0; } to { transform: none; opacity: 1; } }
 .zap-btn { display: inline-block; background: var(--accent); color: #0b0d0a; border: 0; font: inherit; font-weight: 800; text-decoration: none; padding: .55rem 1rem; border-radius: .5rem; cursor: pointer; }
+/* Shared button base: same shape, size, type and states everywhere; variants only set --btn-bg / --btn-fg. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; height: var(--btn-h, 44px); padding: 0 var(--btn-px, 1rem); border: 0; border-radius: 999px; background: var(--btn-bg); color: var(--btn-fg); font: 800 var(--btn-fs, 1rem)/1.1 system-ui, sans-serif; text-align: center; text-decoration: none; cursor: pointer; transition: filter .15s, opacity .15s, transform .1s; }
+.btn:hover { filter: brightness(1.1); }
+.btn:active { transform: scale(.97); }
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; filter: none; transform: none; }
+.btn-lime { --btn-bg: var(--accent); --btn-fg: #0b0d0a; }
+.btn-violet { --btn-bg: var(--violet); --btn-fg: #fff; }
+.btn-red { --btn-bg: #d32f2f; --btn-fg: #fff; }
 .m-post .zap-btn { background: transparent; color: var(--accent); border-radius: 0; padding: .4rem 0; font-size: .85rem; }
 .m-post .zap-btn:hover, .m-post .zap-btn:focus-visible { background: var(--accent); color: var(--bg); }
 .m-post .zap-btn.is-unzappable { cursor: default; -webkit-tap-highlight-color: transparent; }
@@ -103,7 +112,7 @@ html.is-mobile #app { height: 100dvh; overflow: hidden; display: flex; flex-dire
 /* Mobile tabs: full-screen latest posts reel (one post per screen) and a one-line Top ranking */
 .m-section[role="tabpanel"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .is-mobile #mobile-posts { position: relative; }
-.m-newer { position: absolute; top: .5rem; left: 50%; transform: translateX(-50%); z-index: 2; padding: .45rem 1rem; border: 0; border-radius: 999px; background: var(--accent); color: var(--bg); font: inherit; font-size: .8rem; font-weight: 700; box-shadow: 0 4px 14px #0008; cursor: pointer; animation: fade .3s ease; }
+.m-newer { position: absolute; top: .5rem; left: 50%; transform: translateX(-50%); z-index: 2; --btn-fs: .8rem; box-shadow: 0 4px 14px #0008; animation: fade .3s ease; }
 /* Live icons on mobile: the totem's .live-ind (bubble / bolt) dropping from the top, leaving in a random direction (--ex/--ey from JS) */
 .m-live .live-ind { top: 5.5rem; bottom: auto; z-index: 40; animation: ind-drop var(--fx-drop) ease-in-out forwards; }
 .live-ind.zap svg { fill: var(--accent); filter: drop-shadow(0 0 .35em var(--accent)); }
@@ -127,9 +136,8 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-side { flex: 0 0 auto; align-self: center; display: flex; flex-direction: column; gap: 1rem; }
 .m-post .m-side .zap-btn { display: grid; justify-items: center; gap: .2rem; padding: .5rem; font-size: .75rem; }
 .m-reel > .m-post { position: relative; }
-.m-zap-cta { display: flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; margin-top: .6rem; padding: 0 1.2rem; border: 1px solid var(--neon-yellow); border-radius: 999px; background: transparent; color: var(--neon-yellow); font: 800 1rem system-ui, sans-serif; text-shadow: 0 0 6px currentColor; box-shadow: 0 0 .6rem #fff00055; cursor: pointer; } /* neon yellow */
-.m-zap-cta:disabled { opacity: .35; cursor: default; box-shadow: none; text-shadow: none; }
-.m-reel > .m-post > .m-zap-cta { position: absolute; left: 1.75rem; right: calc(1.1rem + var(--fab-w) + env(safe-area-inset-right)); bottom: var(--cta-bottom); height: 44px; margin: 0; } /* shares the row with the compose pill, at its left */
+.m-zap-cta { display: flex; margin-top: .6rem; }
+.m-reel > .m-post > .m-zap-cta { position: absolute; left: 1.75rem; right: calc(1.1rem + var(--fab-w) + env(safe-area-inset-right)); bottom: var(--cta-bottom); margin: 0; } /* shares the row with the compose pill, at its left */
 .m-zap-sats { font-size: 1.15rem; }
 .m-bolt { fill: rgba(199, 255, 91, .18); stroke: #eaffb8; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 8px var(--accent)); } /* neon bolt, no circle */
 .m-top { list-style: none; padding: 0; margin: 0 0 6.5rem; }
@@ -143,7 +151,7 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-top-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-top-head[aria-expanded="true"] .m-top-line { color: var(--muted); }
 .m-top-row > .m-post { display: flex; gap: .75rem; border: 0; padding-top: 0; }
-.m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(var(--footer-h) + var(--cta-bottom)); width: var(--fab-w); justify-content: center; z-index: 5; display: inline-flex; align-items: center; gap: .35rem; height: 44px; padding: 0 .85rem; border: 0; border-radius: 999px; background: var(--violet); color: #fff; font: 800 .72rem system-ui, sans-serif; white-space: nowrap; box-shadow: 0 .3rem 1rem #000a; cursor: pointer; } /* violet pill at the bottom right, on the same row as Zapear */
+.m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(var(--footer-h) + var(--cta-bottom)); width: var(--fab-w); z-index: 5; --btn-px: .5rem; --btn-fs: .68rem; gap: .3rem; white-space: nowrap; text-align: left; box-shadow: 0 .3rem 1rem #000a; } /* violet pill at the bottom right, on the same row as Zapear */
 .m-fab svg { width: 1rem; height: 1rem; }
 .m-compose-warn { display: flex; align-items: center; gap: .5rem; margin: 0 0 .8rem; color: #ff3b3b; font-weight: 700; }
 .m-compose-warn svg { flex: none; width: 1.2rem; height: 1.6rem; } /* the red struck-through bolt of unzappable authors */
@@ -177,8 +185,8 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .zap-dialog::backdrop { background: #000b; }
 .zap-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .zap-dialog h2 { font-size: 1.15rem; }
-.zap-dialog button { cursor: pointer; font: inherit; }
-.zap-dialog .zap-cancel { width: 100%; margin-top: 1rem; padding: .55rem 1rem; border: 0; border-radius: .5rem; background: #d32f2f; color: #fff; font-weight: 800; }
+.zap-dialog button:not(.btn) { cursor: pointer; font: inherit; }
+.zap-dialog .zap-cancel { width: 100%; margin-top: 1rem; }
 .zap-choices { display: grid; gap: .7rem; }
 .zap-choices > a, .zap-choices > button { display: flex; align-items: center; gap: .7rem; padding: .9rem; border: 1px solid #35402d; border-radius: 2px; background: var(--card); color: var(--accent); text-align: left; text-decoration: none; font-weight: 700; }
 .zap-icon { flex: 0 0 auto; }
@@ -378,4 +386,3 @@ html:not(.is-mobile) .firma { font-size: .55em; line-height: 1.2; }
 @media (prefers-reduced-motion: reduce) {
   .post-list[data-boxes] > .post-row { animation: none; }
 }
-.m-compose .zap-btn:disabled { opacity: .4; cursor: not-allowed; } /* no #lacrypta yet */
