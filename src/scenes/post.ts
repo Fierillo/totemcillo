@@ -43,6 +43,13 @@ export function recentPosts(store: ZapStore, n = MAX_BOXES): PostStats[] {
     .slice(0, n);
 }
 
+/** Live sats of a row total (shared by the normal draw and the charge at the old place). */
+const totalHtml = (msats: number, ready: boolean) => boltSats(msats, ready);
+/** Recharges a row total in place; red (off) and pending bolts keep showing no sats, as in draw. */
+const paintTotal = (el: HTMLElement, msats: number, ready: boolean) => {
+  if (!el.matches('.is-unzappable, .bolt-pending')) el.innerHTML = totalHtml(msats, ready);
+};
+
 interface RowOptions { cls: string; ready: boolean; zap: { off: boolean; cls: string } }
 /** A post as a message box: author, age, excerpt and its bolt (red when off, blinking while pending, else live sats). */
 const postRow = (s: PostStats, { cls, ready, zap }: RowOptions) => `<li class="post-row${cls}" data-id="${esc(s.postId)}">
@@ -50,7 +57,7 @@ const postRow = (s: PostStats, { cls, ready, zap }: RowOptions) => `<li class="p
         <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${age(s.post!.created_at)}</span></div>
         <p class="excerpt" data-clip>${esc(s.post!.content.trim())}</p>
         <div class="row-foot">${zap.off ? `<span class="row-total is-unzappable${zap.cls}" aria-label="No se puede zapear">${BOLT_OFF}</span>` : zap.cls.includes('bolt-pending') ? `<span class="row-total${zap.cls}" aria-label="Verificando si se puede zapear">${BOLT}</span>`
-        : `<span class="row-total${zap.cls}">${boltSats(s.msats, ready)}</span>`}</div>
+        : `<span class="row-total${zap.cls}">${totalHtml(s.msats, ready)}</span>`}</div>
       </div>
     </li>`;
 
@@ -240,8 +247,8 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         if (holding || closed) return;
         holding = marks.charge((id) => root.querySelector<HTMLElement>(`.post-list > .post-row[data-id="${id}"]`), (el, id) => {
           effects.start([el]); // the flash starts here, and continues at the new place
-          const s = store.stats().find((x) => x.postId === id), total = el.querySelector('.row-total');
-          if (s && total && !total.matches('.is-unzappable, .bolt-pending')) total.innerHTML = boltSats(s.msats, store.ready);
+          const s = store.stats().find((x) => x.postId === id), total = el.querySelector<HTMLElement>('.row-total');
+          if (s && total) paintTotal(total, s.msats, store.ready);
         }, () => { holding = false; draw(); });
         if (holding) return;
         const list = messages(store);
