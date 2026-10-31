@@ -207,7 +207,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const row = r.querySelector(`.post-row[data-id="${hex(1)}"]`)!;
     expect(row.classList.contains('is-zapped')).toBe(true);
     expect(document.querySelector('svg.strike')).not.toBeNull();
-    expect(feedFor(s).pending).toHaveLength(0);
+    expect(feedFor(s).pending).toHaveLength(1); // still due in the battle
   });
   it('zap con otra escena: al entrar a la batalla se repite ahí con el rayo', () => {
     const s = mkStore();
@@ -215,7 +215,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     s.addZap(zap(1, 1, NOW - 1));
     topSc(s);
     expect(document.querySelector('svg.strike')).not.toBeNull();
-    expect(feedFor(s).pending).toHaveLength(0);
+    expect(feedFor(s).pending).toHaveLength(1); // still due in messages
   });
   it('post nuevo con otra escena: indicador 💬 abajo y se resalta al llegar a posts', () => {
     const s = mkStore();
@@ -237,7 +237,7 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     vi.advanceTimersByTime(STRIKE_MS); // the zapped box charges in place first; then the list redraws
     expect(r.querySelector('.is-new')).not.toBeNull();
     expect(ind).toEqual([]);
-    expect(feedFor(s).pending).toHaveLength(0);
+    expect(feedFor(s).pending.map((p) => p.type)).toEqual(['zap']); // the zap is still due in the battle; the post only targets messages
   });
   it('watch corre antes de decidir en pantalla/fuera (aunque se suscriba después) y deja de correr al desuscribirse', () => {
     const s = mkStore();
@@ -249,7 +249,6 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     const off = feedFor(s).watch((e) => { seen.push(`watch:${e.type}`); onScreen = true; }); // e.g. switches to the scene that shows it
     s.addZap(zap(1, 1, NOW - 1));
     expect(seen).toEqual(['watch:zap', 'mark']);
-    expect(feedFor(s).pending).toHaveLength(0);
     off(); onScreen = false; seen.length = 0;
     s.addZap(zap(2, 1, NOW - 1));
     expect(seen).toEqual(['miss']);
@@ -282,6 +281,37 @@ describe('pendientes + indicador abajo cuando el objetivo no está en pantalla',
     s.setModeration({ hiddenPosts: [], bannedPubkeys: [], startLine: new Date(NOW * 1000).toISOString() }); // battle starts after the zap → not shown
     (batallaScene(s).render(document.createElement('div')) as () => void)();
     expect(feedFor(s).pending).toHaveLength(0);
+  });
+  it('zap visto en la batalla: también se anima (una vez) al pasar a mensajes', () => {
+    const s = mkStore();
+    s.addPost(post(1));
+    const b = topSc(s);
+    s.addZap(zap(1, 1, NOW - 1));
+    vi.advanceTimersByTime(STRIKE_MS);
+    b.off();
+    document.querySelectorAll('svg.strike').forEach((e) => e.remove());
+    const p1 = postSc(s);
+    expect(p1.r.querySelector(`.post-row[data-id="${hex(1)}"]`)!.classList.contains('is-zapped')).toBe(true);
+    expect(feedFor(s).pending).toHaveLength(0);
+    p1.off();
+    expect(postSc(s).r.querySelector('.is-zapped')).toBeNull(); // once, not again
+  });
+  it('zap visto en mensajes: también se anima al pasar a la batalla', () => {
+    const s = mkStore();
+    s.addPost(post(1));
+    const p1 = postSc(s);
+    s.addZap(zap(1, 1, NOW - 1));
+    vi.advanceTimersByTime(STRIKE_MS);
+    p1.off();
+    document.querySelectorAll('svg.strike').forEach((e) => e.remove());
+    const b = topSc(s);
+    expect(document.querySelector('svg.strike')).not.toBeNull();
+    expect(feedFor(s).pending).toHaveLength(0);
+    b.off();
+    document.querySelectorAll('svg.strike').forEach((e) => e.remove());
+    const p2 = postSc(s); // back to messages: each scene plays an event at most once
+    expect(p2.r.querySelector('.is-zapped')).toBeNull();
+    expect(document.querySelector('svg.strike')).toBeNull();
   });
   it(`la cola tiene tope (${MAX_PENDING})`, () => {
     const s = mkStore();

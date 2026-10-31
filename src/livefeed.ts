@@ -30,18 +30,22 @@ export class LiveFeed {
 
   private onLive(e: LiveEvent) {
     this.watchers.forEach((fn) => fn(e));
-    for (const h of this.handlers) if (h.kinds.includes(e.type) && h.visible(e.postId)) { h.mark(e); return; }
-    this.misses.forEach((fn) => fn(e));
-    this.pending.push({ ...e, checked: new Set() });
+    const checked = new Set<string>(); // scenes that already animated it (on screen now)
+    for (const h of this.handlers) if (h.kinds.includes(e.type) && h.visible(e.postId)) { h.mark(e); checked.add(h.name); }
+    if (!checked.size) this.misses.forEach((fn) => fn(e));
+    // Stays pending for its other target scenes: they animate it (once) when next shown.
+    const targets = TARGET_SCENES[e.type];
+    if (targets.every((n) => checked.has(n)) || (checked.size && !targets.some((n) => checked.has(n)))) return; // done, or shown outside the totem scenes (mobile)
+    this.pending.push({ ...e, checked });
     if (this.pending.length > this.max) this.pending.splice(0, this.pending.length - this.max);
   }
 
-  /** On entering a scene: returns (and removes) the visible pending events; the rest mark this scene as checked and expire once none are left. */
+  /** On entering a scene: returns its visible pending events; each event is offered once per target scene and expires once all were checked. */
   take(name: string, kinds: LiveEvent['type'][], visibleIds: Set<string>): LiveEvent[] {
     const out: LiveEvent[] = [];
     this.pending = this.pending.filter((p) => {
-      if (!kinds.includes(p.type)) return true;
-      if (visibleIds.has(p.postId)) { out.push({ type: p.type, postId: p.postId, msats: p.msats }); return false; }
+      if (!kinds.includes(p.type) || p.checked.has(name)) return true;
+      if (visibleIds.has(p.postId)) out.push({ type: p.type, postId: p.postId, msats: p.msats });
       p.checked.add(name);
       return !TARGET_SCENES[p.type].every((n) => p.checked.has(n));
     });
