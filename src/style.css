@@ -138,7 +138,11 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-reel > .m-post { position: relative; }
 .m-zap-cta { display: flex; margin-top: .6rem; }
 .m-reel > .m-post > .m-zap-cta { position: absolute; left: 1.75rem; right: calc(1.1rem + var(--fab-w) + env(safe-area-inset-right)); bottom: var(--cta-bottom); margin: 0; } /* shares the row with the compose pill, at its left */
-.m-zap-sats { font-size: 1.15rem; }
+.m-zap-sats { font-size: .9rem; white-space: nowrap; display: grid; justify-items: center; line-height: 1.1; }
+.m-zap-sats small { font-size: .7rem; font-weight: 600; opacity: .8; }
+.m-reel > .m-post > .m-side { flex: 0 0 4rem; width: 4rem; } /* fixed narrow zap column: the message width never depends on the amount */
+.m-reel .m-side .zap-btn { width: 100%; padding: .4rem 0; }
+.m-reel .m-side .m-bolt { width: 1.6rem; height: 2.2rem; }
 .m-bolt { fill: rgba(199, 255, 91, .18); stroke: #eaffb8; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 8px var(--accent)); } /* neon bolt, no circle */
 .m-top { list-style: none; padding: 0; margin: 0 0 6.5rem; }
 .m-top-row { border-bottom: 1px solid #222; }

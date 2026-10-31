@@ -448,3 +448,10 @@ describe('vista móvil (misma ruta, layout scrolleable)', () => {
     expect(root.textContent).toContain('Todavía no hay zaps');
   });
 });
+
+import { compactSats } from '../src/util';
+describe('compactSats', () => {
+  it('abrevia montos grandes para la columna chica del rayo', () => {
+    expect([1000, 9_999_000, 21_126_000, 999_999_000, 1_234_567_000].map(compactSats)).toEqual(['1', '9.999', '21,1k', '999,9k', '1,2M']);
+  });
+});

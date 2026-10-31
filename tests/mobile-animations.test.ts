@@ -82,7 +82,7 @@ describe('animaciones móviles', () => {
     const s3 = new ZapStore(undefined, { clock: () => NOW });
     const root3 = document.createElement('div'), off3 = renderMobile(root3, s3, defaultConfig, new Announcement(''));
     try {
-      expect(root.querySelector('.m-total .pending')!.textContent).toBe('210 sats'); // total parcial: el número parpadea
+      expect(root.querySelector('.m-total .pending')!.textContent).toBe('210'); // total parcial: el número parpadea (la unidad queda fija)
       expect(root.querySelector('.m-total')!.textContent).toContain('210');
       expect(root.querySelector('#mobile-top .pending')).not.toBeNull();
       expect(root2.querySelector('#mobile-top .skel')).not.toBeNull(); // textos pendientes: skeletons

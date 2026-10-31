@@ -1,7 +1,7 @@
 // Phone geometry: the feed post always fits the screen, the floating button and the scrubber never cover it.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE, out, startApp, openApp, openMobile, feedReady, splashGone } from '../browser/harness.mjs';
+import { BASE, out, startApp, openApp, openMobile, feedReady, splashGone, kiosk, hex, now, AUTHOR } from '../browser/harness.mjs';
 import { checkHeader } from './checks.mjs';
 
 let app;
@@ -140,5 +140,22 @@ for (const [w, h] of [[390, 844], [412, 915]]) {
     });
     assert.deepEqual(m, { textWide: true, amountOnce: true, bigger: true, zapLast: true, nameCut: false, side: true });
     await page.close();
+  });
+}
+
+for (const [w, h] of [[390, 844], [412, 915]]) {
+  test(`Últimos posts: la columna del rayo es chica y fija, el mensaje no depende del monto en ${w}x${h}`, async () => {
+    const measure = async (msats) => {
+      const posts = [{ id: hex(650), pubkey: AUTHOR, content: 'Un mensaje de largo normal sobre #lacrypta', created_at: now - 1 }];
+      const page = await openApp(app.browser, { viewport: { width: w, height: h }, mobile: true, zappable: true, data: { posts, zaps: [{ id: hex(651), postId: hex(650), sender: 'cd'.repeat(32), msats, comment: '', created_at: now - 1, domain: 'getalby.com' }] } });
+      await kiosk(page, { post: 60000, batalla: 60000, anuncio: 60000 }); await page.goto(`${BASE}/`); await feedReady(page);
+      const r = await page.evaluate(() => { const c = document.querySelector('.m-reel > .m-post'), b = c.querySelector('.m-body').getBoundingClientRect(), s = c.querySelector('.m-side').getBoundingClientRect(), z = c.querySelector('.m-zap-sats');
+        return { body: Math.round(b.width), sideRatio: s.width / c.getBoundingClientRect().width, oneLine: !z || z.getClientRects().length === 1 && z.scrollWidth <= z.clientWidth + 1 }; });
+      await page.close(); return r;
+    };
+    const small = await measure(1000), big = await measure(1_234_567_000);
+    assert.equal(big.body, small.body);
+    assert.ok(big.sideRatio <= 0.22 && small.sideRatio <= 0.22, `columna del rayo ${big.sideRatio}`);
+    assert.deepEqual([small.oneLine, big.oneLine], [true, true]);
   });
 }

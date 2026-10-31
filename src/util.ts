@@ -1,4 +1,9 @@
 export const sats = (msats: number) => Math.floor(msats / 1000).toLocaleString('es-AR');
+/** Short amount for narrow spots: 9.999 · 21,1k · 1,2M (one decimal, floored). */
+export const compactSats = (msats: number) => {
+  const n = Math.floor(msats / 1000), f = (v: number, u: string) => `${(Math.floor(v * 10) / 10).toString().replace('.', ',')}${u}`;
+  return n < 10_000 ? n.toLocaleString('es-AR') : n < 1_000_000 ? f(n / 1000, 'k') : f(n / 1_000_000, 'M');
+};
 /** Cumulative total that can still grow while the backfill runs: the number blinks until relays finish loading. */
 export const pending = (total: string, ready: boolean) => (ready ? total : `<span class="pending" aria-label="Total parcial, cargando zaps">${total}</span>`);
 const ENT: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
