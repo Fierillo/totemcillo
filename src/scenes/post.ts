@@ -172,12 +172,15 @@ export function fitBoxes(root: HTMLElement, m: Measurer = domMeasurer, vh = wind
     keep(k);
     return { k, placed: Math.max(1, arrange(root, ul, fits)) };
   };
-  const atMin = floor <= BOX_COMFORT_PX ? count(minPx) : { k: 0, placed: 0 }, atFloor = count(floor);
-  // a short screen (fixed comfort floor): a smaller font before dropping boxes; big ones (vh comfort) keep fewer, comfortable boxes.
-  // A phone-landscape screen (mirrored onto a TV) also counts the boxes the masonry leaves out, so it doesn't stay mostly empty.
-  const small = vh < SHORT_VH ? atMin.placed > atFloor.placed : atMin.k > atFloor.k;
+  // Below the floor: the legible minimum on short screens; big ones (vh comfort) only go down to the fixed comfort font, so a taller
+  // screen (fullscreen) never shows fewer boxes than a shorter window just because its vh floor grew faster than its area.
+  const low = floor <= BOX_COMFORT_PX ? minPx : BOX_COMFORT_PX;
+  const atMin = count(low), atFloor = count(floor);
+  // Phone-landscape (mirrored onto a TV) and big screens count the boxes the masonry actually places, so neither stays mostly empty
+  // and a fullscreen TV never shows fewer than its smaller window.
+  const small = vh < SHORT_VH || floor > BOX_COMFORT_PX ? atMin.placed > atFloor.placed : atMin.k > atFloor.k;
   const kept = small ? atMin.k : atFloor.k;
-  if (small) sizeBoxes(ul, minPx, m);
+  if (small) sizeBoxes(ul, low, m);
   all.slice(kept).forEach((box) => box.remove()); // the oldest that don't fit
   keep(kept);
   const need = Math.max(1, arrange(root, ul, fits));

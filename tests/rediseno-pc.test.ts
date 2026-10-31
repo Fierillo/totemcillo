@@ -190,14 +190,14 @@ describe('Mensajes como cajas flotantes', () => {
       expect(fill(900, 20, 5)).toEqual({ size: '30px', boxes: 3 }); // 3 × 10 × 30 = 900
       expect(fill(9000, 20, 5)).toEqual({ size: '50px', boxes: 3 }); // capped at 5vh
     });
-    it('prefiere menos cajas cómodas: con la letra mínima cómoda no entran todas, deja las que entran y las agranda', () => {
-      expect(fill(500, 20, 5)).toEqual({ size: '25px', boxes: 2 }); // 3 × 10 × 20 = 600 > 500; 2 × 10 × 25 = 500
+    it('si a la letra cómoda no entran todas, baja hacia la cómoda fija (16px) antes de dejar cajas afuera', () => {
+      expect(fill(500, 20, 5)).toEqual({ size: '16px', boxes: 3 }); // 3 × 10 × 20 = 600 > 500; 3 × 10 × 16 = 480
     });
     it('en una ventana muy chica, si ni una caja entra a la letra cómoda, baja hasta el mínimo legible', () => {
       expect(fill(150, 20, 5)).toEqual({ size: '15px', boxes: 1 }); // 1 × 10 × 20 > 150; 1 × 10 × 15 = 150
     });
-    it('en una ventana grande la letra cómoda escala con el alto (data-comfort vh): menos cajas, más grandes', () => {
-      expect(fill(900, 20, 5, 4)).toEqual({ size: '45px', boxes: 2 }); // floor 4vh = 40px: 3 × 10 × 40 > 900 drops one; 2 × 10 × 45 = 900
+    it('en una ventana grande (pantalla completa) la letra cómoda en vh no deja cajas afuera: baja hasta que entran todas', () => {
+      expect(fill(900, 20, 5, 4)).toEqual({ size: '30px', boxes: 3 }); // floor 4vh = 40px: 3 × 10 × 40 > 900; 3 × 10 × 30 = 900
     });
   });
 

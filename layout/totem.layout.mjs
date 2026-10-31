@@ -319,3 +319,20 @@ test('Batalla: con el perfil del autor cargando, la barra muestra el mensaje', a
   assert.equal(r.text, 'Mensaje de un autor sin perfil todavía #lacrypta');
   await page.close();
 });
+
+for (const [w, h, H] of [[1920, 969, 1080], [1920, 947, 1080], [1280, 631, 720]]) test(`Mensajes: pantalla completa (${w}x${H}) muestra al menos tantas cajas como la ventana (${w}x${h}), al pasar a pantalla completa`, async () => {
+  const many = Array.from({ length: 24 }, (_, i) => ({ ...posts[i % posts.length], id: hex(900 + i), created_at: posts[i % posts.length].created_at - i }));
+  const page = await openApp(app.browser, { viewport: { width: w, height: h }, zappable: true, data: { posts: many, zaps } });
+  await kiosk(page, sceneDurations);
+  await page.goto(`${BASE}/`);
+  await page.waitForSelector('.scene-post .post-row');
+  await settled(page);
+  const count = () => page.evaluate(() => document.querySelectorAll('.post-list > .post-row').length);
+  const windowed = await count();
+  await page.setViewportSize({ width: w, height: H }); // entering fullscreen: a resize to the whole screen
+  await page.waitForTimeout(400);
+  await settled(page);
+  const full = await count();
+  assert.ok(full >= windowed, `pantalla completa ${full} < ventana ${windowed}`);
+  await page.close();
+});
