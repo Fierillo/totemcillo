@@ -116,9 +116,25 @@ for (const [w, h] of [[390, 844], [700, 900]]) {
     const m = await page.evaluate(() => {
       const c = document.querySelector('.m-top-row > .m-post'), r = (s) => c.querySelector(s).getBoundingClientRect();
       const body = r('.m-body'), side = r('.m-side'), cta = r('.m-zap-cta'), card = c.getBoundingClientRect();
-      return { ctaBelow: cta.top >= Math.max(body.bottom, side.bottom) - 1, sideRight: side.left >= body.right - 1, ctaWide: cta.width > card.width * 0.6, bodyWide: body.width > card.width * 0.5 };
+      return { ctaBelow: cta.top >= Math.max(body.bottom, side.bottom) - 1, ctaWide: cta.width > card.width * 0.6, bodyWide: body.width > card.width * 0.5 };
     });
-    assert.deepEqual(m, { ctaBelow: true, sideRight: true, ctaWide: true, bodyWide: true });
+    assert.deepEqual(m, { ctaBelow: true, ctaWide: true, bodyWide: true });
+    await page.close();
+  });
+}
+
+for (const [w, h] of [[390, 844], [412, 915]]) {
+  test(`Top posts: el ampliado es una sola columna, texto a lo ancho, rayo compacto, autor entero en ${w}x${h}`, async () => {
+    const page = await openMobile(app.browser, [w, h]);
+    await feedReady(page);
+    await page.getByRole('tab', { name: 'Top posts' }).click();
+    await page.locator('.m-top-head').first().click();
+    const m = await page.evaluate(() => {
+      const c = document.querySelector('.m-top-row > .m-post'), card = c.getBoundingClientRect(), ex = c.querySelector('.m-excerpt').getBoundingClientRect();
+      const side = c.querySelector('.m-side').getBoundingClientRect(), name = [...c.querySelectorAll('.m-meta .author *')].find((e) => e.scrollWidth > e.clientWidth + 1);
+      return { textWide: ex.width >= card.width * 0.85, boltSmall: side.height <= 48, nameCut: !!name };
+    });
+    assert.deepEqual(m, { textWide: true, boltSmall: true, nameCut: false });
     await page.close();
   });
 }
