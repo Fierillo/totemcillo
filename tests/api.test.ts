@@ -380,3 +380,20 @@ it('dev solo usa la clave "admin" de respaldo si escucha en localhost', async ()
   expect(() => devDeps({ TOTEM_HOST: '0.0.0.0' })).toThrow(/ADMIN_PASSWORD/);
   expect(devDeps({ TOTEM_HOST: '0.0.0.0', ADMIN_PASSWORD: 'propia' }).env.ADMIN_PASSWORD).toBe('propia');
 });
+
+it('el middleware de dev responde 500 genérico sin filtrar el error interno', async () => {
+  vi.doMock('../server/node', async (orig) => ({ ...(await orig<object>()), nodeHandler: vi.fn().mockRejectedValue(new Error('secreto interno')) }));
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    vi.resetModules();
+    const { totemApi } = await import('../server/vite-plugin');
+    let mw: any;
+    (totemApi() as any).configureServer({ middlewares: { use: (f: unknown) => { mw = f; } } });
+    const res: any = { statusCode: 0, end: vi.fn() };
+    mw({ url: '/api/session' }, res, () => {});
+    await vi.waitFor(() => expect(res.end).toHaveBeenCalled());
+    expect(res.statusCode).toBe(500);
+    expect(res.end).toHaveBeenCalledWith('Internal error');
+    expect(error).toHaveBeenCalled();
+  } finally { error.mockRestore(); vi.doUnmock('../server/node'); }
+});
