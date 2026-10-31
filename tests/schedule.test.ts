@@ -340,3 +340,11 @@ describe('anuncio vacío', () => {
     expect(positionAt(S({ announcement: 'Hola' }), 103_500).scene).toBe('anuncio');
   });
 });
+
+describe('showImages', () => {
+  it('acepta solo booleanos; por defecto las imágenes se muestran', () => {
+    expect(validatePatch({ showImages: false })).toEqual({ ok: true, patch: { showImages: false } });
+    expect(validatePatch({ showImages: 'no' }).ok).toBe(false);
+    expect(DEFAULT_SETTINGS.showImages).toBe(true);
+  });
+});

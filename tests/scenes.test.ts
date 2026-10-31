@@ -478,3 +478,19 @@ describe('liveMarks: el redraw pendiente del rayo', () => {
     expect(redraw).not.toHaveBeenCalled();
   });
 });
+
+describe('interruptor de imágenes', () => {
+  it('showImages=false: el post muestra el texto sin la URL y ninguna imagen (ni pedido al proxy); al volver a true, reaparece', () => {
+    const s = mkStore();
+    s.addPost({ ...post(1), content: 'mirá https://a.example/x.png' });
+    const root = document.createElement('div');
+    postScene(s, { publicUrl: 'https://x/' }).render(root);
+    expect(root.querySelector('.post-media img')).not.toBeNull();
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: [], showImages: false });
+    expect(root.querySelector('.post-media img')).toBeNull();
+    expect(root.querySelector('.excerpt')!.textContent).toBe('mirá');
+    s.setModeration({ hiddenPosts: [], bannedPubkeys: [], showImages: true });
+    vi.advanceTimersByTime(200); // redraws are throttled
+    expect(root.querySelector('.post-media img')).not.toBeNull();
+  });
+});

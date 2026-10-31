@@ -257,3 +257,11 @@ describe('panel de proveedores', () => {
     expect(root.querySelectorAll('.prov-item')).toHaveLength(1);
   });
 });
+
+describe('moderationOf showImages', () => {
+  it('solo false apaga las imágenes', async () => {
+    const { moderationOf } = await import('../src/moderation-lists');
+    expect(moderationOf({ showImages: false }).showImages).toBe(false);
+    expect(moderationOf({}).showImages).toBe(true);
+  });
+});

@@ -1,6 +1,7 @@
 import type { Post, Zap } from './types';
 import { truncateText } from '../text';
 import { feedFor } from '../livefeed';
+import { imagesOf } from '../media';
 
 export interface PostStats { post?: Post; postId: string; msats: number; zaps: Zap[] }
 
@@ -29,7 +30,7 @@ interface StoreOptions { key?: string; maxPosts?: number; maxZaps?: number; post
 export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: number; comment?: string; bolt11?: string }
 
 /** Moderation lists published by the server. */
-export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string }
+export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string; showImages?: boolean }
 
 /** Exact domain or subdomain of one in the list. */
 export const providerAllowed = (domain: string | undefined, list: string[]) =>
@@ -186,12 +187,18 @@ export class ZapStore {
     const sameP = pv === this.providers || (!!pv && !!this.providers && same(new Set(pv), new Set(this.providers)));
     const ms = m.startLine === undefined ? NaN : Date.parse(m.startLine);
     const cut = m.startLine === undefined ? this.cutoff : Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
-    if (same(h, this.hidden) && same(b, this.banned) && sameP && cut === this.cutoff) return;
-    this.hidden = h; this.banned = b; this.providers = pv; this.cutoff = cut;
+    const img = m.showImages ?? this.showImages;
+    if (same(h, this.hidden) && same(b, this.banned) && sameP && cut === this.cutoff && img === this.showImages) return;
+    this.hidden = h; this.banned = b; this.providers = pv; this.cutoff = cut; this.showImages = img;
     this.listeners.forEach((f) => f());
   }
 
-  get moderation(): Moderation { return { hiddenPosts: [...this.hidden], bannedPubkeys: [...this.banned], ...(this.providers ? { zapProviders: [...this.providers] } : {}) }; }
+  /** Post images on (server kill switch: showImages=false). */
+  showImages = true;
+  /** The post's images, or none when the switch is off. */
+  imagesFor(p: Post) { return this.showImages ? imagesOf(p) : []; }
+
+  get moderation(): Moderation { return { hiddenPosts: [...this.hidden], bannedPubkeys: [...this.banned], showImages: this.showImages, ...(this.providers ? { zapProviders: [...this.providers] } : {}) }; }
 
   private postVisible(id: string) {
     if (this.hidden.has(id)) return false;

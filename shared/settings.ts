@@ -20,11 +20,13 @@ export interface Settings {
   zapProviders?: string[];
   /** Start line (ISO with zone): only posts and zaps from here on count. */
   startLine?: string;
+  /** Kill switch: false hides every post image (no <img>, no proxy request); text still drops the image URLs. */
+  showImages?: boolean;
 }
 export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
 export const DEFAULT_START_LINE = '2026-10-13T00:00:00-03:00';
 export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'clip' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
-export const DEFAULT_SETTINGS: Settings = { ...SCHEDULE_DEFAULTS, announcement: '', sceneDurations: {}, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE };
+export const DEFAULT_SETTINGS: Settings = { ...SCHEDULE_DEFAULTS, announcement: '', sceneDurations: {}, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE, showImages: true };
 /** Default duration of each scene (ms): messages lead, the zap battle follows, the announcement is a short pause. */
 export const DEFAULT_SCENE_MS: Record<string, number> = { post: 42000, batalla: 28000, anuncio: 10000 };
 export const LIMITS = {
@@ -32,7 +34,7 @@ export const LIMITS = {
   maxVideoSec: 3600, maxModeration: 1000, maxZapProviders: 100, maxStartLineAheadDays: 365,
 };
 
-export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[]; startLine?: string }
+export interface Patch { announcement?: string; sceneDurations?: Record<string, number>; command?: Action; videoEveryCycles?: number; videoMode?: 'full' | 'clip'; videoClipSeconds?: number; videoDurationSec?: number ; zapProviders?: string[]; startLine?: string; showImages?: boolean }
 
 /** Validates the PUT body; any invalid field rejects the whole request. */
 export function validatePatch(body: unknown, now = Date.now()): { ok: true; patch: Patch } | { ok: false; error: string } {
@@ -99,6 +101,10 @@ export function validatePatch(body: unknown, now = Date.now()): { ok: true; patc
     if (!Number.isFinite(ms) || ms < Date.parse('2020-01-01T00:00:00Z') || ms > now + LIMITS.maxStartLineAheadDays * 86_400_000)
       return { ok: false, error: 'startLine: fecha y hora ISO con zona, entre 2020 y un año desde hoy' };
     patch.startLine = v;
+  }
+  if ('showImages' in b) {
+    if (typeof b.showImages !== 'boolean') return { ok: false, error: 'showImages debe ser true o false' };
+    patch.showImages = b.showImages;
   }
   return { ok: true, patch };
 }

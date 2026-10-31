@@ -13,7 +13,7 @@ import type { LiveEvent } from './nostr/store';
 import { domMeasurer, fitText, type Measurer } from './fit';
 import { loadPendingZap, openZapDialog, type InvoiceRequester } from './zap-dialog';
 import { BOLT, BOLT_OFF, boltSats } from './bolt';
-import { imagesHtml, imagesOf, textWithoutImages } from './media';
+import { imagesHtml, textWithoutImages } from './media';
 import { COMPOSE_FAB, NO_MARKS, SKEL_POST, SKEL_ROWS, empty, panel as panelHtml, scrubber as scrubberHtml } from './mobile-templates';
 
 export const isMobileViewport = (w: Pick<Window, 'matchMedia'> = window) => w.matchMedia('(max-width: 700px)').matches;
@@ -86,7 +86,7 @@ export function renderMobile(root: HTMLElement, store: ZapStore, cfg: Config, an
     const c = web ? zap.cls(s.post!.pubkey) : ''; // hidden bolt while unknown, fade once answered
     return `<article class="m-post${m.cls}" data-id="${esc(s.postId)}"><div class="m-body">
         <div class="m-meta">${authorHtml(s.post!.pubkey)}<span class="muted">${ago(s.post!.created_at)}</span></div>
-        <p class="m-excerpt">${esc(textWithoutImages(s.post!.content))}</p>${imagesHtml(imagesOf(s.post!), 'm-media')}
+        <p class="m-excerpt">${esc(textWithoutImages(s.post!.content))}</p>${imagesHtml(store.imagesFor(s.post!), 'm-media')}
         ${web ? `<div class="m-post-footer"><a class="zap-alt" href="${esc(web)}" target="_blank" rel="noopener noreferrer">abrir en njump.me</a></div>` : ''}</div>
         ${web ? `<div class="m-side">${zap.off(s.post!.pubkey)
           ? `<button class="zap-btn m-total is-unzappable${c}" type="button" aria-disabled="true" aria-label="No se puede zapear: el autor no tiene una wallet que acepte zaps">${BOLT_OFF}</button>`

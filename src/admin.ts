@@ -51,6 +51,8 @@ async function panel() {
     <label class="clip-len"${(s.videoMode ?? SCHEDULE_DEFAULTS.videoMode) === 'clip' ? '' : ' hidden'}>Largo del clip (segundos) <input type="number" name="videoClipSeconds" min="${LIMITS.minClipSeconds}" max="${LIMITS.maxClipSeconds}" step="1" value="${s.videoClipSeconds ?? SCHEDULE_DEFAULTS.videoClipSeconds}" /></label></section>
     <section class="card card-start"><label>Inicio: posts y zaps desde (hora de Argentina) <input type="datetime-local" name="startLine" value="${toArInput(s.startLine ?? DEFAULT_START_LINE)}" required /></label>
     <small>Lo anterior no se muestra ni cuenta. Sin fecha de fin.</small></section>
+    <section class="card card-images"><label><input type="checkbox" name="showImages"${s.showImages === false ? '' : ' checked'} /> Mostrar imágenes de los posts</label>
+    <small>Apagado: ninguna imagen en el tótem ni en el celu (el texto sigue).</small></section>
     <section class="card card-prov"></section>
     </div>
     <section class="card card-mod" data-pane="mod"></section></section>`;
@@ -88,6 +90,7 @@ async function panel() {
     const r = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ announcement, sceneDurations, videoEveryCycles: Number((root.querySelector('[name="videoEveryCycles"]') as HTMLInputElement).value),
       videoMode: (root.querySelector('[name="videoMode"]') as HTMLSelectElement).value,
       videoClipSeconds: Number((root.querySelector('[name="videoClipSeconds"]') as HTMLInputElement).value),
+      showImages: (root.querySelector('[name="showImages"]') as HTMLInputElement).checked,
       startLine: fromArInput((root.querySelector('[name="startLine"]') as HTMLInputElement).value) ?? undefined }) });
     const body = await r.json().catch(() => ({}));
     if (r.ok) moderate(moderationOf(body));

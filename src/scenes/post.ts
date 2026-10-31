@@ -7,7 +7,7 @@ import { age, esc, sats } from '../util';
 import type { Zap } from '../nostr/types';
 import { authorHtml } from '../nostr/profiles';
 import { BOLT, BOLT_OFF, boltSats } from '../bolt';
-import { imagesHtml, imagesOf, textWithoutImages } from '../media';
+import { imagesHtml, textWithoutImages, type PostImage } from '../media';
 import { zappability, type CanZap } from '../zapcache';
 import { masonry } from '../masonry';
 
@@ -51,12 +51,12 @@ const paintTotal = (el: HTMLElement, msats: number, ready: boolean) => {
   if (!el.matches('.is-unzappable, .bolt-pending')) el.innerHTML = totalHtml(msats, ready);
 };
 
-interface RowOptions { cls: string; ready: boolean; zap: { off: boolean; cls: string } }
+interface RowOptions { cls: string; ready: boolean; images: PostImage[]; zap: { off: boolean; cls: string } }
 /** A post as a message box: author, age, excerpt and its bolt (red when off, blinking while pending, else live sats). */
-const postRow = (s: PostStats, { cls, ready, zap }: RowOptions) => `<li class="post-row${cls}" data-id="${esc(s.postId)}">
+const postRow = (s: PostStats, { cls, ready, images, zap }: RowOptions) => `<li class="post-row${cls}" data-id="${esc(s.postId)}">
       <div class="row-main">
         <div class="row-meta">${authorHtml(s.post!.pubkey)}<span class="ago muted">${age(s.post!.created_at)}</span></div>
-        <p class="excerpt" data-clip>${esc(textWithoutImages(s.post!.content))}</p>${imagesHtml(imagesOf(s.post!), 'row-media', 1)}
+        <p class="excerpt" data-clip>${esc(textWithoutImages(s.post!.content))}</p>${imagesHtml(images, 'row-media', 1)}
         <div class="row-foot">${zap.off ? `<span class="row-total is-unzappable${zap.cls}" aria-label="No se puede zapear">${BOLT_OFF}</span>` : zap.cls.includes('bolt-pending') ? `<span class="row-total${zap.cls}" aria-label="Verificando si se puede zapear">${BOLT}</span>`
         : `<span class="row-total${zap.cls}">${totalHtml(s.msats, ready)}</span>`}</div>
       </div>
@@ -256,7 +256,7 @@ export function postScene(store: ZapStore, opts: PostSceneOptions = { publicUrl:
         const box = (m: Message) => {
           if (m.zap) return zapRow(m.zap, seen && !seen.has(m.zap.id) ? ' is-new' : '');
           const s = m.post!, pk = s.post!.pubkey;
-          return postRow(s, { cls: marks.attrs(s.postId).cls, ready: store.ready, zap: { off: zap.off(pk), cls: zap.cls(pk) } });
+          return postRow(s, { cls: marks.attrs(s.postId).cls, ready: store.ready, images: store.imagesFor(s.post!), zap: { off: zap.off(pk), cls: zap.cls(pk) } });
         };
         marks.begin(list.flatMap((m) => m.post ? [m.post.postId] : []));
         const key = (li: HTMLElement) => li.dataset.id ?? `z:${li.dataset.zap}`;
