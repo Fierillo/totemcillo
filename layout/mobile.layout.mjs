@@ -132,9 +132,13 @@ for (const [w, h] of [[390, 844], [412, 915]]) {
     const m = await page.evaluate(() => {
       const c = document.querySelector('.m-top-row > .m-post'), card = c.getBoundingClientRect(), ex = c.querySelector('.m-excerpt').getBoundingClientRect();
       const side = c.querySelector('.m-side').getBoundingClientRect(), name = [...c.querySelectorAll('.m-meta .author *')].find((e) => e.scrollWidth > e.clientWidth + 1);
-      return { textWide: ex.width >= card.width * 0.85, boltSmall: side.height <= 48, nameCut: !!name };
+      const row = c.closest('.m-top-row'), fs = (e) => parseFloat(getComputedStyle(e).fontSize);
+      const amounts = [...row.querySelectorAll('.m-top-sats, .m-zap-sats, .m-side')].filter((e) => e.getClientRects().length).length;
+      const ratio = fs(row.querySelector('.m-top-sats')) / fs(document.querySelector('.m-top-head[aria-expanded="false"] .m-top-sats'));
+      const kids = [...c.children].filter((e) => e.getClientRects().length);
+      return { textWide: ex.width >= card.width * 0.85, amountOnce: amounts === 1, bigger: ratio >= 1.15 && ratio <= 1.45, zapLast: kids.at(-1).matches('.m-zap-cta'), nameCut: !!name, side: !!side };
     });
-    assert.deepEqual(m, { textWide: true, boltSmall: true, nameCut: false });
+    assert.deepEqual(m, { textWide: true, amountOnce: true, bigger: true, zapLast: true, nameCut: false, side: true });
     await page.close();
   });
 }

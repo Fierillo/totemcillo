@@ -152,10 +152,8 @@ html.is-mobile .zap-fx { display: none; } /* the bolt drops from the top instead
 .m-top-head[aria-expanded="true"] .m-top-line { color: var(--muted); }
 .m-top-row > .m-post { display: flex; flex-wrap: wrap; gap: .75rem; border: 0; padding-top: 0; }
 .m-top-row > .m-post > .m-body { flex: 1 0 100%; } /* one column: the message gets the full width */
-.m-top-row > .m-post > .m-side { flex: 1 0 100%; flex-direction: row; } /* compact bolt + sats line under the text */
-.m-top-row .m-post .m-side .zap-btn { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .4rem; }
-.m-top-row .m-side .m-bolt { width: .9rem; height: 1.2rem; }
-.m-top-row .m-zap-sats { font-size: .85rem; }
+.m-top-row > .m-post > .m-side { display: none; } /* the row header already shows the amount */
+.m-top-head[aria-expanded="true"] .m-top-sats { font-size: 1.1rem; } /* open row: its amount a bit bigger */
 .m-top-row > .m-post > .m-zap-cta { flex: 1 0 100%; justify-content: center; margin: 0; } /* like the feed: text + bolt on top, Zapear below across the card */
 .m-fab { position: fixed; right: calc(.6rem + env(safe-area-inset-right)); bottom: calc(var(--footer-h) + var(--cta-bottom)); width: var(--fab-w); z-index: 5; --btn-px: .5rem; --btn-fs: .68rem; gap: .3rem; white-space: nowrap; text-align: left; box-shadow: 0 .3rem 1rem #000a; } /* violet pill at the bottom right, on the same row as Zapear */
 .m-fab svg { width: 1rem; height: 1rem; }
