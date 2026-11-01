@@ -23,7 +23,7 @@ export interface Settings {
   /** Kill switch: false hides every post image (no <img>, no proxy request); text still drops the image URLs. */
   showImages?: boolean;
 }
-export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me'];
+export const DEFAULT_ZAP_PROVIDERS = ['getalby.com', 'primal.net', 'walletofsatoshi.com', 'lawallet.ar', 'lawallet.io', 'blink.sv', 'coinos.io', 'strike.me', 'rizful.com'];
 export const DEFAULT_START_LINE = '2026-10-13T00:00:00-03:00';
 export const SCHEDULE_DEFAULTS = { videoEveryCycles: 2, videoMode: 'clip' as const, videoClipSeconds: 21, videoDurationSec: 88.4 };
 export const DEFAULT_SETTINGS: Settings = { ...SCHEDULE_DEFAULTS, announcement: '', sceneDurations: {}, zapProviders: DEFAULT_ZAP_PROVIDERS, startLine: DEFAULT_START_LINE, showImages: true };

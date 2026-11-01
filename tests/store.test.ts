@@ -294,3 +294,7 @@ describe('proveedores permitidos', () => {
     expect(live).toHaveBeenCalledWith({ type: 'zap', postId: 'a', msats: 1000 });
   });
 });
+
+it('default zap providers include rizful.com and primal.net', () => {
+  expect(DEFAULT_ZAP_PROVIDERS).toEqual(expect.arrayContaining(['rizful.com', 'primal.net']));
+});
