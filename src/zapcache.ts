@@ -36,7 +36,7 @@ export type CanZap = ((pubkey: string, update?: (ok: boolean) => void) => Promis
 
 /**
  * Per-view zappability: asks `canZap` once per author and calls `changed` (coalesced: answers that land together
- * redraw once). Errors leave the author unknown and are re-asked after `retryMs`. Without `canZap` everyone counts as zappable.
+ * redraw once). Errors show as not zappable (red) and are re-asked after `retryMs`. Without `canZap` everyone counts as zappable.
  */
 export function zappability(canZap: CanZap | undefined, changed: () => void, coalesceMs = 50, retryMs = 60_000) {
   const known = new Map<string, boolean | undefined>();
@@ -52,8 +52,8 @@ export function zappability(canZap: CanZap | undefined, changed: () => void, coa
         known.set(pk, ok);
         timer ??= setTimeout(() => { timer = undefined; changed(); }, coalesceMs);
       };
-      // An error is not a 'no': stay unknown (no red bolt) and ask again later.
-      canZap(pk, set).then(set, () => { setTimeout(() => { if (known.get(pk) === undefined) known.delete(pk); }, retryMs); });
+      // Unverifiable shows red (not cached by cachedCanZap) and is asked again later, so it can turn green.
+      canZap(pk, set).then(set, () => { set(false); setTimeout(() => known.delete(pk), retryMs); });
     }
     return canZap ? known.get(pk) : true;
   };

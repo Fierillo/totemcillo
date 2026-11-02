@@ -127,22 +127,24 @@ describe('errores de canZap', () => {
     await expect(cachedCanZap(async () => { throw new Error('x'); }, s)(pk('a'))).rejects.toThrow();
     expect(s.getItem(ZAP_CACHE_KEY)).toBeNull();
   });
-  it('zappability: un error deja el rayo desconocido (no rojo) y se reintenta más tarde', async () => {
+  it('zappability: un error muestra el rayo rojo, no se guarda y se reintenta (puede pasar a verde)', async () => {
     vi.useFakeTimers();
     try {
       let fail = true;
-      const can = vi.fn(async () => { if (fail) throw new Error('x'); return false; });
+      const s = kv();
+      const can = cachedCanZap(async () => { if (fail) throw new Error('x'); return true; }, s);
       const z = zappability(can, () => {}, 0, 1000);
-      expect(z.off(pk('a'))).toBe(false);
+      z.off(pk('a'));
       await vi.advanceTimersByTimeAsync(0);
-      expect(z.off(pk('a'))).toBe(false);
-      expect(can).toHaveBeenCalledTimes(1);
+      expect(z.off(pk('a'))).toBe(true);
+      expect(z.ok(pk('a'))).toBe(false);
+      expect(s.getItem(ZAP_CACHE_KEY)).toBeNull();
       fail = false;
       await vi.advanceTimersByTimeAsync(1000);
       z.off(pk('a'));
       await vi.advanceTimersByTimeAsync(0);
-      expect(can).toHaveBeenCalledTimes(2);
-      expect(z.off(pk('a'))).toBe(true);
+      expect(z.off(pk('a'))).toBe(false);
+      expect(z.ok(pk('a'))).toBe(true);
     } finally { vi.useRealTimers(); }
   });
 });
