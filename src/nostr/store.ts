@@ -33,8 +33,8 @@ export interface LiveEvent { type: 'post' | 'zap'; postId: string; msats?: numbe
 export interface Moderation { hiddenPosts: string[]; bannedPubkeys: string[]; zapProviders?: string[]; startLine?: string; showImages?: boolean }
 
 /** Exact domain or subdomain of one in the list. */
-export const providerAllowed = (domain: string | undefined, list: string[]) =>
-  !!domain && list.some((d) => domain === d || domain.endsWith(`.${d}`));
+import { providerAllowed } from '../../shared/lnurl';
+export { providerAllowed };
 
 function trimOldest<T extends { id: string; created_at: number }>(m: Map<string, T>, max: number) {
   while (m.size > max) {
