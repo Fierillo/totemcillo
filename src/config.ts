@@ -28,7 +28,7 @@ export async function loadConfig(fetchFn: typeof fetch = fetch): Promise<Config>
     const res = await fetchFn('/config.json', { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.json();
-    return { ...defaultConfig, ...Object.fromEntries(Object.entries(raw).filter(([key]) => Object.hasOwn(defaultConfig, key))) };
+    return { ...defaultConfig, ...Object.fromEntries(Object.entries(raw).filter(([key]) => Object.prototype.hasOwnProperty.call(defaultConfig, key))) };
   } catch (e) {
     console.warn('Could not load config.json, using defaults', e);
     return defaultConfig;
