@@ -1,7 +1,7 @@
 import type { KV } from './nostr/store';
 
 export const ZAP_CACHE_KEY = 'totemcillo:canzap:v1';
-export const ZAP_TTL = { yes: 24 * 3600e3, no: 3 * 3600e3 };
+export const ZAP_TTL = { yes: 24 * 3600e3, no: 1800e3 };
 const MAX = 500;
 /** pubkey → [1 zappable | 0 not, checkedAt ms, profile created_at seen when checked] */
 type Entry = [0 | 1, number, number];
@@ -36,9 +36,9 @@ export type CanZap = ((pubkey: string, update?: (ok: boolean) => void) => Promis
 
 /**
  * Per-view zappability: asks `canZap` once per author and calls `changed` (coalesced: answers that land together
- * redraw once). Without `canZap` everyone counts as zappable.
+ * redraw once). Errors leave the author unknown and are re-asked after `retryMs`. Without `canZap` everyone counts as zappable.
  */
-export function zappability(canZap: CanZap | undefined, changed: () => void, coalesceMs = 50) {
+export function zappability(canZap: CanZap | undefined, changed: () => void, coalesceMs = 50, retryMs = 60_000) {
   const known = new Map<string, boolean | undefined>();
   const fresh = new Set<string>(); // answered after being drawn hidden: fade in once
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -52,7 +52,8 @@ export function zappability(canZap: CanZap | undefined, changed: () => void, coa
         known.set(pk, ok);
         timer ??= setTimeout(() => { timer = undefined; changed(); }, coalesceMs);
       };
-      canZap(pk, set).then(set, () => {});
+      // An error is not a 'no': stay unknown (no red bolt) and ask again later.
+      canZap(pk, set).then(set, () => { setTimeout(() => { if (known.get(pk) === undefined) known.delete(pk); }, retryMs); });
     }
     return canZap ? known.get(pk) : true;
   };

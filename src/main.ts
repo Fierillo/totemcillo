@@ -32,7 +32,13 @@ const devZappable = new Set<string>(); // dev only: authors of the "+ post ⚡" 
 const scene = document.getElementById('scene')!;
 const wallet = new LnurlResolver(profileLoader(pool, cfg.relays), undefined, undefined, () => store.moderation.zapProviders ?? DEFAULT_ZAP_PROVIDERS);
 // Same cached check on both views: the totem only uses it for the red bolt (no zapping there).
-const canZap = cachedCanZap(async (pk) => (__TOTEM_DEMO__ && devZappable.has(pk)) || !!(await wallet.resolveInfo(pk)), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
+// Verified server-side (old WebViews fail cross-origin LNURL fetches); a failed request throws, so it is never cached as a 'no'.
+const zappable = async (pk: string) => {
+  const r = await fetch(`/api/zappable?pubkey=${pk}`);
+  if (!r.ok) throw new Error(`zappable ${r.status}`);
+  return (await r.json()).zappable === true;
+};
+const canZap = cachedCanZap(async (pk) => (__TOTEM_DEMO__ && devZappable.has(pk)) || zappable(pk), window.localStorage, undefined, (pk) => profiles.updatedAt(pk));
 const app = document.getElementById('app')!;
 zapFx(store); // ⚡ + sats at the bottom when the zapped post is not on screen
 

@@ -21,7 +21,7 @@ describe('caché de canZap (localStorage, stale-while-revalidate)', () => {
     await vi.waitFor(() => expect(update).toHaveBeenCalledWith(true));
     expect(JSON.parse(s.getItem(ZAP_CACHE_KEY)!)[pk('a')][0]).toBe(1);
   });
-  it('TTL: sí dura 24 h, no dura 3 h', () => { expect(ZAP_TTL).toEqual({ yes: 24 * 3600e3, no: 3 * 3600e3 }); });
+  it('TTL: sí dura 24 h, no dura 30 min', () => { expect(ZAP_TTL).toEqual({ yes: 24 * 3600e3, no: 1800e3 }); });
   it('un perfil más nuevo que el usado al validar invalida el resultado', async () => {
     const s = kv();
     let at = 10;
@@ -118,5 +118,31 @@ describe('rayo sin transición falsa', () => {
     expect(z.off('a')).toBe(true);
     expect(z.cls('a')).toBe('');
     vi.useRealTimers();
+  });
+});
+
+describe('errores de canZap', () => {
+  it('un error no se guarda en localStorage', async () => {
+    const s = kv();
+    await expect(cachedCanZap(async () => { throw new Error('x'); }, s)(pk('a'))).rejects.toThrow();
+    expect(s.getItem(ZAP_CACHE_KEY)).toBeNull();
+  });
+  it('zappability: un error deja el rayo desconocido (no rojo) y se reintenta más tarde', async () => {
+    vi.useFakeTimers();
+    try {
+      let fail = true;
+      const can = vi.fn(async () => { if (fail) throw new Error('x'); return false; });
+      const z = zappability(can, () => {}, 0, 1000);
+      expect(z.off(pk('a'))).toBe(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(z.off(pk('a'))).toBe(false);
+      expect(can).toHaveBeenCalledTimes(1);
+      fail = false;
+      await vi.advanceTimersByTimeAsync(1000);
+      z.off(pk('a'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(can).toHaveBeenCalledTimes(2);
+      expect(z.off(pk('a'))).toBe(true);
+    } finally { vi.useRealTimers(); }
   });
 });
